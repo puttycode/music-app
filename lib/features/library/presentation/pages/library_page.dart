@@ -48,9 +48,9 @@ class _LibraryView extends StatelessWidget {
             }
 
             if (state.error != null) {
-              return app_widgets.ErrorWidget(
+              return app_widgets.EmptyWidget(
                 message: state.error!,
-                onRetry: () => context.read<LibraryBloc>().add(LoadLocalMusic()),
+                icon: Icons.music_off,
               );
             }
 
