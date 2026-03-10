@@ -1,6 +1,6 @@
 import 'dart:async';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:just_audio/just_audio.dart';
+import 'package:just_audio/just_audio.dart' hide PlayerState;
 import 'package:music_app/services/audio_player_service.dart';
 import 'package:music_app/features/player/domain/entities/song.dart';
 import 'player_event_state.dart';
