@@ -1,7 +1,7 @@
 import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:on_audio_query/on_audio_query.dart';
-import '../../domain/entities/song.dart';
+import 'package:music_app/features/player/domain/entities/song.dart';
 
 part 'library_event.dart';
 

@@ -1,6 +1,6 @@
 import 'package:equatable/equatable.dart';
-import '../../../features/player/domain/entities/song.dart';
-import '../../../services/audio_player_service.dart';
+import 'package:music_app/features/player/domain/entities/song.dart';
+import 'package:music_app/services/audio_player_service.dart';
 
 abstract class PlayerEvent extends Equatable {
   const PlayerEvent();

@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import '../../../core/theme/colors.dart';
-import '../../../features/player/domain/entities/song.dart';
+import 'package:music_app/core/theme/colors.dart';
+import 'package:music_app/features/player/domain/entities/song.dart';
 
 class SongCard extends StatelessWidget {
   final Song song;

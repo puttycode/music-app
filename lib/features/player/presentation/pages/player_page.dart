@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import '../../../../core/theme/colors.dart';
-import '../../../../core/theme/text_styles.dart';
-import '../../../../core/utils/duration_formatter.dart';
-import '../../../../services/audio_player_service.dart';
-import '../../domain/entities/song.dart';
-import '../bloc/player_bloc.dart';
+import 'package:music_app/core/theme/colors.dart';
+import 'package:music_app/core/theme/text_styles.dart';
+import 'package:music_app/core/utils/duration_formatter.dart';
+import 'package:music_app/services/audio_player_service.dart';
+import 'package:music_app/features/player/domain/entities/song.dart';
+import 'package:music_app/features/player/presentation/bloc/player_bloc.dart';
+import 'package:music_app/features/player/presentation/bloc/player_event_state.dart';
 
 class PlayerPage extends StatelessWidget {
   final List<Song>? playlist;
@@ -104,7 +105,7 @@ class _AlbumArt extends StatelessWidget {
           borderRadius: BorderRadius.circular(16),
           boxShadow: [
             BoxShadow(
-              color: AppColors.primary.withOpacity(0.3),
+              color: AppColors.primary.withValues(alpha: 0.3),
               blurRadius: 32,
               offset: const Offset(0, 16),
             ),
@@ -258,9 +259,9 @@ class _Controls extends StatelessWidget {
                 ),
                 onPressed: () {
                   if (isPlaying) {
-                    audioService.p else {
-                    audioause();
-                  }Service.play();
+                    audioService.pause();
+                  } else {
+                    audioService.play();
                   }
                 },
               ),

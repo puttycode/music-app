@@ -1,6 +1,8 @@
 import 'dart:async';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import '../../../services/audio_player_service.dart';
+import 'package:just_audio/just_audio.dart';
+import 'package:music_app/services/audio_player_service.dart';
+import 'package:music_app/features/player/domain/entities/song.dart';
 import 'player_event_state.dart';
 
 class PlayerBloc extends Bloc<PlayerEvent, PlayerState> {
@@ -28,7 +30,7 @@ class PlayerBloc extends Bloc<PlayerEvent, PlayerState> {
 
   void _initStreams() {
     _playerStateSubscription = _audioService.playerStateStream.listen((playerState) {
-      emit(state.copyWith(
+      add(_UpdatePlayerState(
         isPlaying: playerState.playing,
         isLoading: playerState.processingState == ProcessingState.loading ||
             playerState.processingState == ProcessingState.buffering,
@@ -36,23 +38,17 @@ class PlayerBloc extends Bloc<PlayerEvent, PlayerState> {
     });
 
     _positionSubscription = _audioService.positionStream.listen((position) {
-      emit(state.copyWith(position: position));
+      add(_UpdatePosition(position));
     });
 
     _durationSubscription = _audioService.durationStream.listen((duration) {
       if (duration != null) {
-        emit(state.copyWith(duration: duration));
+        add(_UpdateDuration(duration));
       }
     });
 
     _currentSongSubscription = _audioService.currentSongStream.listen((song) {
-      emit(state.copyWith(
-        currentSong: song,
-        playlist: _audioService.playlist,
-        currentIndex: _audioService.currentIndex,
-        repeatMode: _audioService.repeatMode,
-        isShuffle: _audioService.isShuffle,
-      ));
+      add(_UpdateCurrentSong(song));
     });
   }
 
@@ -101,6 +97,28 @@ class PlayerBloc extends Bloc<PlayerEvent, PlayerState> {
     _audioService.toggleShuffle();
   }
 
+  void _onUpdatePlayerState(_UpdatePlayerState event, Emitter<PlayerState> emit) {
+    emit(state.copyWith(isPlaying: event.isPlaying, isLoading: event.isLoading));
+  }
+
+  void _onUpdatePosition(_UpdatePosition event, Emitter<PlayerState> emit) {
+    emit(state.copyWith(position: event.position));
+  }
+
+  void _onUpdateDuration(_UpdateDuration event, Emitter<PlayerState> emit) {
+    emit(state.copyWith(duration: event.duration));
+  }
+
+  void _onUpdateCurrentSong(_UpdateCurrentSong event, Emitter<PlayerState> emit) {
+    emit(state.copyWith(
+      currentSong: event.song,
+      playlist: _audioService.playlist,
+      currentIndex: _audioService.currentIndex,
+      repeatMode: _audioService.repeatMode,
+      isShuffle: _audioService.isShuffle,
+    ));
+  }
+
   @override
   Future<void> close() {
     _playerStateSubscription?.cancel();
@@ -109,4 +127,25 @@ class PlayerBloc extends Bloc<PlayerEvent, PlayerState> {
     _currentSongSubscription?.cancel();
     return super.close();
   }
+}
+
+class _UpdatePlayerState extends PlayerEvent {
+  final bool isPlaying;
+  final bool isLoading;
+  const _UpdatePlayerState({required this.isPlaying, required this.isLoading});
+}
+
+class _UpdatePosition extends PlayerEvent {
+  final Duration position;
+  const _UpdatePosition(this.position);
+}
+
+class _UpdateDuration extends PlayerEvent {
+  final Duration duration;
+  const _UpdateDuration(this.duration);
+}
+
+class _UpdateCurrentSong extends PlayerEvent {
+  final Song? song;
+  const _UpdateCurrentSong(this.song);
 }

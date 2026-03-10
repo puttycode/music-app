@@ -1,8 +1,9 @@
 import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:hive/hive.dart';
-import '../../../../core/constants/app_constants.dart';
-import '../../domain/entities/playlist.dart';
+import 'package:music_app/core/constants/app_constants.dart';
+import 'package:music_app/features/playlist/domain/entities/playlist.dart';
+import 'package:music_app/features/player/domain/entities/song.dart';
 
 part 'playlist_event.dart';
 

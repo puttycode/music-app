@@ -1,11 +1,26 @@
 import 'package:flutter/material.dart';
-import '../player/presentation/pages/player_page.dart';
-import '../home/presentation/pages/home_page.dart';
-import '../search/presentation/pages/search_page.dart';
-import '../library/presentation/pages/library_page.dart';
-import '../playlist/presentation/pages/playlist_page.dart';
-import '../../core/theme/colors.dart';
-import '../../services/audio_player_service.dart';
+import 'package:music_app/features/player/presentation/pages/player_page.dart';
+import 'package:music_app/features/home/presentation/pages/home_page.dart';
+import 'package:music_app/features/search/presentation/pages/search_page.dart';
+import 'package:music_app/features/library/presentation/pages/library_page.dart';
+import 'package:music_app/features/playlist/presentation/pages/playlist_page.dart';
+import 'package:music_app/core/theme/colors.dart';
+import 'package:music_app/core/theme/app_theme.dart';
+import 'package:music_app/services/audio_player_service.dart';
+
+class MusicApp extends StatelessWidget {
+  const MusicApp({Key? key}) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      title: 'Music App',
+      debugShowCheckedModeBanner: false,
+      theme: AppTheme.darkTheme,
+      home: const MainPage(),
+    );
+  }
+}
 
 class MainPage extends StatefulWidget {
   const MainPage({Key? key}) : super(key: key);

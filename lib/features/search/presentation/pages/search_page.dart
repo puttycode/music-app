@@ -1,13 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import '../../../../core/theme/colors.dart';
-import '../../../../core/theme/text_styles.dart';
-import '../../../../core/constants/api_constants.dart';
-import '../../../../core/dio_client.dart';
-import '../../../../core/widgets/loading_widget.dart';
-import '../../domain/entities/song.dart';
-import '../bloc/search_bloc.dart';
-import '../../../player/presentation/pages/player_page.dart';
+import 'package:music_app/core/theme/colors.dart';
+import 'package:music_app/core/theme/text_styles.dart';
+import 'package:music_app/core/widgets/loading_widget.dart';
+import 'package:music_app/features/player/domain/entities/song.dart';
+import 'package:music_app/features/search/presentation/bloc/search_bloc.dart';
+import 'package:music_app/features/player/presentation/pages/player_page.dart';
 
 class SearchPage extends StatelessWidget {
   const SearchPage({Key? key}) : super(key: key);

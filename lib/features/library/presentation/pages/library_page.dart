@@ -1,14 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:permission_handler/permission_handler.dart';
-import '../../../../core/theme/colors.dart';
-import '../../../../core/theme/text_styles.dart';
-import '../../../../core/widgets/loading_widget.dart';
-import '../../../../core/widgets/error_widget.dart' as app_widgets;
-import '../../../../services/audio_player_service.dart';
-import '../../domain/entities/song.dart';
-import '../bloc/library_bloc.dart';
-import '../../../player/presentation/pages/player_page.dart';
+import 'package:music_app/core/theme/colors.dart';
+import 'package:music_app/core/theme/text_styles.dart';
+import 'package:music_app/core/widgets/loading_widget.dart';
+import 'package:music_app/core/widgets/error_widget.dart' as app_widgets;
+import 'package:music_app/services/audio_player_service.dart';
+import 'package:music_app/features/player/domain/entities/song.dart';
+import 'package:music_app/features/library/presentation/bloc/library_bloc.dart';
+import 'package:music_app/features/player/presentation/pages/player_page.dart';
 
 class LibraryPage extends StatelessWidget {
   const LibraryPage({Key? key}) : super(key: key);

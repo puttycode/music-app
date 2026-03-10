@@ -1,8 +1,8 @@
 import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import '../../../../core/constants/api_constants.dart';
-import '../../../../core/dio_client.dart';
-import '../../domain/entities/song.dart';
+import 'package:music_app/core/constants/api_constants.dart';
+import 'package:music_app/core/dio_client.dart';
+import 'package:music_app/features/player/domain/entities/song.dart';
 
 part 'home_event.dart';
 

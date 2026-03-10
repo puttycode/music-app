@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../../../../core/theme/text_styles.dart';
+import 'package:music_app/core/theme/text_styles.dart';
 
 class SectionHeader extends StatelessWidget {
   final String title;

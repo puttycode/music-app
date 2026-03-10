@@ -1,5 +1,5 @@
 import 'package:dio/dio.dart';
-import '../constants/api_constants.dart';
+import 'package:music_app/core/constants/api_constants.dart';
 
 class DioClient {
   static DioClient? _instance;

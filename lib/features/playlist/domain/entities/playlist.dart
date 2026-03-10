@@ -1,5 +1,5 @@
 import 'package:equatable/equatable.dart';
-import 'song.dart';
+import 'package:music_app/features/player/domain/entities/song.dart';
 
 class Playlist extends Equatable {
   final String id;

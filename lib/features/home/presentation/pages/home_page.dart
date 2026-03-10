@@ -1,14 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import '../../../../core/theme/colors.dart';
-import '../../../../core/theme/text_styles.dart';
-import '../../../../core/widgets/loading_widget.dart';
-import '../../../../core/widgets/error_widget.dart' as app_widgets;
-import '../../domain/entities/song.dart';
-import '../bloc/home_bloc.dart';
-import '../widgets/song_card.dart';
-import '../widgets/section_header.dart';
-import '../../../player/presentation/pages/player_page.dart';
+import 'package:music_app/core/theme/colors.dart';
+import 'package:music_app/core/theme/text_styles.dart';
+import 'package:music_app/core/widgets/loading_widget.dart';
+import 'package:music_app/core/widgets/error_widget.dart' as app_widgets;
+import 'package:music_app/features/player/domain/entities/song.dart';
+import 'package:music_app/features/home/presentation/bloc/home_bloc.dart';
+import 'package:music_app/features/home/presentation/widgets/song_card.dart';
+import 'package:music_app/features/home/presentation/widgets/section_header.dart';
+import 'package:music_app/features/player/presentation/pages/player_page.dart';
 
 class HomePage extends StatelessWidget {
   const HomePage({Key? key}) : super(key: key);
