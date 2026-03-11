@@ -1,11 +1,20 @@
 import 'package:dio/dio.dart';
+import '../features/player/domain/entities/song.dart';
+
+enum MusicSource {
+  audius,
+  deezer,
+}
 
 class MusicApiService {
   static final MusicApiService _instance = MusicApiService._();
   static MusicApiService get instance => _instance;
   
   late Dio _dio;
-  String? _customBaseUrl;
+  String? _apiKey;
+  MusicSource _currentSource = MusicSource.audius;
+
+  static const String _audiusApi = 'https://api.audius.co/v1';
 
   MusicApiService._() {
     _dio = Dio(BaseOptions(
@@ -14,29 +23,50 @@ class MusicApiService {
     ));
   }
 
-  void setCustomApiUrl(String? url) {
-    _customBaseUrl = url;
+  void setApiKey(String? key) {
+    _apiKey = key;
   }
 
-  Future<List<Map<String, dynamic>>> searchSongs(String query) async {
-    if (_customBaseUrl != null && _customBaseUrl!.isNotEmpty) {
-      try {
-        final response = await _dio.get(
-          '$_customBaseUrl/search',
-          queryParameters: {'keywords': query, 'limit': 20},
-        );
-        
-        final songs = response.data['result']?['songs'] as List? ?? [];
-        return songs.map((song) => _parseNeteaseSong(song)).toList();
-      } catch (e) {
-        print('Custom API error: $e');
-      }
+  void setSource(MusicSource source) {
+    _currentSource = source;
+  }
+
+  MusicSource get currentSource => _currentSource;
+
+  Future<List<Song>> searchSongs(String query) async {
+    switch (_currentSource) {
+      case MusicSource.audius:
+        return _searchAudius(query);
+      case MusicSource.deezer:
+        return _searchDeezer(query);
     }
-    
-    return _searchFallback(query);
   }
 
-  Future<List<Map<String, dynamic>>> _searchFallback(String query) async {
+  Future<List<Song>> _searchAudius(String query) async {
+    try {
+      final response = await _dio.get(
+        '$_audiusApi/tracks/search',
+        queryParameters: {'query': query, 'limit': 20},
+      );
+      
+      final tracks = response.data['data'] as List? ?? [];
+      return tracks.map((track) => Song(
+        id: track['id']?.hashCode ?? DateTime.now().millisecondsSinceEpoch,
+        title: track['title'] ?? 'Unknown',
+        artist: track['user']?['name'] ?? 'Unknown Artist',
+        album: 'Audius',
+        albumArt: track['artwork']?['480x480'] ?? track['artwork']?['150x150'],
+        audioUrl: track['audio']?['320'] ?? track['audio'],
+        duration: Duration(milliseconds: track['duration'] ?? 0),
+        isLocal: false,
+      )).toList();
+    } catch (e) {
+      print('Audius API error: $e');
+      return [];
+    }
+  }
+
+  Future<List<Song>> _searchDeezer(String query) async {
     try {
       final response = await _dio.get(
         'https://api.deezer.com/search',
@@ -44,75 +74,55 @@ class MusicApiService {
       );
       
       final tracks = response.data['data'] as List? ?? [];
-      return tracks.map((track) => {
-        'id': track['id'],
-        'title': track['title'],
-        'artist': track['artist']?['name'] ?? 'Unknown Artist',
-        'album': track['album']?['title'] ?? 'Unknown Album',
-        'albumArt': track['album']?['cover_medium'] ?? track['album']?['cover'],
-        'audioUrl': track['preview'],
-        'duration': (track['duration'] ?? 0) * 1000,
-        'isPreview': true,
-      }).toList();
+      return tracks.map((track) => Song(
+        id: track['id'] ?? 0,
+        title: track['title'] ?? 'Unknown',
+        artist: track['artist']?['name'] ?? 'Unknown Artist',
+        album: track['album']?['title'] ?? 'Unknown Album',
+        albumArt: track['album']?['cover_medium'] ?? track['album']?['cover'],
+        audioUrl: track['preview'],
+        duration: Duration(milliseconds: (track['duration'] ?? 0) * 1000),
+        isLocal: false,
+      )).toList();
     } catch (e) {
+      print('Deezer API error: $e');
       return [];
     }
   }
 
-  Map<String, dynamic> _parseNeteaseSong(dynamic song) {
-    return {
-      'id': song['id'],
-      'title': song['name'],
-      'artist': (song['artists'] as List?)?.first?['name'] ?? 'Unknown Artist',
-      'album': song['album']?['name'] ?? 'Unknown Album',
-      'albumArt': song['album']?['picUrl'] ?? song['album']?['blurPicUrl'],
-      'audioUrl': null,
-      'duration': song['duration'] ?? 0,
-      'isPreview': true,
-    };
-  }
-
-  Future<Map<String, dynamic>?> getSongUrl(int songId) async {
-    if (_customBaseUrl != null && _customBaseUrl!.isNotEmpty) {
-      try {
-        final response = await _dio.get(
-          '$_customBaseUrl/song/url',
-          queryParameters: {'id': songId},
-        );
-        
-        final data = response.data['data'] as List?;
-        if (data != null && data.isNotEmpty) {
-          return {
-            'url': data.first['url'],
-            'isPreview': data.first['url'] == null,
-          };
-        }
-      } catch (e) {
-        print('Get song URL error: $e');
-      }
+  Future<List<Song>> getTopCharts() async {
+    switch (_currentSource) {
+      case MusicSource.audius:
+        return _getAudiusTrending();
+      case MusicSource.deezer:
+        return _getDeezerCharts();
     }
-    return null;
   }
 
-  Future<List<Map<String, dynamic>>> getTopCharts() async {
-    if (_customBaseUrl != null && _customBaseUrl!.isNotEmpty) {
-      try {
-        final response = await _dio.get(
-          '$_customBaseUrl/top/song',
-          queryParameters: {'type': 0, 'limit': 20},
-        );
-        
-        final songs = response.data['data'] as List? ?? [];
-        return songs.map((song) => _parseNeteaseSong(song)).toList();
-      } catch (e) {
-        print('Get top charts error: $e');
-      }
+  Future<List<Song>> _getAudiusTrending() async {
+    try {
+      final response = await _dio.get(
+        '$_audiusApi/tracks/trending',
+        queryParameters: {'limit': 20},
+      );
+      
+      final tracks = response.data['data'] as List? ?? [];
+      return tracks.map((track) => Song(
+        id: track['id']?.hashCode ?? DateTime.now().millisecondsSinceEpoch,
+        title: track['title'] ?? 'Unknown',
+        artist: track['user']?['name'] ?? 'Unknown Artist',
+        album: 'Audius Trending',
+        albumArt: track['artwork']?['480x480'] ?? track['artwork']?['150x150'],
+        audioUrl: track['audio']?['320'] ?? track['audio'],
+        duration: Duration(milliseconds: track['duration'] ?? 0),
+        isLocal: false,
+      )).toList();
+    } catch (e) {
+      return _getDeezerCharts();
     }
-    
-    return _getFallbackCharts();
   }
 
-  Future<List<Map<String, dynamic>>> _getFallbackCharts() async {
+  Future<List<Song>> _getDeezerCharts() async {
     try {
       final response = await _dio.get(
         'https://api.deezer.com/chart/0/tracks',
@@ -120,34 +130,23 @@ class MusicApiService {
       );
       
       final tracks = response.data['data'] as List? ?? [];
-      return tracks.map((track) => {
-        'id': track['id'],
-        'title': track['title'],
-        'artist': track['artist']?['name'] ?? 'Unknown Artist',
-        'album': track['album']?['title'] ?? 'Unknown Album',
-        'albumArt': track['album']?['cover_medium'] ?? track['album']?['cover'],
-        'audioUrl': track['preview'],
-        'duration': (track['duration'] ?? 0) * 1000,
-        'isPreview': true,
-      }).toList();
+      return tracks.map((track) => Song(
+        id: track['id'] ?? 0,
+        title: track['title'] ?? 'Unknown',
+        artist: track['artist']?['name'] ?? 'Unknown Artist',
+        album: track['album']?['title'] ?? 'Unknown Album',
+        albumArt: track['album']?['cover_medium'] ?? track['album']?['cover'],
+        audioUrl: track['preview'],
+        duration: Duration(milliseconds: (track['duration'] ?? 0) * 1000),
+        isLocal: false,
+      )).toList();
     } catch (e) {
       return [];
     }
   }
 
-  Future<String?> getLyrics(int songId) async {
-    if (_customBaseUrl != null && _customBaseUrl!.isNotEmpty) {
-      try {
-        final response = await _dio.get(
-          '$_customBaseUrl/lyric',
-          queryParameters: {'id': songId},
-        );
-        
-        return response.data['lrc']?['lyric'];
-      } catch (e) {
-        print('Get lyrics error: $e');
-      }
-    }
-    return null;
+  bool isFullAudio(Song song) {
+    if (song.audioUrl == null) return false;
+    return _currentSource == MusicSource.audius;
   }
 }

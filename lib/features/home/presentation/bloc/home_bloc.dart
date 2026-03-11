@@ -1,8 +1,7 @@
 import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:music_app/core/constants/api_constants.dart';
-import 'package:music_app/core/dio_client.dart';
 import 'package:music_app/features/player/domain/entities/song.dart';
+import 'package:music_app/services/music_api_service.dart';
 
 part 'home_event.dart';
 
@@ -42,6 +41,8 @@ class HomeState extends Equatable {
 }
 
 class HomeBloc extends Bloc<HomeEvent, HomeState> {
+  final MusicApiService _apiService = MusicApiService.instance;
+
   HomeBloc() : super(const HomeState()) {
     on<LoadHomeData>(_onLoadHomeData);
   }
@@ -50,17 +51,8 @@ class HomeBloc extends Bloc<HomeEvent, HomeState> {
     emit(state.copyWith(isLoading: true));
 
     try {
-      final dio = DioClient.instance;
-      
-      final chartsResponse = await dio.get(ApiConstants.deezerChart);
-      final topCharts = (chartsResponse.data['data'] as List)
-          .map((json) => Song.fromJson(json))
-          .toList();
-
-      final searchResponse = await dio.get('${ApiConstants.deezerSearch}', queryParameters: {'q': 'pop'});
-      final recommendations = (searchResponse.data['data'] as List)
-          .map((json) => Song.fromJson(json))
-          .toList();
+      final topCharts = await _apiService.getTopCharts();
+      final recommendations = await _apiService.searchSongs('pop');
 
       emit(state.copyWith(
         isLoading: false,

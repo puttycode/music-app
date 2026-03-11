@@ -1,8 +1,7 @@
 import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:music_app/core/constants/api_constants.dart';
-import 'package:music_app/core/dio_client.dart';
 import 'package:music_app/features/player/domain/entities/song.dart';
+import 'package:music_app/services/music_api_service.dart';
 
 abstract class SearchEvent extends Equatable {
   const SearchEvent();
@@ -54,6 +53,8 @@ class SearchState extends Equatable {
 }
 
 class SearchBloc extends Bloc<SearchEvent, SearchState> {
+  final MusicApiService _apiService = MusicApiService.instance;
+
   SearchBloc() : super(const SearchState()) {
     on<SearchSongs>(_onSearchSongs);
     on<ClearSearch>(_onClearSearch);
@@ -63,16 +64,7 @@ class SearchBloc extends Bloc<SearchEvent, SearchState> {
     emit(state.copyWith(isLoading: true, query: event.query));
 
     try {
-      final dio = DioClient.instance;
-      final response = await dio.get(
-        ApiConstants.deezerSearch,
-        queryParameters: {'q': event.query},
-      );
-
-      final results = (response.data['data'] as List)
-          .map((json) => Song.fromJson(json))
-          .toList();
-
+      final results = await _apiService.searchSongs(event.query);
       emit(state.copyWith(isLoading: false, results: results));
     } catch (e) {
       emit(state.copyWith(isLoading: false, error: '搜索失败: $e'));
