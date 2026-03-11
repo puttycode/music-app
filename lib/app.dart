@@ -4,6 +4,7 @@ import 'package:music_app/features/home/presentation/pages/home_page.dart';
 import 'package:music_app/features/search/presentation/pages/search_page.dart';
 import 'package:music_app/features/library/presentation/pages/library_page.dart';
 import 'package:music_app/features/playlist/presentation/pages/playlist_page.dart';
+import 'package:music_app/features/settings/presentation/pages/settings_page.dart';
 import 'package:music_app/core/theme/colors.dart';
 import 'package:music_app/core/theme/app_theme.dart';
 import 'package:music_app/services/audio_player_service.dart';
@@ -38,6 +39,7 @@ class _MainPageState extends State<MainPage> {
     const SearchPage(),
     const LibraryPage(),
     const PlaylistPage(),
+    const SettingsPage(),
   ];
 
   @override
@@ -82,6 +84,11 @@ class _MainPageState extends State<MainPage> {
                 icon: Icon(Icons.queue_music_outlined),
                 activeIcon: Icon(Icons.queue_music),
                 label: '播放列表',
+              ),
+              BottomNavigationBarItem(
+                icon: Icon(Icons.settings_outlined),
+                activeIcon: Icon(Icons.settings),
+                label: '设置',
               ),
             ],
           ),
