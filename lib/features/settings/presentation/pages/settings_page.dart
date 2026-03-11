@@ -13,6 +13,7 @@ class SettingsPage extends StatefulWidget {
 
 class _SettingsPageState extends State<SettingsPage> {
   final _apiKeyController = TextEditingController();
+  final _bearerTokenController = TextEditingController();
   late Box _settingsBox;
   MusicSource _selectedSource = MusicSource.audius;
 
@@ -25,8 +26,10 @@ class _SettingsPageState extends State<SettingsPage> {
   Future<void> _loadSettings() async {
     _settingsBox = await Hive.openBox('settings');
     final apiKey = _settingsBox.get('apiKey', defaultValue: '');
+    final bearerToken = _settingsBox.get('bearerToken', defaultValue: '');
     final sourceIndex = _settingsBox.get('sourceIndex', defaultValue: 0);
     _apiKeyController.text = apiKey;
+    _bearerTokenController.text = bearerToken;
     setState(() {
       _selectedSource = MusicSource.values[sourceIndex];
     });
@@ -34,7 +37,15 @@ class _SettingsPageState extends State<SettingsPage> {
 
   Future<void> _saveSettings() async {
     await _settingsBox.put('apiKey', _apiKeyController.text);
+    await _settingsBox.put('bearerToken', _bearerTokenController.text);
     await _settingsBox.put('sourceIndex', _selectedSource.index);
+    
+    MusicApiService.instance.setCredentials(
+      apiKey: _apiKeyController.text,
+      bearerToken: _bearerTokenController.text,
+    );
+    MusicApiService.instance.setSource(_selectedSource);
+    
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('设置已保存')),
@@ -72,20 +83,45 @@ class _SettingsPageState extends State<SettingsPage> {
           ),
           const SizedBox(height: 24),
           _buildSection(
-            title: 'API Key (可选)',
+            title: 'Audius 认证 (可选)',
             children: [
               const SizedBox(height: 8),
-              Text(
-                'Audius 可选配置，提升请求限制',
-                style: AppTextStyles.bodySmall,
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: AppColors.primary.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: AppColors.primary.withValues(alpha: 0.3)),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.info_outline, color: AppColors.primary, size: 20),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'Audius REST API 免费使用，无需配置',
+                        style: AppTextStyles.bodySmall.copyWith(color: AppColors.primary),
+                      ),
+                    ),
+                  ],
+                ),
               ),
               const SizedBox(height: 16),
               TextField(
                 controller: _apiKeyController,
                 decoration: const InputDecoration(
-                  labelText: 'Audius API Key',
-                  hintText: '留空使用免费限额',
+                  labelText: 'API Key (可选)',
+                  hintText: '留空即可使用免费限额',
                   prefixIcon: Icon(Icons.key),
+                ),
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: _bearerTokenController,
+                decoration: const InputDecoration(
+                  labelText: 'Bearer Token (可选)',
+                  hintText: '留空即可使用免费限额',
+                  prefixIcon: Icon(Icons.token),
                 ),
               ),
               const SizedBox(height: 16),

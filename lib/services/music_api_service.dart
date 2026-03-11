@@ -12,6 +12,7 @@ class MusicApiService {
   
   late Dio _dio;
   String? _apiKey;
+  String? _bearerToken;
   MusicSource _currentSource = MusicSource.audius;
 
   static const String _audiusApi = 'https://api.audius.co/v1';
@@ -23,8 +24,9 @@ class MusicApiService {
     ));
   }
 
-  void setApiKey(String? key) {
-    _apiKey = key;
+  void setCredentials({String? apiKey, String? bearerToken}) {
+    _apiKey = apiKey;
+    _bearerToken = bearerToken;
   }
 
   void setSource(MusicSource source) {
@@ -32,6 +34,19 @@ class MusicApiService {
   }
 
   MusicSource get currentSource => _currentSource;
+
+  Map<String, String> get _audiusHeaders {
+    final headers = <String, String>{};
+    if (_apiKey != null && _apiKey!.isNotEmpty) {
+      headers['x-api-key'] = _apiKey!;
+    }
+    if (_bearerToken != null && _bearerToken!.isNotEmpty) {
+      headers['Authorization'] = 'Bearer $_bearerToken';
+    }
+    return headers;
+  }
+
+  bool get hasCredentials => (_apiKey?.isNotEmpty ?? false) || (_bearerToken?.isNotEmpty ?? false);
 
   Future<List<Song>> searchSongs(String query) async {
     switch (_currentSource) {
@@ -47,6 +62,7 @@ class MusicApiService {
       final response = await _dio.get(
         '$_audiusApi/tracks/search',
         queryParameters: {'query': query, 'limit': 20},
+        options: Options(headers: _audiusHeaders),
       );
       
       final tracks = response.data['data'] as List? ?? [];
@@ -104,6 +120,7 @@ class MusicApiService {
       final response = await _dio.get(
         '$_audiusApi/tracks/trending',
         queryParameters: {'limit': 20},
+        options: Options(headers: _audiusHeaders),
       );
       
       final tracks = response.data['data'] as List? ?? [];
