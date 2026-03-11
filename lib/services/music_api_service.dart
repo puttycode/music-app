@@ -13,7 +13,7 @@ class MusicApiService {
   late Dio _dio;
   String? _apiKey;
   String? _bearerToken;
-  MusicSource _currentSource = MusicSource.audius;
+  MusicSource _currentSource = MusicSource.deezer;
 
   static const String _audiusApi = 'https://api.audius.co/v1';
 
@@ -46,8 +46,6 @@ class MusicApiService {
     return headers;
   }
 
-  bool get hasCredentials => (_apiKey?.isNotEmpty ?? false) || (_bearerToken?.isNotEmpty ?? false);
-
   Future<List<Song>> searchSongs(String query) async {
     switch (_currentSource) {
       case MusicSource.audius:
@@ -66,16 +64,19 @@ class MusicApiService {
       );
       
       final tracks = response.data['data'] as List? ?? [];
-      return tracks.map((track) => Song(
-        id: track['id']?.hashCode ?? DateTime.now().millisecondsSinceEpoch,
-        title: track['title'] ?? 'Unknown',
-        artist: track['user']?['name'] ?? 'Unknown Artist',
-        album: 'Audius',
-        albumArt: track['artwork']?['480x480'] ?? track['artwork']?['150x150'],
-        audioUrl: track['audio']?['320'] ?? track['audio'],
-        duration: Duration(milliseconds: track['duration'] ?? 0),
-        isLocal: false,
-      )).toList();
+      return tracks.map((track) {
+        final streamUrl = track['stream']?['url'];
+        return Song(
+          id: track['id']?.hashCode ?? DateTime.now().millisecondsSinceEpoch,
+          title: track['title'] ?? 'Unknown',
+          artist: track['user']?['name'] ?? 'Unknown Artist',
+          album: 'Audius',
+          albumArt: track['artwork']?['480x480'] ?? track['artwork']?['150x150'],
+          audioUrl: streamUrl,
+          duration: Duration(milliseconds: (track['duration'] ?? 0) * 1000),
+          isLocal: false,
+        );
+      }).toList();
     } catch (e) {
       print('Audius API error: $e');
       return [];
@@ -124,16 +125,19 @@ class MusicApiService {
       );
       
       final tracks = response.data['data'] as List? ?? [];
-      return tracks.map((track) => Song(
-        id: track['id']?.hashCode ?? DateTime.now().millisecondsSinceEpoch,
-        title: track['title'] ?? 'Unknown',
-        artist: track['user']?['name'] ?? 'Unknown Artist',
-        album: 'Audius Trending',
-        albumArt: track['artwork']?['480x480'] ?? track['artwork']?['150x150'],
-        audioUrl: track['audio']?['320'] ?? track['audio'],
-        duration: Duration(milliseconds: track['duration'] ?? 0),
-        isLocal: false,
-      )).toList();
+      return tracks.map((track) {
+        final streamUrl = track['stream']?['url'];
+        return Song(
+          id: track['id']?.hashCode ?? DateTime.now().millisecondsSinceEpoch,
+          title: track['title'] ?? 'Unknown',
+          artist: track['user']?['name'] ?? 'Unknown Artist',
+          album: 'Audius Trending',
+          albumArt: track['artwork']?['480x480'] ?? track['artwork']?['150x150'],
+          audioUrl: streamUrl,
+          duration: Duration(milliseconds: (track['duration'] ?? 0) * 1000),
+          isLocal: false,
+        );
+      }).toList();
     } catch (e) {
       return _getDeezerCharts();
     }

@@ -27,12 +27,18 @@ class _SettingsPageState extends State<SettingsPage> {
     _settingsBox = await Hive.openBox('settings');
     final apiKey = _settingsBox.get('apiKey', defaultValue: '');
     final bearerToken = _settingsBox.get('bearerToken', defaultValue: '');
-    final sourceIndex = _settingsBox.get('sourceIndex', defaultValue: 0);
+    final sourceIndex = _settingsBox.get('sourceIndex', defaultValue: 1);
     _apiKeyController.text = apiKey;
     _bearerTokenController.text = bearerToken;
     setState(() {
       _selectedSource = MusicSource.values[sourceIndex];
     });
+    
+    MusicApiService.instance.setCredentials(
+      apiKey: apiKey,
+      bearerToken: bearerToken,
+    );
+    MusicApiService.instance.setSource(_selectedSource);
   }
 
   Future<void> _saveSettings() async {
@@ -68,16 +74,16 @@ class _SettingsPageState extends State<SettingsPage> {
             children: [
               const SizedBox(height: 8),
               _buildSourceOption(
-                title: 'Audius (推荐)',
-                subtitle: '100万+首歌曲，免费完整播放，320kbps',
-                source: MusicSource.audius,
-                icon: Icons.music_note,
-              ),
-              _buildSourceOption(
-                title: 'Deezer',
+                title: 'Deezer (默认)',
                 subtitle: '30秒预览，需科学上网',
                 source: MusicSource.deezer,
                 icon: Icons.play_circle_outline,
+              ),
+              _buildSourceOption(
+                title: 'Audius',
+                subtitle: '完整播放，但中文搜索效果差',
+                source: MusicSource.audius,
+                icon: Icons.music_note,
               ),
             ],
           ),
