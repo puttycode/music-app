@@ -3,7 +3,14 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:music_app/features/player/domain/entities/song.dart';
 import 'package:music_app/services/music_api_service.dart';
 
-part 'home_event.dart';
+abstract class HomeEvent extends Equatable {
+  const HomeEvent();
+
+  @override
+  List<Object?> get props => [];
+}
+
+class LoadHomeData extends HomeEvent {}
 
 class HomeState extends Equatable {
   final bool isLoading;
