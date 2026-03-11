@@ -3,7 +3,6 @@ import '../features/player/domain/entities/song.dart';
 
 enum MusicSource {
   audius,
-  deezer,
 }
 
 class MusicApiService {
@@ -13,7 +12,7 @@ class MusicApiService {
   late Dio _dio;
   String? _apiKey;
   String? _bearerToken;
-  MusicSource _currentSource = MusicSource.deezer;
+  MusicSource _currentSource = MusicSource.audius;
 
   static const String _audiusApi = 'https://api.audius.co/v1';
 
@@ -47,12 +46,7 @@ class MusicApiService {
   }
 
   Future<List<Song>> searchSongs(String query) async {
-    switch (_currentSource) {
-      case MusicSource.audius:
-        return _searchAudius(query);
-      case MusicSource.deezer:
-        return _searchDeezer(query);
-    }
+    return _searchAudius(query);
   }
 
   Future<List<Song>> _searchAudius(String query) async {
@@ -83,37 +77,8 @@ class MusicApiService {
     }
   }
 
-  Future<List<Song>> _searchDeezer(String query) async {
-    try {
-      final response = await _dio.get(
-        'https://api.deezer.com/search',
-        queryParameters: {'q': query, 'limit': 20},
-      );
-      
-      final tracks = response.data['data'] as List? ?? [];
-      return tracks.map((track) => Song(
-        id: track['id'] ?? 0,
-        title: track['title'] ?? 'Unknown',
-        artist: track['artist']?['name'] ?? 'Unknown Artist',
-        album: track['album']?['title'] ?? 'Unknown Album',
-        albumArt: track['album']?['cover_medium'] ?? track['album']?['cover'],
-        audioUrl: track['preview'],
-        duration: Duration(milliseconds: (track['duration'] ?? 0) * 1000),
-        isLocal: false,
-      )).toList();
-    } catch (e) {
-      print('Deezer API error: $e');
-      return [];
-    }
-  }
-
   Future<List<Song>> getTopCharts() async {
-    switch (_currentSource) {
-      case MusicSource.audius:
-        return _getAudiusTrending();
-      case MusicSource.deezer:
-        return _getDeezerCharts();
-    }
+    return _getAudiusTrending();
   }
 
   Future<List<Song>> _getAudiusTrending() async {
@@ -138,29 +103,6 @@ class MusicApiService {
           isLocal: false,
         );
       }).toList();
-    } catch (e) {
-      return _getDeezerCharts();
-    }
-  }
-
-  Future<List<Song>> _getDeezerCharts() async {
-    try {
-      final response = await _dio.get(
-        'https://api.deezer.com/chart/0/tracks',
-        queryParameters: {'limit': 20},
-      );
-      
-      final tracks = response.data['data'] as List? ?? [];
-      return tracks.map((track) => Song(
-        id: track['id'] ?? 0,
-        title: track['title'] ?? 'Unknown',
-        artist: track['artist']?['name'] ?? 'Unknown Artist',
-        album: track['album']?['title'] ?? 'Unknown Album',
-        albumArt: track['album']?['cover_medium'] ?? track['album']?['cover'],
-        audioUrl: track['preview'],
-        duration: Duration(milliseconds: (track['duration'] ?? 0) * 1000),
-        isLocal: false,
-      )).toList();
     } catch (e) {
       return [];
     }
