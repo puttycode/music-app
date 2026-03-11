@@ -5,7 +5,6 @@ import 'package:music_app/core/theme/text_styles.dart';
 import 'package:music_app/core/widgets/loading_widget.dart';
 import 'package:music_app/features/player/domain/entities/song.dart';
 import 'package:music_app/features/search/presentation/bloc/search_bloc.dart';
-import 'package:music_app/features/search/presentation/bloc/search_event.dart';
 import 'package:music_app/features/player/presentation/pages/player_page.dart';
 
 class SearchPage extends StatelessWidget {

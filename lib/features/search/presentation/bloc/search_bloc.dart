@@ -4,7 +4,23 @@ import 'package:music_app/core/constants/api_constants.dart';
 import 'package:music_app/core/dio_client.dart';
 import 'package:music_app/features/player/domain/entities/song.dart';
 
-part 'search_event.dart';
+abstract class SearchEvent extends Equatable {
+  const SearchEvent();
+
+  @override
+  List<Object?> get props => [];
+}
+
+class SearchSongs extends SearchEvent {
+  final String query;
+
+  const SearchSongs(this.query);
+
+  @override
+  List<Object?> get props => [query];
+}
+
+class ClearSearch extends SearchEvent {}
 
 class SearchState extends Equatable {
   final bool isLoading;
