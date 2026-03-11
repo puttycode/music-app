@@ -5,6 +5,7 @@ import 'package:music_app/core/theme/text_styles.dart';
 import 'package:music_app/core/widgets/loading_widget.dart';
 import 'package:music_app/features/player/domain/entities/song.dart';
 import 'package:music_app/features/search/presentation/bloc/search_bloc.dart';
+import 'package:music_app/features/search/presentation/bloc/search_event.dart';
 import 'package:music_app/features/player/presentation/pages/player_page.dart';
 
 class SearchPage extends StatelessWidget {
@@ -120,10 +121,27 @@ class _SearchViewState extends State<_SearchView> {
                         overflow: TextOverflow.ellipsis,
                         style: AppTextStyles.bodySmall,
                       ),
-                      trailing: IconButton(
-                        icon: const Icon(Icons.play_circle_filled),
-                        color: AppColors.primary,
-                        onPressed: () => _playSong(context, state.results, index),
+                      trailing: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          if (song.duration.inSeconds < 31)
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: AppColors.warning.withValues(alpha: 0.2),
+                                borderRadius: BorderRadius.circular(4),
+                              ),
+                              child: const Text(
+                                '30秒',
+                                style: TextStyle(fontSize: 10, color: AppColors.warning),
+                              ),
+                            ),
+                          IconButton(
+                            icon: const Icon(Icons.play_circle_filled),
+                            color: AppColors.primary,
+                            onPressed: () => _playSong(context, state.results, index),
+                          ),
+                        ],
                       ),
                       onTap: () => _playSong(context, state.results, index),
                     );
@@ -159,6 +177,31 @@ class _SearchViewState extends State<_SearchView> {
                 },
               );
             }).toList(),
+          ),
+          const SizedBox(height: 24),
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: AppColors.surfaceVariant,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    const Icon(Icons.info_outline, color: AppColors.primary, size: 20),
+                    const SizedBox(width: 8),
+                    Text('提示', style: AppTextStyles.titleMedium),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  '当前使用 Deezer API，仅提供30秒预览。如需完整播放，可部署网易云解灰API后配置使用。',
+                  style: AppTextStyles.bodySmall,
+                ),
+              ],
+            ),
           ),
         ],
       ),
