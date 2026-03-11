@@ -16,18 +16,25 @@ class AudioPlayerService {
   final _currentIndexSubject = BehaviorSubject<int>.seeded(0);
   final _repeatModeSubject = BehaviorSubject<RepeatMode>.seeded(RepeatMode.off);
   final _isShuffleSubject = BehaviorSubject<bool>.seeded(false);
+  final _isPreviewModeSubject = BehaviorSubject<bool>.seeded(true);
 
   Stream<Song?> get currentSongStream => _currentSongSubject.stream;
   Stream<List<Song>> get playlistStream => _playlistSubject.stream;
   Stream<int> get currentIndexStream => _currentIndexSubject.stream;
   Stream<RepeatMode> get repeatModeStream => _repeatModeSubject.stream;
   Stream<bool> get isShuffleStream => _isShuffleSubject.stream;
+  Stream<bool> get isPreviewModeStream => _isPreviewModeSubject.stream;
 
   Song? get currentSong => _currentSongSubject.value;
   List<Song> get playlist => _playlistSubject.value;
   int get currentIndex => _currentIndexSubject.value;
   RepeatMode get repeatMode => _repeatModeSubject.value;
   bool get isShuffle => _isShuffleSubject.value;
+  bool get isPreviewMode => _isPreviewModeSubject.value;
+
+  void setPreviewMode(bool value) {
+    _isPreviewModeSubject.add(value);
+  }
 
   AudioPlayerService._() {
     _audioPlayer = AudioPlayer();
@@ -43,6 +50,10 @@ class AudioPlayerService {
   }
 
   void _onSongComplete() {
+    if (isPreviewMode) {
+      return;
+    }
+
     switch (repeatMode) {
       case RepeatMode.one:
         _audioPlayer.seek(Duration.zero);
@@ -149,5 +160,6 @@ class AudioPlayerService {
     _currentIndexSubject.close();
     _repeatModeSubject.close();
     _isShuffleSubject.close();
+    _isPreviewModeSubject.close();
   }
 }

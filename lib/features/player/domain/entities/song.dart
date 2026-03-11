@@ -36,7 +36,7 @@ class Song extends Equatable {
                 json['cover_medium'] ??
                 json['cover'],
       audioUrl: json['preview'] ?? json['audio_url'],
-      duration: Duration(milliseconds: json['duration'] ?? 0 * 1000),
+      duration: Duration(milliseconds: (json['duration'] ?? 0) * 1000),
       isLocal: false,
     );
   }
