@@ -11,6 +11,7 @@ class AppColors {
   static const Color onBackground = Colors.white;
   static const Color onSurface = Colors.white;
   static const Color onSurfaceVariant = Color(0xFFB3B3B3);
+  static const Color textSecondary = Color(0xFFB3B3B3);
   static const Color error = Color(0xFFE91429);
   static const Color success = Color(0xFF1DB954);
   static const Color warning = Color(0xFFF59B23);
