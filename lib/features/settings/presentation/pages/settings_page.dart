@@ -15,6 +15,7 @@ class _SettingsPageState extends State<SettingsPage> {
   final _apiKeyController = TextEditingController();
   final _bearerTokenController = TextEditingController();
   late Box _settingsBox;
+  MusicSource _selectedSource = MusicSource.musicdl;
 
   @override
   void initState() {
@@ -26,23 +27,29 @@ class _SettingsPageState extends State<SettingsPage> {
     _settingsBox = await Hive.openBox('settings');
     final apiKey = _settingsBox.get('apiKey', defaultValue: '');
     final bearerToken = _settingsBox.get('bearerToken', defaultValue: '');
+    final sourceIndex = _settingsBox.get('sourceIndex', defaultValue: 0);
+    
     _apiKeyController.text = apiKey;
     _bearerTokenController.text = bearerToken;
+    _selectedSource = MusicSource.values[sourceIndex];
     
     MusicApiService.instance.setCredentials(
       apiKey: apiKey,
       bearerToken: bearerToken,
     );
+    MusicApiService.instance.setSource(_selectedSource);
   }
 
   Future<void> _saveSettings() async {
     await _settingsBox.put('apiKey', _apiKeyController.text);
     await _settingsBox.put('bearerToken', _bearerTokenController.text);
+    await _settingsBox.put('sourceIndex', _selectedSource.index);
     
     MusicApiService.instance.setCredentials(
       apiKey: _apiKeyController.text,
       bearerToken: _bearerTokenController.text,
     );
+    MusicApiService.instance.setSource(_selectedSource);
     
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -65,39 +72,26 @@ class _SettingsPageState extends State<SettingsPage> {
             title: '音乐源',
             children: [
               const SizedBox(height: 8),
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: AppColors.surfaceVariant,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Row(
-                  children: [
-                    const Icon(Icons.music_note, color: AppColors.primary, size: 32),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text('Audius', style: AppTextStyles.titleMedium),
-                          const SizedBox(height: 4),
-                          Text(
-                            '100万+首歌曲，免费完整播放，320kbps\n无需配置，直接使用',
-                            style: AppTextStyles.bodySmall,
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
+              _buildSourceOption(
+                source: MusicSource.musicdl,
+                title: 'MusicDL (推荐)',
+                description: '支持网易云、QQ音乐、酷狗、酷我、咪咕等40+平台\n国内直连，无需VPN',
+                icon: Icons.cloud,
+              ),
+              const SizedBox(height: 8),
+              _buildSourceOption(
+                source: MusicSource.audius,
+                title: 'Audius',
+                description: '海外音乐平台，100万+首歌曲\n需要VPN',
+                icon: Icons.public,
               ),
             ],
           ),
           const SizedBox(height: 24),
           _buildSection(
-            title: '认证 (可选)',
+            title: '认证 (可选，用于 Audius)',
             children: [
-              const SizedBox(height: 8),
+              const SizedBox(height: 16),
               Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
@@ -111,7 +105,7 @@ class _SettingsPageState extends State<SettingsPage> {
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(
-                        'Audius 免费使用，无需配置也可正常播放',
+                        'MusicDL 免费使用，无需配置。Audius 需要 VPN',
                         style: AppTextStyles.bodySmall.copyWith(color: AppColors.primary),
                       ),
                     ),
@@ -156,12 +150,59 @@ class _SettingsPageState extends State<SettingsPage> {
               ListTile(
                 leading: const Icon(Icons.music_note),
                 title: const Text('音乐源'),
-                subtitle: const Text('Audius (完整播放)'),
+                subtitle: Text(_selectedSource == MusicSource.musicdl ? 'MusicDL (40+平台)' : 'Audius'),
                 contentPadding: EdgeInsets.zero,
               ),
             ],
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildSourceOption({
+    required MusicSource source,
+    required String title,
+    required String description,
+    required IconData icon,
+  }) {
+    final isSelected = _selectedSource == source;
+    return GestureDetector(
+      onTap: () {
+        setState(() {
+          _selectedSource = source;
+        });
+      },
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: isSelected ? AppColors.primary.withValues(alpha: 0.15) : AppColors.surfaceVariant,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: isSelected ? AppColors.primary : Colors.transparent,
+            width: 2,
+          ),
+        ),
+        child: Row(
+          children: [
+            Icon(icon, color: isSelected ? AppColors.primary : AppColors.textSecondary, size: 32),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(title, style: AppTextStyles.titleMedium.copyWith(
+                    color: isSelected ? AppColors.primary : null,
+                  )),
+                  const SizedBox(height: 4),
+                  Text(description, style: AppTextStyles.bodySmall),
+                ],
+              ),
+            ),
+            if (isSelected)
+              const Icon(Icons.check_circle, color: AppColors.primary),
+          ],
+        ),
       ),
     );
   }

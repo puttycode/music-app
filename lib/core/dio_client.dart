@@ -1,5 +1,4 @@
 import 'package:dio/dio.dart';
-import 'package:music_app/core/constants/api_constants.dart';
 
 class DioClient {
   static DioClient? _instance;
@@ -9,7 +8,6 @@ class DioClient {
 
   DioClient._() {
     _dio = Dio(BaseOptions(
-      baseUrl: ApiConstants.deezerBaseUrl,
       connectTimeout: const Duration(seconds: 30),
       receiveTimeout: const Duration(seconds: 30),
       headers: {
