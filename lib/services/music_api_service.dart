@@ -2,8 +2,8 @@ import 'package:dio/dio.dart';
 import '../features/player/domain/entities/song.dart';
 
 enum MusicSource {
-  kuwo,    // 直接调用 kw-api.cenguigui.cn (最快)
-  audius,  // 海外音乐，需要 VPN
+  kuwo,
+  audius,
 }
 
 class MusicApiService {
@@ -15,16 +15,15 @@ class MusicApiService {
   String? _bearerToken;
   MusicSource _currentSource = MusicSource.kuwo;
 
-  // Kw-api (酷我)
   static const String _kuwoApi = 'https://kw-api.cenguigui.cn';
-  
-  // Audius API
   static const String _audiusApi = 'https://api.audius.co/v1';
 
   MusicApiService._() {
     _dio = Dio(BaseOptions(
       connectTimeout: const Duration(seconds: 30),
       receiveTimeout: const Duration(seconds: 60),
+      followRedirects: true,
+      validateStatus: (status) => status! < 500,
     ));
   }
 
@@ -59,13 +58,14 @@ class MusicApiService {
     }
   }
 
-  // Kw-api 搜索
   Future<List<Song>> _searchKuwo(String query) async {
     try {
       final response = await _dio.get(
         '$_kuwoApi/',
         queryParameters: {'name': query, 'page': 1, 'limit': 20},
       );
+      
+      print('Kuwo API response: ${response.data}');
       
       if (response.data['code'] != 200) {
         print('Kuwo API error: ${response.data}');
@@ -74,15 +74,15 @@ class MusicApiService {
       
       final results = response.data['data'] as List? ?? [];
       return results.map((track) {
-        final rid = track['rid'] ?? '';
+        final rid = track['rid'] ?? 0;
         final songUrl = '$_kuwoApi?id=$rid&type=song&level=exhigh&format=mp3';
         
         return Song(
           id: int.tryParse(rid.toString()) ?? DateTime.now().millisecondsSinceEpoch,
-          title: track['name'] ?? 'Unknown',
-          artist: track['artist'] ?? 'Unknown Artist',
-          album: track['album'] ?? 'Kuwo',
-          albumArt: track['pic'],
+          title: track['name']?.toString() ?? 'Unknown',
+          artist: track['artist']?.toString() ?? 'Unknown Artist',
+          album: track['album']?.toString() ?? 'Kuwo',
+          albumArt: track['pic']?.toString(),
           audioUrl: songUrl,
           duration: Duration.zero,
           isLocal: false,
