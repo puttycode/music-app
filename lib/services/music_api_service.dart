@@ -65,15 +65,7 @@ class MusicApiService {
         queryParameters: {'name': query, 'page': 1, 'limit': 20},
       );
       
-      print('Kuwo API response: ${response.data}');
-      
       if (response.data['code'] != 200) {
-        print('Kuwo API error: ${response.data}');
-        return [];
-      }
-      
-      final results = response.data['data'] as List? ?? [];
-      return results.map((track) {
         final rid = track['rid'] ?? 0;
         final songUrl = '$_kuwoApi?id=$rid&type=song&level=exhigh&format=mp3';
         
