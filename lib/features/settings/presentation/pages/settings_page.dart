@@ -15,7 +15,7 @@ class _SettingsPageState extends State<SettingsPage> {
   final _apiKeyController = TextEditingController();
   final _bearerTokenController = TextEditingController();
   late Box _settingsBox;
-  MusicSource _selectedSource = MusicSource.musicdl;
+  MusicSource _selectedSource = MusicSource.kuwo;
 
   @override
   void initState() {
@@ -73,10 +73,10 @@ class _SettingsPageState extends State<SettingsPage> {
             children: [
               const SizedBox(height: 8),
               _buildSourceOption(
-                source: MusicSource.musicdl,
-                title: 'MusicDL (推荐)',
-                description: '支持网易云、QQ音乐、酷狗、酷我、咪咕等40+平台\n国内直连，无需VPN',
-                icon: Icons.cloud,
+                source: MusicSource.kuwo,
+                title: '酷我音乐 (推荐)',
+                description: '国内直连，搜索快，无需VPN\n调用 kw-api.cenguigui.cn',
+                icon: Icons.music_note,
               ),
               const SizedBox(height: 8),
               _buildSourceOption(
@@ -104,8 +104,8 @@ class _SettingsPageState extends State<SettingsPage> {
                     const Icon(Icons.info_outline, color: AppColors.primary, size: 20),
                     const SizedBox(width: 8),
                     Expanded(
-                      child: Text(
-                        'MusicDL 免费使用，无需配置。Audius 需要 VPN',
+                      child:                       Text(
+                        '酷我音乐免费使用，无需配置。Audius 需要 VPN',
                         style: AppTextStyles.bodySmall.copyWith(color: AppColors.primary),
                       ),
                     ),
@@ -150,7 +150,7 @@ class _SettingsPageState extends State<SettingsPage> {
               ListTile(
                 leading: const Icon(Icons.music_note),
                 title: const Text('音乐源'),
-                subtitle: Text(_selectedSource == MusicSource.musicdl ? 'MusicDL (40+平台)' : 'Audius'),
+                subtitle: Text(_selectedSource == MusicSource.kuwo ? '酷我音乐 (kw-api)' : 'Audius'),
                 contentPadding: EdgeInsets.zero,
               ),
             ],

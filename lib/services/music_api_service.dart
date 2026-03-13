@@ -2,8 +2,8 @@ import 'package:dio/dio.dart';
 import '../features/player/domain/entities/song.dart';
 
 enum MusicSource {
-  musicdl,  // 使用 musicdl API (Railway 后端)
-  audius,
+  kuwo,    // 直接调用 kw-api.cenguigui.cn (最快)
+  audius,  // 海外音乐，需要 VPN
 }
 
 class MusicApiService {
@@ -13,18 +13,18 @@ class MusicApiService {
   late Dio _dio;
   String? _apiKey;
   String? _bearerToken;
-  MusicSource _currentSource = MusicSource.musicdl;
+  MusicSource _currentSource = MusicSource.kuwo;
 
+  // Kw-api (酷我)
+  static const String _kuwoApi = 'https://kw-api.cenguigui.cn';
+  
   // Audius API
   static const String _audiusApi = 'https://api.audius.co/v1';
-  
-  // MusicDL API (Railway 后端)
-  static const String _musicdlApi = 'https://web-production-f448b.up.railway.app';
 
   MusicApiService._() {
     _dio = Dio(BaseOptions(
       connectTimeout: const Duration(seconds: 30),
-      receiveTimeout: const Duration(seconds: 120), // 增加超时时间，musicdl 搜索较慢
+      receiveTimeout: const Duration(seconds: 60),
     ));
   }
 
@@ -52,61 +52,46 @@ class MusicApiService {
 
   Future<List<Song>> searchSongs(String query) async {
     switch (_currentSource) {
-      case MusicSource.musicdl:
-        return _searchMusicdl(query);
+      case MusicSource.kuwo:
+        return _searchKuwo(query);
       case MusicSource.audius:
         return _searchAudius(query);
     }
   }
 
-  // MusicDL 搜索
-  Future<List<Song>> _searchMusicdl(String query) async {
+  // Kw-api 搜索
+  Future<List<Song>> _searchKuwo(String query) async {
     try {
       final response = await _dio.get(
-        '$_musicdlApi/search',
-        queryParameters: {'keyword': query, 'limit': 20},
+        '$_kuwoApi/',
+        queryParameters: {'name': query, 'page': 1, 'limit': 20},
       );
       
-      if (response.data['success'] != true) {
-        print('MusicDL API error: ${response.data['error']}');
+      if (response.data['code'] != 200) {
+        print('Kuwo API error: ${response.data}');
         return [];
       }
       
-      final results = response.data['results'] as List? ?? [];
+      final results = response.data['data'] as List? ?? [];
       return results.map((track) {
-        final downloadUrl = track['download_url'];
+        final rid = track['rid'] ?? '';
+        final songUrl = '$_kuwoApi?id=$rid&type=song&level=exhigh&format=mp3';
+        
         return Song(
-          id: downloadUrl?.hashCode ?? DateTime.now().millisecondsSinceEpoch,
-          title: track['title'] ?? 'Unknown',
-          artist: (track['artists'] as List?)?.join(', ') ?? 'Unknown Artist',
-          album: track['album'] ?? 'MusicDL',
-          albumArt: track['thumbnail'],
-          audioUrl: downloadUrl,
-          duration: _parseDuration(track['duration']),
+          id: int.tryParse(rid.toString()) ?? DateTime.now().millisecondsSinceEpoch,
+          title: track['name'] ?? 'Unknown',
+          artist: track['artist'] ?? 'Unknown Artist',
+          album: track['album'] ?? 'Kuwo',
+          albumArt: track['pic'],
+          audioUrl: songUrl,
+          duration: Duration.zero,
           isLocal: false,
         );
       }).toList();
     } catch (e) {
-      print('MusicDL API error: $e');
+      print('Kuwo API error: $e');
       return [];
     }
-  }
-
-  Duration _parseDuration(dynamic duration) {
-    if (duration == null) return Duration.zero;
-    if (duration is int) return Duration(seconds: duration);
-    if (duration is String) {
-      // 格式: "00:03:30"
-      final parts = duration.split(':');
-      if (parts.length == 3) {
-        return Duration(
-          hours: int.tryParse(parts[0]) ?? 0,
-          minutes: int.tryParse(parts[1]) ?? 0,
-          seconds: int.tryParse(parts[2]) ?? 0,
-        );
-      }
-    }
-    return Duration.zero;
   }
 
   Future<List<Song>> _searchAudius(String query) async {
@@ -139,16 +124,11 @@ class MusicApiService {
 
   Future<List<Song>> getTopCharts() async {
     switch (_currentSource) {
-      case MusicSource.musicdl:
-        return _getMusicdlCharts();
+      case MusicSource.kuwo:
+        return _searchKuwo('热门歌曲');
       case MusicSource.audius:
         return _getAudiusTrending();
     }
-  }
-
-  Future<List<Song>> _getMusicdlCharts() async {
-    // MusicDL 不支持 trending，使用搜索替代
-    return _searchMusicdl('热门歌曲');
   }
 
   Future<List<Song>> _getAudiusTrending() async {
