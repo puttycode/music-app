@@ -123,18 +123,6 @@ class _SearchViewState extends State<_SearchView> {
                       trailing: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          if (song.duration.inSeconds < 31)
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                              decoration: BoxDecoration(
-                                color: AppColors.warning.withValues(alpha: 0.2),
-                                borderRadius: BorderRadius.circular(4),
-                              ),
-                              child: const Text(
-                                '30秒',
-                                style: TextStyle(fontSize: 10, color: AppColors.warning),
-                              ),
-                            ),
                           IconButton(
                             icon: const Icon(Icons.play_circle_filled),
                             color: AppColors.primary,
@@ -196,7 +184,7 @@ class _SearchViewState extends State<_SearchView> {
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  '当前使用 Deezer API，仅提供30秒预览。如需完整播放，可部署网易云解灰API后配置使用。',
+                  '当前使用酷我音乐 API，支持完整播放。',
                   style: AppTextStyles.bodySmall,
                 ),
               ],

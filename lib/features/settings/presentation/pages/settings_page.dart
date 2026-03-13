@@ -12,10 +12,7 @@ class SettingsPage extends StatefulWidget {
 }
 
 class _SettingsPageState extends State<SettingsPage> {
-  final _apiKeyController = TextEditingController();
-  final _bearerTokenController = TextEditingController();
   late Box _settingsBox;
-  MusicSource _selectedSource = MusicSource.kuwo;
 
   @override
   void initState() {
@@ -25,37 +22,6 @@ class _SettingsPageState extends State<SettingsPage> {
 
   Future<void> _loadSettings() async {
     _settingsBox = await Hive.openBox('settings');
-    final apiKey = _settingsBox.get('apiKey', defaultValue: '');
-    final bearerToken = _settingsBox.get('bearerToken', defaultValue: '');
-    final sourceIndex = _settingsBox.get('sourceIndex', defaultValue: 0);
-    
-    _apiKeyController.text = apiKey;
-    _bearerTokenController.text = bearerToken;
-    _selectedSource = MusicSource.values[sourceIndex];
-    
-    MusicApiService.instance.setCredentials(
-      apiKey: apiKey,
-      bearerToken: bearerToken,
-    );
-    MusicApiService.instance.setSource(_selectedSource);
-  }
-
-  Future<void> _saveSettings() async {
-    await _settingsBox.put('apiKey', _apiKeyController.text);
-    await _settingsBox.put('bearerToken', _bearerTokenController.text);
-    await _settingsBox.put('sourceIndex', _selectedSource.index);
-    
-    MusicApiService.instance.setCredentials(
-      apiKey: _apiKeyController.text,
-      bearerToken: _bearerTokenController.text,
-    );
-    MusicApiService.instance.setSource(_selectedSource);
-    
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('设置已保存')),
-      );
-    }
   }
 
   @override
@@ -69,71 +35,39 @@ class _SettingsPageState extends State<SettingsPage> {
         padding: const EdgeInsets.all(16),
         children: [
           _buildSection(
-            title: '音乐源',
+            title: '关于',
             children: [
               const SizedBox(height: 8),
-              _buildSourceOption(
-                source: MusicSource.kuwo,
-                title: '酷我音乐 (推荐)',
-                description: '国内直连，搜索快，无需VPN\n调用 kw-api.cenguigui.cn',
-                icon: Icons.music_note,
-              ),
-              const SizedBox(height: 8),
-              _buildSourceOption(
-                source: MusicSource.audius,
-                title: 'Audius',
-                description: '海外音乐平台，100万+首歌曲\n需要VPN',
-                icon: Icons.public,
-              ),
-            ],
-          ),
-          const SizedBox(height: 24),
-          _buildSection(
-            title: '认证 (可选，用于 Audius)',
-            children: [
-              const SizedBox(height: 16),
               Container(
-                padding: const EdgeInsets.all(12),
+                padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  color: AppColors.primary.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: AppColors.primary.withValues(alpha: 0.3)),
+                  color: AppColors.surfaceVariant,
+                  borderRadius: BorderRadius.circular(12),
                 ),
-                child: Row(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Icon(Icons.info_outline, color: AppColors.primary, size: 20),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child:                       Text(
-                        '酷我音乐免费使用，无需配置。Audius 需要 VPN',
-                        style: AppTextStyles.bodySmall.copyWith(color: AppColors.primary),
-                      ),
+                    Row(
+                      children: [
+                        const Icon(Icons.music_note, color: AppColors.primary, size: 32),
+                        const SizedBox(width: 16),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text('酷我音乐', style: AppTextStyles.titleMedium),
+                              const SizedBox(height: 4),
+                              Text(
+                                '国内直连，搜索快，完整播放\n调用 kw-api.cenguigui.cn',
+                                style: AppTextStyles.bodySmall,
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
                     ),
                   ],
                 ),
-              ),
-              const SizedBox(height: 16),
-              TextField(
-                controller: _apiKeyController,
-                decoration: const InputDecoration(
-                  labelText: 'API Key (可选)',
-                  hintText: '留空使用免费限额',
-                  prefixIcon: Icon(Icons.key),
-                ),
-              ),
-              const SizedBox(height: 16),
-              TextField(
-                controller: _bearerTokenController,
-                decoration: const InputDecoration(
-                  labelText: 'Bearer Token (可选)',
-                  hintText: '留空使用免费限额',
-                  prefixIcon: Icon(Icons.token),
-                ),
-              ),
-              const SizedBox(height: 16),
-              ElevatedButton(
-                onPressed: _saveSettings,
-                child: const Text('保存'),
               ),
             ],
           ),
@@ -147,62 +81,15 @@ class _SettingsPageState extends State<SettingsPage> {
                 subtitle: const Text('1.0.0'),
                 contentPadding: EdgeInsets.zero,
               ),
-              ListTile(
-                leading: const Icon(Icons.music_note),
-                title: const Text('音乐源'),
-                subtitle: Text(_selectedSource == MusicSource.kuwo ? '酷我音乐 (kw-api)' : 'Audius'),
+              const ListTile(
+                leading: Icon(Icons.music_note),
+                title: Text('音乐源'),
+                subtitle: Text('酷我音乐 (kw-api)'),
                 contentPadding: EdgeInsets.zero,
               ),
             ],
           ),
         ],
-      ),
-    );
-  }
-
-  Widget _buildSourceOption({
-    required MusicSource source,
-    required String title,
-    required String description,
-    required IconData icon,
-  }) {
-    final isSelected = _selectedSource == source;
-    return GestureDetector(
-      onTap: () {
-        setState(() {
-          _selectedSource = source;
-        });
-      },
-      child: Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: isSelected ? AppColors.primary.withValues(alpha: 0.15) : AppColors.surfaceVariant,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(
-            color: isSelected ? AppColors.primary : Colors.transparent,
-            width: 2,
-          ),
-        ),
-        child: Row(
-          children: [
-            Icon(icon, color: isSelected ? AppColors.primary : AppColors.textSecondary, size: 32),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(title, style: AppTextStyles.titleMedium.copyWith(
-                    color: isSelected ? AppColors.primary : null,
-                  )),
-                  const SizedBox(height: 4),
-                  Text(description, style: AppTextStyles.bodySmall),
-                ],
-              ),
-            ),
-            if (isSelected)
-              const Icon(Icons.check_circle, color: AppColors.primary),
-          ],
-        ),
       ),
     );
   }
