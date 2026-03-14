@@ -40,7 +40,8 @@ class _PlayerPageState extends State<PlayerPage> {
         AppLogger.log('Using new playlist: ${widget.playlist!.length} songs');
         _bloc.add(PlaySong(song: widget.playlist![widget.initialIndex ?? 0], playlist: widget.playlist, index: widget.initialIndex ?? 0));
       } else if (audioService.currentSong != null && audioService.playlist.isNotEmpty) {
-        AppLogger.log('Using existing playlist: ${audioService.playlist.length} songs');
+        AppLogger.log('Using existing playlist: ${audioService.playlist.length} songs, current: ${audioService.currentSong?.title}');
+        _bloc.add(PlaySong(song: audioService.currentSong!, playlist: audioService.playlist, index: audioService.currentIndex));
       }
     }
   }
@@ -119,7 +120,7 @@ class _PlayerViewState extends State<_PlayerView> {
                     const SizedBox(height: 24),
                     _ProgressBar(audioService: audioService, state: state),
                     const SizedBox(height: 24),
-                    _Controls(audioService: audioService, state: state),
+                    _Controls(audioService: audioService, state: state, bloc: context.read<PlayerBloc>()),
                     const Spacer(),
                     _BottomControls(audioService: audioService),
                     const SizedBox(height: 32),
@@ -316,24 +317,35 @@ class _ProgressBar extends StatelessWidget {
 class _Controls extends StatelessWidget {
   final AudioPlayerService audioService;
   final PlayerState state;
+  final PlayerBloc bloc;
 
-  _Controls({required this.audioService, required this.state});
+  const _Controls({required this.audioService, required this.state, required this.bloc});
 
   @override
   Widget build(BuildContext context) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
       children: [
-        IconButton(
-          icon: Icon(
-            Icons.shuffle,
-            color: state.isShuffle ? AppColors.primary : AppColors.onSurfaceVariant,
-          ),
-          onPressed: () => audioService.toggleShuffle(),
+        StreamBuilder(
+          stream: audioService.isShuffleStream,
+          initialData: audioService.isShuffle,
+          builder: (context, snapshot) {
+            final isShuffle = snapshot.data ?? false;
+            return IconButton(
+              icon: Icon(
+                Icons.shuffle,
+                color: isShuffle ? AppColors.primary : AppColors.onSurfaceVariant,
+              ),
+              onPressed: () {
+                audioService.toggleShuffle();
+                bloc.add(ToggleShuffle());
+              },
+            );
+          },
         ),
         IconButton(
           icon: const Icon(Icons.skip_previous, size: 36),
-          onPressed: () => audioService.playPrevious(),
+          onPressed: () => bloc.add(PlayPrevious()),
         ),
         StreamBuilder(
           stream: audioService.playerStateStream,
@@ -363,16 +375,26 @@ class _Controls extends StatelessWidget {
         ),
         IconButton(
           icon: const Icon(Icons.skip_next, size: 36),
-          onPressed: () => audioService.playNext(),
+          onPressed: () => bloc.add(PlayNext()),
         ),
-        IconButton(
-          icon: Icon(
-            _getRepeatIcon(state.repeatMode),
-            color: state.repeatMode != RepeatMode.off
-                ? AppColors.primary
-                : AppColors.onSurfaceVariant,
-          ),
-          onPressed: () => audioService.toggleRepeat(),
+        StreamBuilder(
+          stream: audioService.repeatModeStream,
+          initialData: audioService.repeatMode,
+          builder: (context, snapshot) {
+            final repeatMode = snapshot.data ?? RepeatMode.off;
+            return IconButton(
+              icon: Icon(
+                _getRepeatIcon(repeatMode),
+                color: repeatMode != RepeatMode.off
+                    ? AppColors.primary
+                    : AppColors.onSurfaceVariant,
+              ),
+              onPressed: () {
+                audioService.toggleRepeat();
+                bloc.add(ToggleRepeat());
+              },
+            );
+          },
         ),
       ],
     );
