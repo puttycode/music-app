@@ -27,13 +27,12 @@ class PlayerPage extends StatelessWidget {
       create: (_) {
         final bloc = PlayerBloc();
         
-        // Use existing song if available, otherwise use provided playlist
-        if (currentSong != null && currentPlaylist.isNotEmpty) {
-          AppLogger.log('Using existing playlist: ${currentPlaylist.length} songs');
-          bloc.add(PlaySong(song: currentSong, playlist: currentPlaylist, index: audioService.currentIndex));
-        } else if (playlist != null) {
+        if (playlist != null && playlist!.isNotEmpty) {
           AppLogger.log('Using new playlist: ${playlist!.length} songs');
           bloc.add(PlaySong(song: playlist![initialIndex ?? 0], playlist: playlist, index: initialIndex ?? 0));
+        } else if (currentSong != null && currentPlaylist.isNotEmpty) {
+          AppLogger.log('Using existing playlist: ${currentPlaylist.length} songs');
+          bloc.add(PlaySong(song: currentSong, playlist: currentPlaylist, index: audioService.currentIndex));
         }
         
         return bloc;
