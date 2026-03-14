@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:music_app/core/theme/colors.dart';
-import 'package:music_app/core/theme/text_styles.dart';
 import 'package:music_app/core/widgets/loading_widget.dart';
 import 'package:music_app/core/widgets/error_widget.dart' as app_widgets;
 import 'package:music_app/features/player/domain/entities/song.dart';
@@ -51,7 +49,7 @@ class _HomeView extends StatelessWidget {
                   SliverAppBar(
                     floating: true,
                     backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-                    title: Text('音乐', style: AppTextStyles.headlineLarge),
+                    title: Text('音乐', style: Theme.of(context).textTheme.headlineLarge?.copyWith(fontWeight: FontWeight.bold)),
                   ),
                   if (state.recentPlays.isNotEmpty) ...[
                     const SliverToBoxAdapter(

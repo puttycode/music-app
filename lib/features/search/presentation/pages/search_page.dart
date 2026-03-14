@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:music_app/core/theme/colors.dart';
-import 'package:music_app/core/theme/text_styles.dart';
 import 'package:music_app/core/widgets/loading_widget.dart';
 import 'package:music_app/features/player/domain/entities/song.dart';
 import 'package:music_app/features/search/presentation/bloc/search_bloc.dart';
@@ -40,7 +38,7 @@ class _SearchViewState extends State<_SearchView> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('搜索'),
-        backgroundColor: AppColors.background,
+        backgroundColor: Theme.of(context).appBarTheme.backgroundColor,
       ),
       body: Column(
         children: [

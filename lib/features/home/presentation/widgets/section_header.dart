@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:music_app/core/theme/text_styles.dart';
 
 class SectionHeader extends StatelessWidget {
   final String title;
@@ -18,7 +17,7 @@ class SectionHeader extends StatelessWidget {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(title, style: AppTextStyles.headlineMedium),
+          Text(title, style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w600)),
           if (onSeeAll != null)
             TextButton(
               onPressed: onSeeAll,

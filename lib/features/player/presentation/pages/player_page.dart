@@ -106,13 +106,14 @@ class _PlayerViewState extends State<_PlayerView> {
         builder: (context, state) {
           final song = state.currentSong;
           final isDark = Theme.of(context).brightness == Brightness.dark;
+          final primaryColor = Theme.of(context).colorScheme.primary;
 
           return Container(
             decoration: BoxDecoration(
               gradient: LinearGradient(
                 colors: isDark 
                     ? [AppColors.primaryDark, Theme.of(context).scaffoldBackgroundColor]
-                    : [Theme.of(context).colorScheme.primary, Colors.white],
+                    : [primaryColor.withValues(alpha: 0.8), Colors.white],
                 begin: Alignment.topCenter,
                 end: Alignment.bottomCenter,
               ),

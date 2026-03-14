@@ -4,9 +4,7 @@ import 'package:music_app/features/player/presentation/pages/player_page.dart';
 import 'package:music_app/features/home/presentation/pages/home_page.dart';
 import 'package:music_app/features/search/presentation/pages/search_page.dart';
 import 'package:music_app/features/library/presentation/pages/library_page.dart';
-import 'package:music_app/features/playlist/presentation/pages/playlist_page.dart';
 import 'package:music_app/features/settings/presentation/pages/settings_page.dart';
-import 'package:music_app/core/theme/colors.dart';
 import 'package:music_app/core/theme/app_theme.dart';
 import 'package:music_app/services/audio_player_service.dart';
 
@@ -73,7 +71,6 @@ class _MainPageState extends State<MainPage> {
     const HomePage(),
     const SearchPage(),
     const LibraryPage(),
-    const PlaylistPage(),
     SettingsPage(
       currentThemeMode: widget.currentThemeMode,
       onThemeChanged: widget.onThemeChanged,
@@ -117,11 +114,6 @@ class _MainPageState extends State<MainPage> {
                 icon: Icon(Icons.library_music_outlined),
                 activeIcon: Icon(Icons.library_music),
                 label: '音乐库',
-              ),
-              BottomNavigationBarItem(
-                icon: Icon(Icons.queue_music_outlined),
-                activeIcon: Icon(Icons.queue_music),
-                label: '播放列表',
               ),
               BottomNavigationBarItem(
                 icon: Icon(Icons.settings_outlined),
