@@ -78,6 +78,10 @@ class MusicApiService {
         
         final songUrl = '$_kuwoApi?id=$rid&type=song&level=exhigh&format=mp3';
         
+        final durationSec = track['duration'] is int 
+            ? track['duration'] 
+            : int.tryParse(track['duration']?.toString() ?? '0') ?? 0;
+        
         final song = Song(
           id: int.tryParse(rid.toString()) ?? DateTime.now().millisecondsSinceEpoch,
           title: name,
@@ -85,7 +89,7 @@ class MusicApiService {
           album: album,
           albumArt: pic,
           audioUrl: songUrl,
-          duration: Duration.zero,
+          duration: Duration(seconds: durationSec),
           isLocal: false,
         );
         
