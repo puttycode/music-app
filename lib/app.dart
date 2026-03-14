@@ -121,96 +121,106 @@ class MiniPlayer extends StatelessWidget {
               stream: audioService.positionStream,
               builder: (context, snapshot) {
                 final position = snapshot.data ?? Duration.zero;
-                return LinearProgressIndicator(
-                  value: audioService.currentSong != null &&
-                          audioService.currentSong!.duration.inMilliseconds > 0
-                      ? position.inMilliseconds /
-                          audioService.currentSong!.duration.inMilliseconds
-                      : 0,
-                  backgroundColor: AppColors.secondary.withOpacity(0.3),
-                  valueColor: const AlwaysStoppedAnimation(AppColors.primary),
-                  minHeight: 2,
+                return StreamBuilder(
+                  stream: audioService.currentSongStream,
+                  builder: (context, songSnapshot) {
+                    final song = songSnapshot.data;
+                    return LinearProgressIndicator(
+                      value: song != null && song.duration.inMilliseconds > 0
+                          ? position.inMilliseconds / song.duration.inMilliseconds
+                          : 0,
+                      backgroundColor: AppColors.secondary.withOpacity(0.3),
+                      valueColor: const AlwaysStoppedAnimation(AppColors.primary),
+                      minHeight: 2,
+                    );
+                  },
                 );
               },
             ),
             Expanded(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: Row(
-                  children: [
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(4),
-                      child: audioService.currentSong?.albumArt != null
-                          ? Image.network(
-                              audioService.currentSong!.albumArt!,
-                              width: 48,
-                              height: 48,
-                              fit: BoxFit.cover,
-                              errorBuilder: (_, __, ___) => Container(
-                                width: 48,
-                                height: 48,
-                                color: AppColors.surface,
-                                child: const Icon(Icons.music_note),
+              child: StreamBuilder(
+                stream: audioService.currentSongStream,
+                builder: (context, snapshot) {
+                  final song = snapshot.data;
+                  return Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: Row(
+                      children: [
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(4),
+                          child: song?.albumArt != null
+                              ? Image.network(
+                                  song!.albumArt!,
+                                  width: 48,
+                                  height: 48,
+                                  fit: BoxFit.cover,
+                                  errorBuilder: (_, __, ___) => Container(
+                                    width: 48,
+                                    height: 48,
+                                    color: AppColors.surface,
+                                    child: const Icon(Icons.music_note),
+                                  ),
+                                )
+                              : Container(
+                                  width: 48,
+                                  height: 48,
+                                  color: AppColors.surface,
+                                  child: const Icon(Icons.music_note),
+                                ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                song?.title ?? '',
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.w600,
+                                  color: AppColors.onBackground,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
                               ),
-                            )
-                          : Container(
-                              width: 48,
-                              height: 48,
-                              color: AppColors.surface,
-                              child: const Icon(Icons.music_note),
-                            ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            audioService.currentSong?.title ?? '',
-                            style: const TextStyle(
-                              fontWeight: FontWeight.w600,
-                              color: AppColors.onBackground,
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
+                              Text(
+                                song?.artist ?? '',
+                                style: const TextStyle(
+                                  fontSize: 12,
+                                  color: AppColors.onSurfaceVariant,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ],
                           ),
-                          Text(
-                            audioService.currentSong?.artist ?? '',
-                            style: const TextStyle(
-                              fontSize: 12,
-                              color: AppColors.onSurfaceVariant,
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ],
-                      ),
-                    ),
-                    StreamBuilder(
-                      stream: audioService.playerStateStream,
-                      builder: (context, snapshot) {
-                        final isPlaying = snapshot.data?.playing ?? false;
-                        return IconButton(
-                          icon: Icon(
-                            isPlaying
-                                ? Icons.pause_circle_filled
-                                : Icons.play_circle_filled,
-                            size: 40,
-                            color: AppColors.primary,
-                          ),
-                          onPressed: () {
-                            if (isPlaying) {
-                              audioService.pause();
-                            } else {
-                              audioService.play();
-                            }
+                        ),
+                        StreamBuilder(
+                          stream: audioService.playerStateStream,
+                          builder: (context, snapshot) {
+                            final isPlaying = snapshot.data?.playing ?? false;
+                            return IconButton(
+                              icon: Icon(
+                                isPlaying
+                                    ? Icons.pause_circle_filled
+                                    : Icons.play_circle_filled,
+                                size: 40,
+                                color: AppColors.primary,
+                              ),
+                              onPressed: () {
+                                if (isPlaying) {
+                                  audioService.pause();
+                                } else {
+                                  audioService.play();
+                                }
+                              },
+                            );
                           },
-                        );
-                      },
+                        ),
+                      ],
                     ),
-                  ],
-                ),
+                  );
+                },
               ),
             ),
           ],

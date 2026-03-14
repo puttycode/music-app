@@ -41,7 +41,6 @@ class _PlayerPageState extends State<PlayerPage> {
         _bloc.add(PlaySong(song: widget.playlist![widget.initialIndex ?? 0], playlist: widget.playlist, index: widget.initialIndex ?? 0));
       } else if (audioService.currentSong != null && audioService.playlist.isNotEmpty) {
         AppLogger.log('Using existing playlist: ${audioService.playlist.length} songs');
-        _bloc.add(PlaySong(song: audioService.currentSong, playlist: audioService.playlist, index: audioService.currentIndex));
       }
     }
   }
