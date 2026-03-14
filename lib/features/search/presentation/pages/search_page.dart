@@ -120,7 +120,6 @@ class _SearchViewState extends State<_SearchView> {
                         overflow: TextOverflow.ellipsis,
                         style: AppTextStyles.bodySmall,
                       ),
-                      ),
                       onTap: () => _playSong(context, state.results, index),
                     );
                   },
