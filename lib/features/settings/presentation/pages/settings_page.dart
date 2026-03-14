@@ -20,7 +20,6 @@ class _SettingsPageState extends State<SettingsPage> {
   @override
   void initState() {
     super.initState();
-    _loadSettings();
     _addLog('App 已启动');
     AppLogger.setLogger(_addLog);
   }
