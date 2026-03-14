@@ -69,14 +69,21 @@ class MusicApiService {
       
       return results.map((track) {
         final rid = track['rid'] ?? 0;
+        final name = track['name']?.toString() ?? 'Unknown';
+        final artist = track['artist']?.toString() ?? 'Unknown Artist';
+        final album = track['album']?.toString() ?? 'Kuwo';
+        final pic = track['pic']?.toString();
+        
+        AppLogger.log('歌曲: name=$name, artist=$artist, album=$album');
+        
         final songUrl = '$_kuwoApi?id=$rid&type=song&level=exhigh&format=mp3';
         
         return Song(
           id: int.tryParse(rid.toString()) ?? DateTime.now().millisecondsSinceEpoch,
-          title: track['name']?.toString() ?? 'Unknown',
-          artist: track['artist']?.toString() ?? 'Unknown Artist',
-          album: track['album']?.toString() ?? 'Kuwo',
-          albumArt: track['pic']?.toString(),
+          title: name,
+          artist: artist,
+          album: album,
+          albumArt: pic,
           audioUrl: songUrl,
           duration: Duration.zero,
           isLocal: false,
