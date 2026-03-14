@@ -1,6 +1,18 @@
 import 'package:dio/dio.dart';
 import '../features/player/domain/entities/song.dart';
 
+class AppLogger {
+  static Function(String)? _logCallback;
+  
+  static void setLogger(Function(String) callback) {
+    _logCallback = callback;
+  }
+  
+  static void log(String message) {
+    _logCallback?.call(message);
+  }
+}
+
 enum MusicSource {
   kuwo,
 }
@@ -21,6 +33,8 @@ class MusicApiService {
       followRedirects: true,
       validateStatus: (status) => status! < 500,
     ));
+    
+    AppLogger.log('MusicApiService 初始化完成');
   }
 
   void setSource(MusicSource source) {
@@ -30,21 +44,29 @@ class MusicApiService {
   MusicSource get currentSource => _currentSource;
 
   Future<List<Song>> searchSongs(String query) async {
+    AppLogger.log('搜索: $query');
     return _searchKuwo(query);
   }
 
   Future<List<Song>> _searchKuwo(String query) async {
     try {
+      AppLogger.log('开始请求 Kuwo API...');
+      
       final response = await _dio.get(
         '$_kuwoApi/',
         queryParameters: {'name': query, 'page': 1, 'limit': 20},
       );
       
+      AppLogger.log('Kuwo API 响应: ${response.statusCode}');
+      
       if (response.data['code'] != 200) {
+        AppLogger.log('Kuwo API 错误: ${response.data}');
         return [];
       }
       
       final results = response.data['data'] as List? ?? [];
+      AppLogger.log('获取到 ${results.length} 首歌曲');
+      
       return results.map((track) {
         final rid = track['rid'] ?? 0;
         final songUrl = '$_kuwoApi?id=$rid&type=song&level=exhigh&format=mp3';
@@ -61,11 +83,13 @@ class MusicApiService {
         );
       }).toList();
     } catch (e) {
+      AppLogger.log('Kuwo API 异常: $e');
       return [];
     }
   }
 
   Future<List<Song>> getTopCharts() async {
+    AppLogger.log('获取热门歌曲');
     return _searchKuwo('热门歌曲');
   }
 

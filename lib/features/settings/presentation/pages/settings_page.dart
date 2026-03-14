@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:music_app/core/theme/colors.dart';
 import 'package:music_app/core/theme/text_styles.dart';
@@ -13,15 +14,40 @@ class SettingsPage extends StatefulWidget {
 
 class _SettingsPageState extends State<SettingsPage> {
   late Box _settingsBox;
+  final List<String> _logs = [];
+  final ScrollController _scrollController = ScrollController();
 
   @override
   void initState() {
     super.initState();
     _loadSettings();
+    _addLog('App 已启动');
+    AppLogger.setLogger(_addLog);
   }
 
-  Future<void> _loadSettings() async {
-    _settingsBox = await Hive.openBox('settings');
+  void _addLog(String message) {
+    final log = '${DateTime.now().toString().substring(11, 19)} $message';
+    if (!mounted) return;
+    setState(() {
+      _logs.insert(0, log);
+      if (_logs.length > 100) {
+        _logs.removeLast();
+      }
+    });
+  }
+
+  void clearLogs() {
+    setState(() {
+      _logs.clear();
+    });
+  }
+
+  void copyLogs() {
+    final text = _logs.join('\n');
+    Clipboard.setData(ClipboardData(text: text));
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('日志已复制到剪贴板')),
+    );
   }
 
   @override
@@ -30,10 +56,59 @@ class _SettingsPageState extends State<SettingsPage> {
       appBar: AppBar(
         title: const Text('设置'),
         backgroundColor: AppColors.background,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.delete_outline),
+            onPressed: clearLogs,
+            tooltip: '清空日志',
+          ),
+          IconButton(
+            icon: const Icon(Icons.copy),
+            onPressed: copyLogs,
+            tooltip: '复制日志',
+          ),
+        ],
       ),
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
+          _buildSection(
+            title: '日志',
+            children: [
+              const SizedBox(height: 8),
+              Container(
+                height: 300,
+                decoration: BoxDecoration(
+                  color: AppColors.surfaceVariant,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: _logs.isEmpty
+                    ? const Center(child: Text('暂无日志'))
+                    : ListView.builder(
+                        controller: _scrollController,
+                        padding: const EdgeInsets.all(8),
+                        itemCount: _logs.length,
+                        itemBuilder: (context, index) {
+                          return Text(
+                            _logs[index],
+                            style: const TextStyle(
+                              fontFamily: 'monospace',
+                              fontSize: 11,
+                              color: AppColors.textSecondary,
+                            ),
+                          );
+                        },
+                      ),
+              ),
+              const SizedBox(height: 8),
+              ElevatedButton.icon(
+                onPressed: () => _addLog('测试日志'),
+                icon: const Icon(Icons.add),
+                label: const Text('添加测试日志'),
+              ),
+            ],
+          ),
+          const SizedBox(height: 24),
           _buildSection(
             title: '关于',
             children: [
@@ -75,10 +150,10 @@ class _SettingsPageState extends State<SettingsPage> {
           _buildSection(
             title: '关于',
             children: [
-              ListTile(
-                leading: const Icon(Icons.info),
-                title: const Text('版本'),
-                subtitle: const Text('1.0.0'),
+              const ListTile(
+                leading: Icon(Icons.info),
+                title: Text('版本'),
+                subtitle: Text('1.0.0'),
                 contentPadding: EdgeInsets.zero,
               ),
               const ListTile(
