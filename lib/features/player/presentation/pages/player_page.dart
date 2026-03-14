@@ -9,41 +9,67 @@ import 'package:music_app/features/player/domain/entities/song.dart';
 import 'package:music_app/features/player/presentation/bloc/player_bloc.dart';
 import 'package:music_app/features/player/presentation/bloc/player_event_state.dart';
 
-class PlayerPage extends StatelessWidget {
+class PlayerPage extends StatefulWidget {
   final List<Song>? playlist;
   final int? initialIndex;
 
   const PlayerPage({Key? key, this.playlist, this.initialIndex}) : super(key: key);
 
   @override
+  State<PlayerPage> createState() => _PlayerPageState();
+}
+
+class _PlayerPageState extends State<PlayerPage> {
+  late PlayerBloc _bloc;
+  bool _initialized = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _bloc = PlayerBloc();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (!_initialized) {
+      _initialized = true;
+      final audioService = AudioPlayerService.instance;
+      
+      if (widget.playlist != null && widget.playlist!.isNotEmpty) {
+        AppLogger.log('Using new playlist: ${widget.playlist!.length} songs');
+        _bloc.add(PlaySong(song: widget.playlist![widget.initialIndex ?? 0], playlist: widget.playlist, index: widget.initialIndex ?? 0));
+      } else if (audioService.currentSong != null && audioService.playlist.isNotEmpty) {
+        AppLogger.log('Using existing playlist: ${audioService.playlist.length} songs');
+        _bloc.add(PlaySong(song: audioService.currentSong, playlist: audioService.playlist, index: audioService.currentIndex));
+      }
+    }
+  }
+
+  @override
+  void dispose() {
+    _bloc.close();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final audioService = AudioPlayerService.instance;
-    final currentSong = audioService.currentSong;
-    final currentPlaylist = audioService.playlist;
-    
-    AppLogger.log('PlayerPage: currentSong=${currentSong?.title}, playlist length=${currentPlaylist.length}');
-    
-    return BlocProvider(
-      create: (_) {
-        final bloc = PlayerBloc();
-        
-        if (playlist != null && playlist!.isNotEmpty) {
-          AppLogger.log('Using new playlist: ${playlist!.length} songs');
-          bloc.add(PlaySong(song: playlist![initialIndex ?? 0], playlist: playlist, index: initialIndex ?? 0));
-        } else if (currentSong != null && currentPlaylist.isNotEmpty) {
-          AppLogger.log('Using existing playlist: ${currentPlaylist.length} songs');
-          bloc.add(PlaySong(song: currentSong, playlist: currentPlaylist, index: audioService.currentIndex));
-        }
-        
-        return bloc;
-      },
+    return BlocProvider.value(
+      value: _bloc,
       child: const _PlayerView(),
     );
   }
 }
 
-class _PlayerView extends StatelessWidget {
+class _PlayerView extends StatefulWidget {
   const _PlayerView();
+
+  @override
+  State<_PlayerView> createState() => _PlayerViewState();
+}
+
+class _PlayerViewState extends State<_PlayerView> {
+  bool _showLyrics = false;
 
   @override
   Widget build(BuildContext context) {
@@ -83,7 +109,12 @@ class _PlayerView extends StatelessWidget {
                 child: Column(
                   children: [
                     const Spacer(),
-                    _AlbumArt(song: song),
+                    GestureDetector(
+                      onTap: () => setState(() => _showLyrics = !_showLyrics),
+                      child: _showLyrics 
+                          ? _LyricsView(song: song)
+                          : _AlbumArt(song: song),
+                    ),
                     const SizedBox(height: 32),
                     _SongInfo(song: song),
                     const SizedBox(height: 24),
@@ -99,6 +130,51 @@ class _PlayerView extends StatelessWidget {
             ),
           );
         },
+      ),
+    );
+  }
+}
+
+class _LyricsView extends StatelessWidget {
+  final Song? song;
+
+  const _LyricsView({this.song});
+
+  @override
+  Widget build(BuildContext context) {
+    return AspectRatio(
+      aspectRatio: 1,
+      child: Container(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(16),
+          color: AppColors.surfaceVariant.withValues(alpha: 0.5),
+        ),
+        child: Center(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(
+                  song?.title ?? '未知歌曲',
+                  style: AppTextStyles.headlineMedium.copyWith(color: AppColors.onSurface),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  song?.artist ?? '未知艺术家',
+                  style: AppTextStyles.bodyMedium.copyWith(color: AppColors.onSurfaceVariant),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 32),
+                const Text(
+                  '暂无歌词',
+                  style: TextStyle(color: AppColors.onSurfaceVariant),
+                ),
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }
