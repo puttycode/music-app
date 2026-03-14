@@ -3,7 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:music_app/features/player/domain/entities/song.dart';
 import 'package:music_app/core/constants/app_constants.dart';
-import 'package:music_app/services/audio_player_service.dart';
+import 'package:music_app/services/audio_player_service.dart' show AppLogger;
 
 part 'library_event.dart';
 
@@ -76,7 +76,12 @@ class LibraryBloc extends Bloc<LibraryEvent, LibraryState> {
     
     try {
       final recentBox = Hive.box(AppConstants.recentPlaysBox);
-      final recentSongs = recentBox.values.map((e) => e as Song).toList();
+      final recentSongs = recentBox.values.map((e) {
+        if (e is Map) {
+          return Song.fromJson(Map<String, dynamic>.from(e));
+        }
+        return null;
+      }).whereType<Song>().toList();
       
       final artists = recentSongs.map((s) => s.artist).toSet().toList();
       final albums = recentSongs.map((s) => s.album).toSet().toList();
@@ -100,7 +105,25 @@ class LibraryBloc extends Bloc<LibraryEvent, LibraryState> {
     final audioService = AudioPlayerService.instance;
     final currentPlaylist = audioService.playlist;
     
-    final existingPlaylists = List<Playlist>.from(state.playlists);
+    // Load user playlists from Hive
+    final playlistBox = Hive.box(AppConstants.playlistBox);
+    final userPlaylists = playlistBox.values.map((e) {
+      if (e is Map) {
+        final songs = (e['songs'] as List?)?.map((s) {
+          if (s is Map) {
+            return Song.fromJson(Map<String, dynamic>.from(s));
+          }
+          return null;
+        }).whereType<Song>().toList() ?? <Song>[];
+        
+        return Playlist(
+          name: e['name'] ?? '未知',
+          songs: songs,
+          icon: e['icon'] ?? 'queue_music',
+        );
+      }
+      return null;
+    }).whereType<Playlist>().toList();
     
     emit(state.copyWith(
       playlists: [
@@ -114,13 +137,22 @@ class LibraryBloc extends Bloc<LibraryEvent, LibraryState> {
           songs: currentPlaylist.isNotEmpty ? currentPlaylist : const [],
           icon: 'history',
         ),
-        ...existingPlaylists.where((p) => p.name != '我喜欢的音乐' && p.name != '最近播放'),
+        ...userPlaylists,
       ],
     ));
   }
 
   Future<void> _onCreatePlaylist(CreatePlaylist event, Emitter<LibraryState> emit) async {
     final newPlaylist = Playlist(name: event.name, songs: const [], icon: 'queue_music');
+    
+    // Save to Hive
+    final playlistBox = Hive.box(AppConstants.playlistBox);
+    await playlistBox.put(event.name, {
+      'name': event.name,
+      'songs': <Map>[],
+      'icon': 'queue_music',
+    });
+    
     emit(state.copyWith(
       playlists: [...state.playlists, newPlaylist],
     ));

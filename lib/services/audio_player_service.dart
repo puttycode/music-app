@@ -98,12 +98,20 @@ class AudioPlayerService {
     try {
       final recentBox = Hive.box(AppConstants.recentPlaysBox);
       
-      final existing = recentBox.values.where((s) => (s as Song).id == song.id).toList();
-      for (var s in existing) {
-        await recentBox.delete(s.hashCode);
+      // Remove existing song with same ID
+      final existingKeys = recentBox.keys.where((key) {
+        final item = recentBox.get(key);
+        if (item is Map) {
+          return item['id'] == song.id;
+        }
+        return false;
+      }).toList();
+      for (var key in existingKeys) {
+        await recentBox.delete(key);
       }
       
-      await recentBox.put(song.hashCode, song);
+      // Save as JSON map
+      await recentBox.put(song.hashCode, song.toJson());
       
       if (recentBox.length > AppConstants.recentPlaysMax) {
         final keys = recentBox.keys.toList();
