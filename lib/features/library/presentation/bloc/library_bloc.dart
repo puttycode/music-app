@@ -125,11 +125,4 @@ class LibraryBloc extends Bloc<LibraryEvent, LibraryState> {
       playlists: [...state.playlists, newPlaylist],
     ));
   }
-          name: '最近播放',
-          songs: currentPlaylist.isNotEmpty ? currentPlaylist : const [],
-          icon: 'history',
-        ),
-      ],
-    ));
-  }
 }
