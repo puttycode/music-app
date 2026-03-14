@@ -18,7 +18,15 @@ void main() async {
   await Hive.openBox(AppConstants.recentPlaysBox);
   await Hive.openBox(AppConstants.settingsBox);
 
-  MusicApiService.instance;
+  final settingsBox = Hive.box(AppConstants.settingsBox);
+  final savedSource = settingsBox.get('musicSource', defaultValue: 'kuwo');
+  final savedCustomUrl = settingsBox.get('customApiUrl', defaultValue: '');
+  
+  if (savedSource == 'custom' && savedCustomUrl.isNotEmpty) {
+    MusicApiService.instance.setSource(MusicSource.custom, customUrl: savedCustomUrl);
+  } else {
+    MusicApiService.instance.setSource(MusicSource.kuwo);
+  }
   
   runApp(const MusicApp());
 }

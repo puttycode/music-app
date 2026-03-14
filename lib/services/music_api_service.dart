@@ -15,45 +15,40 @@ class AppLogger {
 
 enum MusicSource {
   kuwo,
+  custom,
 }
 
-class MusicApiService {
-  static final MusicApiService _instance = MusicApiService._();
-  static MusicApiService get instance => _instance;
+abstract class MusicApi {
+  String get name;
+  String get baseUrl;
+  Future<List<Song>> searchSongs(String query);
+  Future<List<Song>> getTopCharts();
+  bool isFullAudio(Song song);
+}
+
+class KuwoApi implements MusicApi {
+  final Dio _dio;
   
-  late Dio _dio;
-  MusicSource _currentSource = MusicSource.kuwo;
+  KuwoApi() : _dio = Dio(BaseOptions(
+    connectTimeout: const Duration(seconds: 30),
+    receiveTimeout: const Duration(seconds: 60),
+    followRedirects: true,
+    validateStatus: (status) => status! < 500,
+  ));
 
-  static const String _kuwoApi = 'https://kw-api.cenguigui.cn';
+  @override
+  String get name => '酷我音乐';
 
-  MusicApiService._() {
-    _dio = Dio(BaseOptions(
-      connectTimeout: const Duration(seconds: 30),
-      receiveTimeout: const Duration(seconds: 60),
-      followRedirects: true,
-      validateStatus: (status) => status! < 500,
-    ));
-    
-    AppLogger.log('MusicApiService 初始化完成');
-  }
+  @override
+  String get baseUrl => 'https://kw-api.cenguigui.cn';
 
-  void setSource(MusicSource source) {
-    _currentSource = source;
-  }
-
-  MusicSource get currentSource => _currentSource;
-
+  @override
   Future<List<Song>> searchSongs(String query) async {
-    AppLogger.log('搜索: $query');
-    return _searchKuwo(query);
-  }
-
-  Future<List<Song>> _searchKuwo(String query) async {
     try {
       AppLogger.log('开始请求 Kuwo API...');
       
       final response = await _dio.get(
-        '$_kuwoApi/',
+        '$baseUrl/',
         queryParameters: {'name': query, 'page': 1, 'limit': 20},
       );
       
@@ -76,7 +71,7 @@ class MusicApiService {
         
         AppLogger.log('歌曲: name=$name, artist=$artist, album=$album');
         
-        final songUrl = '$_kuwoApi?id=$rid&type=song&level=exhigh&format=mp3';
+        final songUrl = '$baseUrl?id=$rid&type=song&level=exhigh&format=mp3';
         
         final durationSec = track['duration'] is int 
             ? track['duration'] 
@@ -102,13 +97,120 @@ class MusicApiService {
     }
   }
 
+  @override
   Future<List<Song>> getTopCharts() async {
-    AppLogger.log('获取热门歌曲');
-    return _searchKuwo('热门歌曲');
+    return searchSongs('热门歌曲');
   }
 
+  @override
   bool isFullAudio(Song song) {
     if (song.audioUrl == null) return false;
     return song.audioUrl!.isNotEmpty;
+  }
+}
+
+class CustomApi implements MusicApi {
+  final Dio _dio;
+  final String _customBaseUrl;
+  
+  CustomApi(this._customBaseUrl) : _dio = Dio(BaseOptions(
+    baseUrl: _customBaseUrl,
+    connectTimeout: const Duration(seconds: 30),
+    receiveTimeout: const Duration(seconds: 60),
+    followRedirects: true,
+    validateStatus: (status) => status! < 500,
+  ));
+
+  @override
+  String get name => '自定义';
+
+  @override
+  String get baseUrl => _customBaseUrl;
+
+  @override
+  Future<List<Song>> searchSongs(String query) async {
+    try {
+      final response = await _dio.get('/search', queryParameters: {'keyword': query});
+      
+      if (response.statusCode == 200 && response.data['code'] == 200) {
+        final results = response.data['data'] as List? ?? [];
+        return results.map((track) => _parseSong(track)).toList();
+      }
+      return [];
+    } catch (e) {
+      AppLogger.log('自定义 API 异常: $e');
+      return [];
+    }
+  }
+
+  @override
+  Future<List<Song>> getTopCharts() async {
+    return searchSongs('热门');
+  }
+
+  @override
+  bool isFullAudio(Song song) {
+    if (song.audioUrl == null) return false;
+    return song.audioUrl!.isNotEmpty;
+  }
+
+  Song _parseSong(Map<String, dynamic> track) {
+    return Song(
+      id: track['id'] ?? DateTime.now().millisecondsSinceEpoch,
+      title: track['name']?.toString() ?? 'Unknown',
+      artist: track['artist']?.toString() ?? 'Unknown Artist',
+      album: track['album']?.toString() ?? 'Unknown Album',
+      albumArt: track['pic']?.toString(),
+      audioUrl: track['url']?.toString(),
+      duration: Duration(seconds: track['duration'] ?? 0),
+      isLocal: false,
+    );
+  }
+}
+
+class MusicApiService {
+  static final MusicApiService _instance = MusicApiService._();
+  static MusicApiService get instance => _instance;
+  
+  MusicApi _currentApi = KuwoApi();
+  MusicSource _currentSource = MusicSource.kuwo;
+  String _customApiUrl = '';
+
+  MusicApiService._() {
+    AppLogger.log('MusicApiService 初始化完成');
+  }
+
+  void setSource(MusicSource source, {String? customUrl}) {
+    _currentSource = source;
+    switch (source) {
+      case MusicSource.kuwo:
+        _currentApi = KuwoApi();
+        break;
+      case MusicSource.custom:
+        _customApiUrl = customUrl ?? '';
+        if (_customApiUrl.isNotEmpty) {
+          _currentApi = CustomApi(_customApiUrl);
+        }
+        break;
+    }
+    AppLogger.log('切换音乐源: ${_currentApi.name}');
+  }
+
+  MusicSource get currentSource => _currentSource;
+  String get currentApiUrl => _currentApi.baseUrl;
+  String get currentApiName => _currentApi.name;
+
+  Future<List<Song>> searchSongs(String query) async {
+    AppLogger.log('搜索: $query');
+    return _currentApi.searchSongs(query);
+  }
+
+  Future<List<Song>> getTopCharts() async {
+    AppLogger.log('获取热门歌曲');
+    return _currentApi.getTopCharts();
+  }
+
+  bool isFullAudio(Song song) {
+    return _currentApi.isFullAudio(song);
   }
 }
