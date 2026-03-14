@@ -3,7 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:music_app/features/player/domain/entities/song.dart';
 import 'package:music_app/core/constants/app_constants.dart';
-import 'package:music_app/services/audio_player_service.dart' show AppLogger;
+import 'package:music_app/services/audio_player_service.dart' show AppLogger, AudioPlayerService;
 
 part 'library_event.dart';
 
