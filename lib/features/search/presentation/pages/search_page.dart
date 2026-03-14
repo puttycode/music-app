@@ -95,14 +95,14 @@ class _SearchViewState extends State<_SearchView> {
                                 errorBuilder: (_, __, ___) => Container(
                                   width: 56,
                                   height: 56,
-                                  color: AppColors.surfaceVariant,
+                                  color: Theme.of(context).colorScheme.surface,
                                   child: const Icon(Icons.music_note),
                                 ),
                               )
                             : Container(
                                 width: 56,
                                 height: 56,
-                                color: AppColors.surfaceVariant,
+                                color: Theme.of(context).colorScheme.surface,
                                 child: const Icon(Icons.music_note),
                               ),
                       ),
@@ -110,13 +110,11 @@ class _SearchViewState extends State<_SearchView> {
                         song.title,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: AppTextStyles.titleMedium,
                       ),
                       subtitle: Text(
                         '${song.artist} - ${song.album}',
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: AppTextStyles.bodySmall,
                       ),
                       onTap: () => _playSong(context, state.results, index),
                     );

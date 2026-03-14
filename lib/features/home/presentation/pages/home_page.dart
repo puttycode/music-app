@@ -114,7 +114,7 @@ class _HomeView extends StatelessWidget {
                                   : Container(
                                       width: 56,
                                       height: 56,
-                                      color: AppColors.surfaceVariant,
+                                      color: Theme.of(context).colorScheme.surface,
                                       child: const Icon(Icons.music_note),
                                     ),
                             ),
