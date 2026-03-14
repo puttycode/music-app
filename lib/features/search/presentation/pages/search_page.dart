@@ -136,7 +136,7 @@ class _SearchViewState extends State<_SearchView> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('热门搜索', style: AppTextStyles.titleLarge),
+          Text('热门搜索', style: Theme.of(context).textTheme.titleLarge),
           const SizedBox(height: 16),
           Wrap(
             spacing: 8,
