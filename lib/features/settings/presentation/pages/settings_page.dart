@@ -21,16 +21,22 @@ class _SettingsPageState extends State<SettingsPage> {
   void initState() {
     super.initState();
     _addLog('App 已启动');
-    AppLogger.setLogger(_addLog);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      AppLogger.setLogger(_addLog);
+    });
   }
 
   void _addLog(String message) {
     final log = '${DateTime.now().toString().substring(11, 19)} $message';
     if (!mounted) return;
-    setState(() {
-      _logs.insert(0, log);
-      if (_logs.length > 100) {
-        _logs.removeLast();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        setState(() {
+          _logs.insert(0, log);
+          if (_logs.length > 100) {
+            _logs.removeLast();
+          }
+        });
       }
     });
   }
