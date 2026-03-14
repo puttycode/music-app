@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:hive_flutter/hive_flutter.dart';
 import 'package:music_app/features/player/presentation/pages/player_page.dart';
 import 'package:music_app/features/home/presentation/pages/home_page.dart';
 import 'package:music_app/features/search/presentation/pages/search_page.dart';
@@ -9,22 +10,56 @@ import 'package:music_app/core/theme/colors.dart';
 import 'package:music_app/core/theme/app_theme.dart';
 import 'package:music_app/services/audio_player_service.dart';
 
-class MusicApp extends StatelessWidget {
+class MusicApp extends StatefulWidget {
   const MusicApp({Key? key}) : super(key: key);
+
+  @override
+  State<MusicApp> createState() => _MusicAppState();
+}
+
+class _MusicAppState extends State<MusicApp> {
+  late ThemeMode _themeMode;
+  late Box _settingsBox;
+
+  @override
+  void initState() {
+    super.initState();
+    _settingsBox = Hive.box('settings');
+    final savedTheme = _settingsBox.get('themeMode', defaultValue: 'dark');
+    _themeMode = savedTheme == 'light' ? ThemeMode.light : ThemeMode.dark;
+  }
+
+  void _onThemeChanged(ThemeMode mode) {
+    setState(() {
+      _themeMode = mode;
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'Music App',
       debugShowCheckedModeBanner: false,
-      theme: AppTheme.darkTheme,
-      home: const MainPage(),
+      theme: AppTheme.lightTheme,
+      darkTheme: AppTheme.darkTheme,
+      themeMode: _themeMode,
+      home: MainPage(
+        currentThemeMode: _themeMode,
+        onThemeChanged: _onThemeChanged,
+      ),
     );
   }
 }
 
 class MainPage extends StatefulWidget {
-  const MainPage({Key? key}) : super(key: key);
+  final ThemeMode currentThemeMode;
+  final ValueChanged<ThemeMode> onThemeChanged;
+
+  const MainPage({
+    Key? key,
+    required this.currentThemeMode,
+    required this.onThemeChanged,
+  }) : super(key: key);
 
   @override
   State<MainPage> createState() => _MainPageState();
@@ -34,12 +69,15 @@ class _MainPageState extends State<MainPage> {
   int _currentIndex = 0;
   final AudioPlayerService _audioService = AudioPlayerService.instance;
 
-  final List<Widget> _pages = [
+  List<Widget> get _pages => [
     const HomePage(),
     const SearchPage(),
     const LibraryPage(),
     const PlaylistPage(),
-    const SettingsPage(),
+    SettingsPage(
+      currentThemeMode: widget.currentThemeMode,
+      onThemeChanged: widget.onThemeChanged,
+    ),
   ];
 
   @override

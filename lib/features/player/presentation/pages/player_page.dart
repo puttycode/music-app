@@ -26,7 +26,19 @@ class _PlayerPageState extends State<PlayerPage> {
   @override
   void initState() {
     super.initState();
+    final audioService = AudioPlayerService.instance;
     _bloc = PlayerBloc();
+    
+    // Initialize bloc with current song if exists and no new playlist is provided
+    if (audioService.currentSong != null && audioService.playlist.isNotEmpty) {
+      _bloc.add(_InitializeWithCurrentSong(
+        song: audioService.currentSong!,
+        playlist: audioService.playlist,
+        index: audioService.currentIndex,
+        repeatMode: audioService.repeatMode,
+        isShuffle: audioService.isShuffle,
+      ));
+    }
   }
 
   @override

@@ -50,6 +50,25 @@ class ToggleRepeat extends PlayerEvent {}
 
 class ToggleShuffle extends PlayerEvent {}
 
+class _InitializeWithCurrentSong extends PlayerEvent {
+  final Song song;
+  final List<Song> playlist;
+  final int index;
+  final RepeatMode repeatMode;
+  final bool isShuffle;
+
+  const _InitializeWithCurrentSong({
+    required this.song,
+    required this.playlist,
+    required this.index,
+    required this.repeatMode,
+    required this.isShuffle,
+  });
+
+  @override
+  List<Object?> get props => [song, playlist, index, repeatMode, isShuffle];
+}
+
 class PlayerState extends Equatable {
   final Song? currentSong;
   final List<Song> playlist;
