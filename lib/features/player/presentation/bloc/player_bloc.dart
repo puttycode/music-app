@@ -113,6 +113,7 @@ class PlayerBloc extends Bloc<PlayerEvent, PlayerState> {
   }
 
   void _onUpdateCurrentSong(_UpdateCurrentSong event, Emitter<PlayerState> emit) {
+    AppLogger.log('_onUpdateCurrentSong: ${event.song?.title} - ${event.song?.artist}');
     emit(state.copyWith(
       currentSong: event.song,
       playlist: _audioService.playlist,
@@ -120,6 +121,7 @@ class PlayerBloc extends Bloc<PlayerEvent, PlayerState> {
       repeatMode: _audioService.repeatMode,
       isShuffle: _audioService.isShuffle,
     ));
+    AppLogger.log('State updated, currentSong: ${state.currentSong?.title}');
   }
 
   @override
