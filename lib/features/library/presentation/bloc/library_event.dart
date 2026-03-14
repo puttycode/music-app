@@ -20,3 +20,11 @@ class CreatePlaylist extends LibraryEvent {
   @override
   List<Object?> get props => [name];
 }
+
+class DeletePlaylist extends LibraryEvent {
+  final String name;
+  const DeletePlaylist(this.name);
+
+  @override
+  List<Object?> get props => [name];
+}

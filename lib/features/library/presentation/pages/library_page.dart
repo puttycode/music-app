@@ -213,20 +213,55 @@ class _PlaylistsTab extends StatelessWidget {
       itemCount: playlists.length,
       itemBuilder: (context, index) {
         final playlist = playlists[index];
-        return ListTile(
-          leading: Container(
-            width: 56,
-            height: 56,
-            decoration: BoxDecoration(
-              color: Theme.of(context).colorScheme.surface,
-              borderRadius: BorderRadius.circular(8),
+        
+        // Don't allow deleting default playlists
+        if (playlist.name == '我喜欢的音乐' || playlist.name == '最近播放') {
+          return ListTile(
+            leading: Container(
+              width: 56,
+              height: 56,
+              decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.surface,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Icon(
+                playlist.name == '我喜欢的音乐' ? Icons.favorite : Icons.history,
+              ),
             ),
-            child: const Icon(Icons.queue_music),
+            title: Text(playlist.name),
+            subtitle: Text('${playlist.songs.length} 首歌曲'),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () {},
+          );
+        }
+        
+        return Dismissible(
+          key: Key(playlist.name),
+          direction: DismissDirection.endToStart,
+          background: Container(
+            color: Colors.red,
+            alignment: Alignment.centerRight,
+            padding: const EdgeInsets.only(right: 16),
+            child: const Icon(Icons.delete, color: Colors.white),
           ),
-          title: Text(playlist.name),
-          subtitle: Text('${playlist.songs.length} 首歌曲'),
-          trailing: const Icon(Icons.chevron_right),
-          onTap: () {},
+          onDismissed: (_) {
+            context.read<LibraryBloc>().add(DeletePlaylist(playlist.name));
+          },
+          child: ListTile(
+            leading: Container(
+              width: 56,
+              height: 56,
+              decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.surface,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: const Icon(Icons.queue_music),
+            ),
+            title: Text(playlist.name),
+            subtitle: Text('${playlist.songs.length} 首歌曲'),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () {},
+          ),
         );
       },
     );

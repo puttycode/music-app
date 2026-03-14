@@ -73,7 +73,7 @@ class HomeBloc extends Bloc<HomeEvent, HomeState> {
       final recentBox = Hive.box(AppConstants.recentPlaysBox);
       final recentSongs = recentBox.values.map((e) {
         if (e is Map) {
-          return Song.fromJson(Map<String, dynamic>.from(e));
+          return Song.fromLocal(Map<String, dynamic>.from(e));
         }
         return null;
       }).whereType<Song>().toList();
@@ -121,7 +121,7 @@ class HomeBloc extends Bloc<HomeEvent, HomeState> {
       
       final recentSongs = recentBox.values.map((e) {
         if (e is Map) {
-          return Song.fromJson(Map<String, dynamic>.from(e));
+          return Song.fromLocal(Map<String, dynamic>.from(e));
         }
         return null;
       }).whereType<Song>().toList();

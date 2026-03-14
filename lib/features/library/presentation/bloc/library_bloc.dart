@@ -69,6 +69,7 @@ class LibraryBloc extends Bloc<LibraryEvent, LibraryState> {
     on<RequestPermission>(_onRequestPermission);
     on<LoadPlaylists>(_onLoadPlaylists);
     on<CreatePlaylist>(_onCreatePlaylist);
+    on<DeletePlaylist>(_onDeletePlaylist);
   }
 
   Future<void> _onLoadLocalMusic(LoadLocalMusic event, Emitter<LibraryState> emit) async {
@@ -78,7 +79,7 @@ class LibraryBloc extends Bloc<LibraryEvent, LibraryState> {
       final recentBox = Hive.box(AppConstants.recentPlaysBox);
       final recentSongs = recentBox.values.map((e) {
         if (e is Map) {
-          return Song.fromJson(Map<String, dynamic>.from(e));
+          return Song.fromLocal(Map<String, dynamic>.from(e));
         }
         return null;
       }).whereType<Song>().toList();
@@ -156,5 +157,13 @@ class LibraryBloc extends Bloc<LibraryEvent, LibraryState> {
     emit(state.copyWith(
       playlists: [...state.playlists, newPlaylist],
     ));
+  }
+
+  Future<void> _onDeletePlaylist(DeletePlaylist event, Emitter<LibraryState> emit) async {
+    final playlistBox = Hive.box(AppConstants.playlistBox);
+    await playlistBox.delete(event.name);
+    
+    final updatedPlaylists = state.playlists.where((p) => p.name != event.name).toList();
+    emit(state.copyWith(playlists: updatedPlaylists));
   }
 }
