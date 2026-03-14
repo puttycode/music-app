@@ -182,7 +182,7 @@ class _ProgressBar extends StatelessWidget {
   final AudioPlayerService audioService;
   final PlayerState state;
 
-  const _ProgressBar({required AudioPlayerService audioService, required PlayerState state}) : audioService = audioService, state = state;
+  _ProgressBar({required this.audioService, required this.state});
 
   @override
   Widget build(BuildContext context) {
@@ -241,7 +241,7 @@ class _Controls extends StatelessWidget {
   final AudioPlayerService audioService;
   final PlayerState state;
 
-  const _Controls({required AudioPlayerService audioService, required PlayerState state}) : audioService = audioService, state = state;
+  _Controls({required this.audioService, required this.state});
 
   @override
   Widget build(BuildContext context) {
@@ -315,7 +315,7 @@ class _Controls extends StatelessWidget {
 class _BottomControls extends StatelessWidget {
   final AudioPlayerService audioService;
 
-  const _BottomControls({required AudioPlayerService audioService}) : audioService = audioService;
+  _BottomControls({required this.audioService});
 
   @override
   Widget build(BuildContext context) {
