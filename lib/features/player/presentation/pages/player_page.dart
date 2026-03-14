@@ -214,24 +214,24 @@ class _ProgressBar extends StatelessWidget {
                     },
                   ),
                 ),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 8),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    DurationFormatter.format(position),
-                    style: AppTextStyles.bodySmall,
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 8),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        DurationFormatter.format(position),
+                        style: AppTextStyles.bodySmall,
+                      ),
+                      Text(
+                        DurationFormatter.format(duration),
+                        style: AppTextStyles.bodySmall,
+                      ),
+                    ],
                   ),
-                  Text(
-                    DurationFormatter.format(duration),
-                    style: AppTextStyles.bodySmall,
-                  ),
-                ],
-              ),
-            ),
-          ],
-        );
+                ),
+              ],
+            );
       },
     );
   }
