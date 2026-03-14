@@ -85,10 +85,20 @@ class PlayerBloc extends Bloc<PlayerEvent, PlayerState> {
 
   Future<void> _onPlayNext(PlayNext event, Emitter<PlayerState> emit) async {
     await _audioService.playNext();
+    emit(state.copyWith(
+      currentSong: _audioService.currentSong,
+      playlist: _audioService.playlist,
+      currentIndex: _audioService.currentIndex,
+    ));
   }
 
   Future<void> _onPlayPrevious(PlayPrevious event, Emitter<PlayerState> emit) async {
     await _audioService.playPrevious();
+    emit(state.copyWith(
+      currentSong: _audioService.currentSong,
+      playlist: _audioService.playlist,
+      currentIndex: _audioService.currentIndex,
+    ));
   }
 
   Future<void> _onSeekTo(SeekTo event, Emitter<PlayerState> emit) async {
