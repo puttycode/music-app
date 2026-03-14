@@ -50,7 +50,7 @@ class _HomeView extends StatelessWidget {
                 slivers: [
                   SliverAppBar(
                     floating: true,
-                    backgroundColor: AppColors.background,
+                    backgroundColor: Theme.of(context).scaffoldBackgroundColor,
                     title: Text('音乐', style: AppTextStyles.headlineLarge),
                   ),
                   if (state.recentPlays.isNotEmpty) ...[

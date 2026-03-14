@@ -105,11 +105,14 @@ class _PlayerViewState extends State<_PlayerView> {
       body: BlocBuilder<PlayerBloc, PlayerState>(
         builder: (context, state) {
           final song = state.currentSong;
+          final isDark = Theme.of(context).brightness == Brightness.dark;
 
           return Container(
-            decoration: const BoxDecoration(
+            decoration: BoxDecoration(
               gradient: LinearGradient(
-                colors: [AppColors.primaryDark, AppColors.background],
+                colors: isDark 
+                    ? [AppColors.primaryDark, AppColors.background]
+                    : [AppColors.primary, Colors.white],
                 begin: Alignment.topCenter,
                 end: Alignment.bottomCenter,
               ),
@@ -158,7 +161,7 @@ class _LyricsView extends StatelessWidget {
       child: Container(
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(16),
-          color: AppColors.surfaceVariant.withValues(alpha: 0.5),
+          color: Theme.of(context).colorScheme.surface.withValues(alpha: 0.5),
         ),
         child: Center(
           child: SingleChildScrollView(
@@ -168,19 +171,19 @@ class _LyricsView extends StatelessWidget {
               children: [
                 Text(
                   song?.title ?? '未知歌曲',
-                  style: AppTextStyles.headlineMedium.copyWith(color: AppColors.onSurface),
+                  style: AppTextStyles.headlineMedium.copyWith(color: Theme.of(context).colorScheme.onSurface),
                   textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 16),
                 Text(
                   song?.artist ?? '未知艺术家',
-                  style: AppTextStyles.bodyMedium.copyWith(color: AppColors.onSurfaceVariant),
+                  style: AppTextStyles.bodyMedium.copyWith(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7)),
                   textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 32),
-                const Text(
+                Text(
                   '暂无歌词',
-                  style: TextStyle(color: AppColors.onSurfaceVariant),
+                  style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5)),
                 ),
               ],
             ),
