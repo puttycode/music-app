@@ -1,5 +1,7 @@
 import 'package:dio/dio.dart';
 import '../features/player/domain/entities/song.dart';
+import '../features/player/domain/entities/artist.dart';
+import '../features/player/domain/entities/album.dart';
 
 class AppLogger {
   static Function(String)? _logCallback;
@@ -22,6 +24,8 @@ abstract class MusicApi {
   String get name;
   String get baseUrl;
   Future<List<Song>> searchSongs(String query);
+  Future<List<Artist>> searchArtists(String query);
+  Future<List<Album>> searchAlbums(String query);
   Future<List<Song>> getTopCharts();
   bool isFullAudio(Song song);
 }
@@ -103,6 +107,51 @@ class KuwoApi implements MusicApi {
   }
 
   @override
+  Future<List<Artist>> searchArtists(String query) async {
+    try {
+      final response = await _dio.get(
+        '$baseUrl/',
+        queryParameters: {'name': query, 'type': 'artist', 'limit': 20},
+      );
+      
+      if (response.data['code'] != 200) {
+        return [];
+      }
+      
+      final results = response.data['data'] as List? ?? [];
+      return results.map((e) => Artist.fromJson(e)).toList();
+    } catch (e) {
+      AppLogger.log('Kuwo API searchArtists 异常: $e');
+      return [];
+    }
+  }
+
+  @override
+  Future<List<Album>> searchAlbums(String query) async {
+    try {
+      // Search songs first, then extract unique albums
+      final songs = await searchSongs(query);
+      final albumMap = <String, Album>{};
+      
+      for (var song in songs) {
+        if (song.album.isNotEmpty && !albumMap.containsKey(song.album)) {
+          albumMap[song.album] = Album(
+            id: song.id.toString(),
+            name: song.album,
+            artist: song.artist,
+            cover: song.albumArt,
+          );
+        }
+      }
+      
+      return albumMap.values.toList();
+    } catch (e) {
+      AppLogger.log('Kuwo API searchAlbums 异常: $e');
+      return [];
+    }
+  }
+
+  @override
   bool isFullAudio(Song song) {
     if (song.audioUrl == null) return false;
     return song.audioUrl!.isNotEmpty;
@@ -146,6 +195,16 @@ class CustomApi implements MusicApi {
   @override
   Future<List<Song>> getTopCharts() async {
     return searchSongs('热门');
+  }
+
+  @override
+  Future<List<Artist>> searchArtists(String query) async {
+    return [];
+  }
+
+  @override
+  Future<List<Album>> searchAlbums(String query) async {
+    return [];
   }
 
   @override
@@ -208,6 +267,16 @@ class MusicApiService {
   Future<List<Song>> getTopCharts() async {
     AppLogger.log('获取热门歌曲');
     return _currentApi.getTopCharts();
+  }
+
+  Future<List<Artist>> searchArtists(String query) async {
+    AppLogger.log('搜索歌手: $query');
+    return _currentApi.searchArtists(query);
+  }
+
+  Future<List<Album>> searchAlbums(String query) async {
+    AppLogger.log('搜索专辑: $query');
+    return _currentApi.searchAlbums(query);
   }
 
   bool isFullAudio(Song song) {

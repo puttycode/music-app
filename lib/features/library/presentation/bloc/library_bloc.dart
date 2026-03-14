@@ -2,8 +2,11 @@ import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:music_app/features/player/domain/entities/song.dart';
+import 'package:music_app/features/player/domain/entities/artist.dart';
+import 'package:music_app/features/player/domain/entities/album.dart';
 import 'package:music_app/core/constants/app_constants.dart';
 import 'package:music_app/services/audio_player_service.dart' show AppLogger, AudioPlayerService;
+import 'package:music_app/services/music_api_service.dart';
 
 part 'library_event.dart';
 
@@ -28,8 +31,8 @@ class LibraryState extends Equatable {
   final bool isLoading;
   final String? error;
   final List<Song> localSongs;
-  final List<String> artists;
-  final List<String> albums;
+  final List<Artist> artists;
+  final List<Album> albums;
   final List<Playlist> playlists;
 
   const LibraryState({
@@ -45,8 +48,8 @@ class LibraryState extends Equatable {
     bool? isLoading,
     String? error,
     List<Song>? localSongs,
-    List<String>? artists,
-    List<String>? albums,
+    List<Artist>? artists,
+    List<Album>? albums,
     List<Playlist>? playlists,
   }) {
     return LibraryState(

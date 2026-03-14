@@ -5,6 +5,8 @@ import 'package:music_app/core/widgets/loading_widget.dart';
 import 'package:music_app/core/widgets/error_widget.dart' as app_widgets;
 import 'package:music_app/services/audio_player_service.dart';
 import 'package:music_app/features/player/domain/entities/song.dart';
+import 'package:music_app/features/player/domain/entities/artist.dart';
+import 'package:music_app/features/player/domain/entities/album.dart';
 import 'package:music_app/features/library/presentation/bloc/library_bloc.dart';
 import 'package:music_app/features/player/presentation/pages/player_page.dart';
 
@@ -269,7 +271,7 @@ class _PlaylistsTab extends StatelessWidget {
 }
 
 class _ArtistsTab extends StatelessWidget {
-  final List<String> artists;
+  final List<Artist> artists;
 
   const _ArtistsTab({required this.artists});
 
@@ -282,14 +284,25 @@ class _ArtistsTab extends StatelessWidget {
     return ListView.builder(
       itemCount: artists.length,
       itemBuilder: (context, index) {
+        final artist = artists[index];
         return ListTile(
           leading: CircleAvatar(
+            backgroundImage: artist.avatar != null
+                ? NetworkImage(artist.avatar!)
+                : null,
             backgroundColor: Theme.of(context).colorScheme.surface,
-            child: Text(artists[index][0].toUpperCase()),
+            child: artist.avatar == null
+                ? Text(artist.name.isNotEmpty ? artist.name[0].toUpperCase() : '?')
+                : null,
           ),
-          title: Text(artists[index]),
+          title: Text(artist.name),
+          subtitle: artist.musicNum != null
+              ? Text('${artist.musicNum} 首歌曲')
+              : null,
           trailing: const Icon(Icons.chevron_right),
-          onTap: () {},
+          onTap: () {
+            // TODO: Implement artist detail page navigation
+          },
         );
       },
     );
@@ -297,7 +310,7 @@ class _ArtistsTab extends StatelessWidget {
 }
 
 class _AlbumsTab extends StatelessWidget {
-  final List<String> albums;
+  final List<Album> albums;
 
   const _AlbumsTab({required this.albums});
 
@@ -310,6 +323,7 @@ class _AlbumsTab extends StatelessWidget {
     return ListView.builder(
       itemCount: albums.length,
       itemBuilder: (context, index) {
+        final album = albums[index];
         return ListTile(
           leading: Container(
             width: 56,
@@ -318,11 +332,25 @@ class _AlbumsTab extends StatelessWidget {
               color: Theme.of(context).colorScheme.surface,
               borderRadius: BorderRadius.circular(8),
             ),
-            child: const Icon(Icons.album),
+            child: album.cover != null
+                ? ClipRRect(
+                    borderRadius: BorderRadius.circular(4),
+                    child: Image.network(
+                      album.cover!,
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, __, ___) => const Icon(Icons.album),
+                    ),
+                  )
+                : const Icon(Icons.album),
           ),
-          title: Text(albums[index]),
+          title: Text(album.name),
+          subtitle: album.artist != null
+              ? Text('艺术家: ${album.artist}')
+              : null,
           trailing: const Icon(Icons.chevron_right),
-          onTap: () {},
+          onTap: () {
+            // TODO: Implement album detail page navigation
+          },
         );
       },
     );
