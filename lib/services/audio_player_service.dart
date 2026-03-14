@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:just_audio/just_audio.dart';
 import 'package:rxdart/rxdart.dart';
 import '../features/player/domain/entities/song.dart';
+import 'music_api_service.dart';
 
 enum RepeatMode { off, one, all }
 
@@ -71,21 +72,31 @@ class AudioPlayerService {
   }
 
   Future<void> setPlaylist(List<Song> songs, int startIndex) async {
+    AppLogger.log('setPlaylist called: ${songs.length} songs, startIndex: $startIndex');
+    if (songs.isEmpty) return;
+    
     _playlistSubject.add(songs);
     _currentIndexSubject.add(startIndex);
-    _currentSongSubject.add(songs[startIndex]);
-    await _playSong(songs[startIndex]);
+    final song = songs[startIndex];
+    AppLogger.log('Playing song: ${song.title} - ${song.artist}, url: ${song.audioUrl}');
+    _currentSongSubject.add(song);
+    await _playSong(song);
   }
 
   Future<void> _playSong(Song song) async {
     try {
+      AppLogger.log('_playSong: ${song.title}, url: ${song.audioUrl}');
       if (song.isLocal && song.localPath != null) {
         await _audioPlayer.setFilePath(song.localPath!);
       } else if (song.audioUrl != null) {
+        AppLogger.log('Setting URL: ${song.audioUrl}');
         await _audioPlayer.setUrl(song.audioUrl!);
       }
+      AppLogger.log('Starting playback');
       await _audioPlayer.play();
+      AppLogger.log('Playback started');
     } catch (e) {
+      AppLogger.log('Error playing song: $e');
       print('Error playing song: $e');
     }
   }

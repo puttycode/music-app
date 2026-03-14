@@ -78,7 +78,7 @@ class MusicApiService {
         
         final songUrl = '$_kuwoApi?id=$rid&type=song&level=exhigh&format=mp3';
         
-        return Song(
+        final song = Song(
           id: int.tryParse(rid.toString()) ?? DateTime.now().millisecondsSinceEpoch,
           title: name,
           artist: artist,
@@ -88,6 +88,9 @@ class MusicApiService {
           duration: Duration.zero,
           isLocal: false,
         );
+        
+        AppLogger.log('Song created: ${song.title} - ${song.artist}');
+        return song;
       }).toList();
     } catch (e) {
       AppLogger.log('Kuwo API 异常: $e');
