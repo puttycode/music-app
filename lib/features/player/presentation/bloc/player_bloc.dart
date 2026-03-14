@@ -43,6 +43,7 @@ class PlayerBloc extends Bloc<PlayerEvent, PlayerState> {
     });
 
     _durationSubscription = _audioService.durationStream.listen((duration) {
+      AppLogger.log('Duration stream: $duration');
       if (duration != null) {
         add(_UpdateDuration(duration));
       }
@@ -52,6 +53,12 @@ class PlayerBloc extends Bloc<PlayerEvent, PlayerState> {
       AppLogger.log('PlayerBloc received song: ${song?.title} - ${song?.artist}');
       add(_UpdateCurrentSong(song));
     });
+    
+    // Also emit current song immediately if already playing
+    final currentSong = _audioService.currentSong;
+    if (currentSong != null) {
+      AppLogger.log('Initial currentSong: ${currentSong.title} - ${currentSong.artist}');
+    }
   }
 
   Future<void> _onPlaySong(PlaySong event, Emitter<PlayerState> emit) async {

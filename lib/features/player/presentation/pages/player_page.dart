@@ -4,6 +4,7 @@ import 'package:music_app/core/theme/colors.dart';
 import 'package:music_app/core/theme/text_styles.dart';
 import 'package:music_app/core/utils/duration_formatter.dart';
 import 'package:music_app/services/audio_player_service.dart';
+import 'package:music_app/services/music_api_service.dart';
 import 'package:music_app/features/player/domain/entities/song.dart';
 import 'package:music_app/features/player/presentation/bloc/player_bloc.dart';
 import 'package:music_app/features/player/presentation/bloc/player_event_state.dart';
@@ -16,12 +17,25 @@ class PlayerPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final audioService = AudioPlayerService.instance;
+    final currentSong = audioService.currentSong;
+    final currentPlaylist = audioService.playlist;
+    
+    AppLogger.log('PlayerPage: currentSong=${currentSong?.title}, playlist length=${currentPlaylist.length}');
+    
     return BlocProvider(
       create: (_) {
         final bloc = PlayerBloc();
-        if (playlist != null) {
+        
+        // Use existing song if available, otherwise use provided playlist
+        if (currentSong != null && currentPlaylist.isNotEmpty) {
+          AppLogger.log('Using existing playlist: ${currentPlaylist.length} songs');
+          bloc.add(PlaySong(song: currentSong, playlist: currentPlaylist, index: audioService.currentIndex));
+        } else if (playlist != null) {
+          AppLogger.log('Using new playlist: ${playlist!.length} songs');
           bloc.add(PlaySong(song: playlist![initialIndex ?? 0], playlist: playlist, index: initialIndex ?? 0));
         }
+        
         return bloc;
       },
       child: const _PlayerView(),
