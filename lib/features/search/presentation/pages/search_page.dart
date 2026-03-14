@@ -120,15 +120,6 @@ class _SearchViewState extends State<_SearchView> {
                         overflow: TextOverflow.ellipsis,
                         style: AppTextStyles.bodySmall,
                       ),
-                      trailing: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          IconButton(
-                            icon: const Icon(Icons.play_circle_filled),
-                            color: AppColors.primary,
-                            onPressed: () => _playSong(context, state.results, index),
-                          ),
-                        ],
                       ),
                       onTap: () => _playSong(context, state.results, index),
                     );
@@ -165,31 +156,7 @@ class _SearchViewState extends State<_SearchView> {
               );
             }).toList(),
           ),
-          const SizedBox(height: 24),
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: AppColors.surfaceVariant,
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    const Icon(Icons.info_outline, color: AppColors.primary, size: 20),
-                    const SizedBox(width: 8),
-                    Text('提示', style: AppTextStyles.titleMedium),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  '当前使用酷我音乐 API，支持完整播放。',
-                  style: AppTextStyles.bodySmall,
-                ),
-              ],
-            ),
-          ),
+          const SizedBox(height: 24          ),
         ],
       ),
     );

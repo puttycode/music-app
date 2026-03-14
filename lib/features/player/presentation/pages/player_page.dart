@@ -34,14 +34,13 @@ class _PlayerPageState extends State<PlayerPage> {
     super.didChangeDependencies();
     if (!_initialized) {
       _initialized = true;
-      final audioService = AudioPlayerService.instance;
       
+      // Only play new playlist if explicitly provided
+      // Otherwise, just let the existing player state show
       if (widget.playlist != null && widget.playlist!.isNotEmpty) {
+        final audioService = AudioPlayerService.instance;
         AppLogger.log('Using new playlist: ${widget.playlist!.length} songs');
         _bloc.add(PlaySong(song: widget.playlist![widget.initialIndex ?? 0], playlist: widget.playlist, index: widget.initialIndex ?? 0));
-      } else if (audioService.currentSong != null && audioService.playlist.isNotEmpty) {
-        AppLogger.log('Using existing playlist: ${audioService.playlist.length} songs, current: ${audioService.currentSong?.title}');
-        _bloc.add(PlaySong(song: audioService.currentSong!, playlist: audioService.playlist, index: audioService.currentIndex));
       }
     }
   }

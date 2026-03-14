@@ -52,12 +52,6 @@ class _HomeView extends StatelessWidget {
                     floating: true,
                     backgroundColor: AppColors.background,
                     title: Text('音乐', style: AppTextStyles.headlineLarge),
-                    actions: [
-                      IconButton(
-                        icon: const Icon(Icons.settings),
-                        onPressed: () {},
-                      ),
-                    ],
                   ),
                   if (state.recentPlays.isNotEmpty) ...[
                     const SliverToBoxAdapter(
