@@ -20,9 +20,14 @@ class LibraryPage extends StatelessWidget {
   }
 }
 
-class _LibraryView extends StatelessWidget {
+class _LibraryView extends StatefulWidget {
   const _LibraryView();
 
+  @override
+  State<_LibraryView> createState() => _LibraryViewState();
+}
+
+class _LibraryViewState extends State<_LibraryView> {
   @override
   Widget build(BuildContext context) {
     return DefaultTabController(
@@ -69,6 +74,38 @@ class _LibraryView extends StatelessWidget {
             );
           },
         ),
+      ),
+    );
+  }
+
+  void _showCreatePlaylistDialog(BuildContext context) {
+    final controller = TextEditingController();
+    showDialog(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('新建播放列表'),
+        content: TextField(
+          controller: controller,
+          decoration: const InputDecoration(
+            hintText: '播放列表名称',
+          ),
+          autofocus: true,
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text('取消'),
+          ),
+          TextButton(
+            onPressed: () {
+              if (controller.text.isNotEmpty) {
+                context.read<LibraryBloc>().add(CreatePlaylist(controller.text));
+                Navigator.pop(dialogContext);
+              }
+            },
+            child: const Text('创建'),
+          ),
+        ],
       ),
     );
   }
@@ -253,38 +290,6 @@ class _AlbumsTab extends StatelessWidget {
           onTap: () {},
         );
       },
-    );
-  }
-
-  void _showCreatePlaylistDialog(BuildContext context) {
-    final controller = TextEditingController();
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('新建播放列表'),
-        content: TextField(
-          controller: controller,
-          decoration: const InputDecoration(
-            hintText: '播放列表名称',
-          ),
-          autofocus: true,
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('取消'),
-          ),
-          TextButton(
-            onPressed: () {
-              if (controller.text.isNotEmpty) {
-                context.read<LibraryBloc>().add(CreatePlaylist(controller.text));
-                Navigator.pop(context);
-              }
-            },
-            child: const Text('创建'),
-          ),
-        ],
-      ),
     );
   }
 }
