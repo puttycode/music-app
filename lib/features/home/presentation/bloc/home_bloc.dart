@@ -1,7 +1,9 @@
 import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:hive_flutter/hive_flutter.dart';
 import 'package:music_app/features/player/domain/entities/song.dart';
 import 'package:music_app/services/music_api_service.dart';
+import 'package:music_app/core/constants/app_constants.dart';
 
 abstract class HomeEvent extends Equatable {
   const HomeEvent();
@@ -11,6 +13,14 @@ abstract class HomeEvent extends Equatable {
 }
 
 class LoadHomeData extends HomeEvent {}
+
+class AddToRecentPlays extends HomeEvent {
+  final Song song;
+  const AddToRecentPlays(this.song);
+
+  @override
+  List<Object?> get props => [song];
+}
 
 class HomeState extends Equatable {
   final bool isLoading;
@@ -52,17 +62,22 @@ class HomeBloc extends Bloc<HomeEvent, HomeState> {
 
   HomeBloc() : super(const HomeState()) {
     on<LoadHomeData>(_onLoadHomeData);
+    on<AddToRecentPlays>(_onAddToRecentPlays);
   }
 
   Future<void> _onLoadHomeData(LoadHomeData event, Emitter<HomeState> emit) async {
     emit(state.copyWith(isLoading: true));
 
     try {
+      final recentBox = Hive.box(AppConstants.recentPlaysBox);
+      final recentSongs = recentBox.values.map((e) => e as Song).toList();
+      
       final topCharts = await _apiService.getTopCharts();
       final recommendations = await _apiService.searchSongs('pop');
 
       emit(state.copyWith(
         isLoading: false,
+        recentPlays: recentSongs,
         topCharts: topCharts,
         recommendations: recommendations,
       ));
@@ -71,6 +86,29 @@ class HomeBloc extends Bloc<HomeEvent, HomeState> {
         isLoading: false,
         error: '加载数据失败: $e',
       ));
+    }
+  }
+
+  Future<void> _onAddToRecentPlays(AddToRecentPlays event, Emitter<HomeState> emit) async {
+    try {
+      final recentBox = Hive.box(AppConstants.recentPlaysBox);
+      
+      final existing = recentBox.values.where((s) => (s as Song).id == event.song.id).toList();
+      for (var s in existing) {
+        await recentBox.delete(s.hashCode);
+      }
+      
+      await recentBox.put(event.song.hashCode, event.song);
+      
+      if (recentBox.length > AppConstants.recentPlaysMax) {
+        final keys = recentBox.keys.toList();
+        await recentBox.delete(keys.first);
+      }
+      
+      final recentSongs = recentBox.values.map((e) => e as Song).toList();
+      emit(state.copyWith(recentPlays: recentSongs));
+    } catch (e) {
+      AppLogger.log('Error adding to recent: $e');
     }
   }
 }
