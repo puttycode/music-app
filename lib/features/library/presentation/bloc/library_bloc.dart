@@ -103,8 +103,14 @@ class LibraryBloc extends Bloc<LibraryEvent, LibraryState> {
   }
 
   Future<void> _onLoadPlaylists(LoadPlaylists event, Emitter<LibraryState> emit) async {
-    final audioService = AudioPlayerService.instance;
-    final currentPlaylist = audioService.playlist;
+    // Load recent plays from Hive for "最近播放"
+    final recentBox = Hive.box(AppConstants.recentPlaysBox);
+    final recentSongs = recentBox.values.map((e) {
+      if (e is Map) {
+        return Song.fromLocal(Map<String, dynamic>.from(e));
+      }
+      return null;
+    }).whereType<Song>().toList();
     
     // Load user playlists from Hive
     final playlistBox = Hive.box(AppConstants.playlistBox);
@@ -112,7 +118,7 @@ class LibraryBloc extends Bloc<LibraryEvent, LibraryState> {
       if (e is Map) {
         final songs = (e['songs'] as List?)?.map((s) {
           if (s is Map) {
-            return Song.fromJson(Map<String, dynamic>.from(s));
+            return Song.fromLocal(Map<String, dynamic>.from(s));
           }
           return null;
         }).whereType<Song>().toList() ?? <Song>[];
@@ -135,7 +141,7 @@ class LibraryBloc extends Bloc<LibraryEvent, LibraryState> {
         ),
         Playlist(
           name: '最近播放',
-          songs: currentPlaylist.isNotEmpty ? currentPlaylist : const [],
+          songs: recentSongs,
           icon: 'history',
         ),
         ...userPlaylists,
