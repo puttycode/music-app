@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:permission_handler/permission_handler.dart';
-import 'package:music_app/core/theme/colors.dart';
-import 'package:music_app/core/theme/text_styles.dart';
 import 'package:music_app/core/widgets/loading_widget.dart';
 import 'package:music_app/core/widgets/error_widget.dart' as app_widgets;
 import 'package:music_app/services/audio_player_service.dart';
@@ -16,7 +14,7 @@ class LibraryPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return BlocProvider(
-      create: (_) => LibraryBloc()..add(LoadLocalMusic()),
+      create: (_) => LibraryBloc()..add(LoadLocalMusic())..add(LoadPlaylists()),
       child: const _LibraryView(),
     );
   }
@@ -28,14 +26,15 @@ class _LibraryView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return DefaultTabController(
-      length: 3,
+      length: 4,
       child: Scaffold(
         appBar: AppBar(
           title: const Text('音乐库'),
-          backgroundColor: AppColors.background,
+          backgroundColor: Theme.of(context).appBarTheme.backgroundColor,
           bottom: const TabBar(
             tabs: [
               Tab(text: '本地音乐'),
+              Tab(text: '播放列表'),
               Tab(text: '歌手'),
               Tab(text: '专辑'),
             ],
@@ -57,6 +56,7 @@ class _LibraryView extends StatelessWidget {
             return TabBarView(
               children: [
                 _LocalSongsTab(songs: state.localSongs),
+                _PlaylistsTab(playlists: state.playlists),
                 _ArtistsTab(artists: state.artists),
                 _AlbumsTab(albums: state.albums),
               ],
@@ -109,14 +109,14 @@ class _LocalSongsTab extends StatelessWidget {
                     errorBuilder: (_, __, ___) => Container(
                       width: 56,
                       height: 56,
-                      color: AppColors.surfaceVariant,
+                      color: Theme.of(context).colorScheme.surface,
                       child: const Icon(Icons.music_note),
                     ),
                   )
                 : Container(
                     width: 56,
                     height: 56,
-                    color: AppColors.surfaceVariant,
+                    color: Theme.of(context).colorScheme.surface,
                     child: const Icon(Icons.music_note),
                   ),
           ),
@@ -124,17 +124,15 @@ class _LocalSongsTab extends StatelessWidget {
             song.title,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: AppTextStyles.titleMedium,
           ),
           subtitle: Text(
             song.artist,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: AppTextStyles.bodySmall,
           ),
           trailing: IconButton(
             icon: const Icon(Icons.play_circle_filled),
-            color: AppColors.primary,
+            color: Theme.of(context).colorScheme.primary,
             onPressed: () => _playSong(context, songs, index),
           ),
           onTap: () => _playSong(context, songs, index),
@@ -150,6 +148,44 @@ class _LocalSongsTab extends StatelessWidget {
       MaterialPageRoute(
         builder: (_) => PlayerPage(playlist: playlist, initialIndex: index),
       ),
+    );
+  }
+}
+
+class _PlaylistsTab extends StatelessWidget {
+  final List<Playlist> playlists;
+
+  const _PlaylistsTab({required this.playlists});
+
+  @override
+  Widget build(BuildContext context) {
+    if (playlists.isEmpty) {
+      return app_widgets.EmptyWidget(
+        message: '暂无播放列表',
+        icon: Icons.queue_music,
+      );
+    }
+
+    return ListView.builder(
+      itemCount: playlists.length,
+      itemBuilder: (context, index) {
+        final playlist = playlists[index];
+        return ListTile(
+          leading: Container(
+            width: 56,
+            height: 56,
+            decoration: BoxDecoration(
+              color: Theme.of(context).colorScheme.surface,
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: const Icon(Icons.queue_music),
+          ),
+          title: Text(playlist.name),
+          subtitle: Text('${playlist.songs.length} 首歌曲'),
+          trailing: const Icon(Icons.chevron_right),
+          onTap: () {},
+        );
+      },
     );
   }
 }
@@ -170,7 +206,7 @@ class _ArtistsTab extends StatelessWidget {
       itemBuilder: (context, index) {
         return ListTile(
           leading: CircleAvatar(
-            backgroundColor: AppColors.surfaceVariant,
+            backgroundColor: Theme.of(context).colorScheme.surface,
             child: Text(artists[index][0].toUpperCase()),
           ),
           title: Text(artists[index]),
@@ -201,7 +237,7 @@ class _AlbumsTab extends StatelessWidget {
             width: 56,
             height: 56,
             decoration: BoxDecoration(
-              color: AppColors.surfaceVariant,
+              color: Theme.of(context).colorScheme.surface,
               borderRadius: BorderRadius.circular(8),
             ),
             child: const Icon(Icons.album),

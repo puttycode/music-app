@@ -152,7 +152,7 @@ class MiniPlayer extends StatelessWidget {
       },
       child: Container(
         height: 64,
-        color: AppColors.surfaceVariant,
+        color: Theme.of(context).colorScheme.surface,
         child: Column(
           children: [
             StreamBuilder(
@@ -163,12 +163,13 @@ class MiniPlayer extends StatelessWidget {
                   stream: audioService.currentSongStream,
                   builder: (context, songSnapshot) {
                     final song = songSnapshot.data;
+                    final primaryColor = Theme.of(context).colorScheme.primary;
                     return LinearProgressIndicator(
                       value: song != null && song.duration.inMilliseconds > 0
                           ? position.inMilliseconds / song.duration.inMilliseconds
                           : 0,
-                      backgroundColor: AppColors.secondary.withOpacity(0.3),
-                      valueColor: const AlwaysStoppedAnimation(AppColors.primary),
+                      backgroundColor: primaryColor.withOpacity(0.3),
+                      valueColor: AlwaysStoppedAnimation(primaryColor),
                       minHeight: 2,
                     );
                   },
@@ -180,6 +181,11 @@ class MiniPlayer extends StatelessWidget {
                 stream: audioService.currentSongStream,
                 builder: (context, snapshot) {
                   final song = snapshot.data;
+                  final primaryColor = Theme.of(context).colorScheme.primary;
+                  final surfaceColor = Theme.of(context).colorScheme.surface;
+                  final onSurface = Theme.of(context).colorScheme.onSurface;
+                  final onSurfaceVariant = Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6);
+                  
                   return Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 16),
                     child: Row(
@@ -195,14 +201,14 @@ class MiniPlayer extends StatelessWidget {
                                   errorBuilder: (_, __, ___) => Container(
                                     width: 48,
                                     height: 48,
-                                    color: AppColors.surface,
+                                    color: surfaceColor,
                                     child: const Icon(Icons.music_note),
                                   ),
                                 )
                               : Container(
                                   width: 48,
                                   height: 48,
-                                  color: AppColors.surface,
+                                  color: surfaceColor,
                                   child: const Icon(Icons.music_note),
                                 ),
                         ),
@@ -214,18 +220,18 @@ class MiniPlayer extends StatelessWidget {
                             children: [
                               Text(
                                 song?.title ?? '',
-                                style: const TextStyle(
+                                style: TextStyle(
                                   fontWeight: FontWeight.w600,
-                                  color: AppColors.onBackground,
+                                  color: onSurface,
                                 ),
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                               ),
                               Text(
                                 song?.artist ?? '',
-                                style: const TextStyle(
+                                style: TextStyle(
                                   fontSize: 12,
-                                  color: AppColors.onSurfaceVariant,
+                                  color: onSurfaceVariant,
                                 ),
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
@@ -243,7 +249,7 @@ class MiniPlayer extends StatelessWidget {
                                     ? Icons.pause_circle_filled
                                     : Icons.play_circle_filled,
                                 size: 40,
-                                color: AppColors.primary,
+                                color: primaryColor,
                               ),
                               onPressed: () {
                                 if (isPlaying) {

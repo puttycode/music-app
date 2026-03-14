@@ -10,3 +10,5 @@ abstract class LibraryEvent extends Equatable {
 class LoadLocalMusic extends LibraryEvent {}
 
 class RequestPermission extends LibraryEvent {}
+
+class LoadPlaylists extends LibraryEvent {}

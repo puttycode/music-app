@@ -19,12 +19,12 @@ class AppTheme {
         onSurface: AppColors.onSurface,
         onError: AppColors.onBackground,
       ),
-      appBarTheme: AppBarTheme(
+      appBarTheme: const AppBarTheme(
         backgroundColor: AppColors.background,
         elevation: 0,
         centerTitle: true,
-        titleTextStyle: AppTextStyles.headlineMedium,
-        iconTheme: const IconThemeData(color: AppColors.onBackground),
+        titleTextStyle: TextStyle(color: AppColors.onBackground),
+        iconTheme: IconThemeData(color: AppColors.onBackground),
       ),
       bottomNavigationBarTheme: const BottomNavigationBarThemeData(
         backgroundColor: AppColors.surface,
@@ -97,22 +97,22 @@ class AppTheme {
       brightness: Brightness.light,
       primaryColor: AppColors.primary,
       scaffoldBackgroundColor: Colors.white,
-      colorScheme: ColorScheme.light(
+      colorScheme: const ColorScheme.light(
         primary: AppColors.primary,
         secondary: AppColors.secondary,
-        surface: Colors.grey[100]!,
+        surface: Color(0xFFF5F5F5),
         error: AppColors.error,
         onPrimary: Colors.white,
         onSecondary: Colors.black,
         onSurface: Colors.black87,
         onError: Colors.white,
       ),
-      appBarTheme: AppBarTheme(
+      appBarTheme: const AppBarTheme(
         backgroundColor: Colors.white,
         elevation: 0,
         centerTitle: true,
-        titleTextStyle: AppTextStyles.headlineMedium.copyWith(color: Colors.black87),
-        iconTheme: const IconThemeData(color: Colors.black87),
+        titleTextStyle: TextStyle(color: Colors.black87),
+        iconTheme: IconThemeData(color: Colors.black87),
       ),
       bottomNavigationBarTheme: BottomNavigationBarThemeData(
         backgroundColor: Colors.grey[100],
@@ -135,6 +135,19 @@ class AppTheme {
       ),
       iconTheme: const IconThemeData(
         color: Colors.grey,
+      ),
+      textTheme: TextTheme(
+        displayLarge: GoogleFonts.inter(fontSize: 32, fontWeight: FontWeight.bold, color: Colors.black87),
+        displayMedium: GoogleFonts.inter(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.black87),
+        headlineLarge: GoogleFonts.inter(fontSize: 22, fontWeight: FontWeight.w600, color: Colors.black87),
+        headlineMedium: GoogleFonts.inter(fontSize: 18, fontWeight: FontWeight.w600, color: Colors.black87),
+        titleLarge: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.w600, color: Colors.black87),
+        titleMedium: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w500, color: Colors.black87),
+        bodyLarge: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.normal, color: Colors.black87),
+        bodyMedium: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.normal, color: Colors.grey[700]),
+        bodySmall: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.normal, color: Colors.grey[600]),
+        labelLarge: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w500, color: Colors.black87),
+        labelMedium: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w500, color: Colors.grey[600]),
       ),
       sliderTheme: SliderThemeData(
         activeTrackColor: AppColors.primary,

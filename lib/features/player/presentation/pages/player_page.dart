@@ -111,8 +111,8 @@ class _PlayerViewState extends State<_PlayerView> {
             decoration: BoxDecoration(
               gradient: LinearGradient(
                 colors: isDark 
-                    ? [AppColors.primaryDark, AppColors.background]
-                    : [AppColors.primary, Colors.white],
+                    ? [AppColors.primaryDark, Theme.of(context).scaffoldBackgroundColor]
+                    : [Theme.of(context).colorScheme.primary, Colors.white],
                 begin: Alignment.topCenter,
                 end: Alignment.bottomCenter,
               ),
@@ -201,6 +201,9 @@ class _AlbumArt extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final primaryColor = Theme.of(context).colorScheme.primary;
+    final surfaceColor = Theme.of(context).colorScheme.surface;
+
     return AspectRatio(
       aspectRatio: 1,
       child: Container(
@@ -208,7 +211,7 @@ class _AlbumArt extends StatelessWidget {
           borderRadius: BorderRadius.circular(16),
           boxShadow: [
             BoxShadow(
-              color: AppColors.primary.withValues(alpha: 0.3),
+              color: primaryColor.withValues(alpha: 0.3),
               blurRadius: 32,
               offset: const Offset(0, 16),
             ),
@@ -221,12 +224,12 @@ class _AlbumArt extends StatelessWidget {
                   song!.albumArt!,
                   fit: BoxFit.cover,
                   errorBuilder: (_, __, ___) => Container(
-                    color: AppColors.surfaceVariant,
+                    color: surfaceColor,
                     child: const Icon(Icons.music_note, size: 64),
                   ),
                 )
               : Container(
-                  color: AppColors.surfaceVariant,
+                  color: surfaceColor,
                   child: const Icon(Icons.music_note, size: 64),
                 ),
         ),
@@ -337,6 +340,9 @@ class _Controls extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final primaryColor = Theme.of(context).colorScheme.primary;
+    final onSurfaceVariant = Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6);
+
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
       children: [
@@ -348,11 +354,10 @@ class _Controls extends StatelessWidget {
             return IconButton(
               icon: Icon(
                 Icons.shuffle,
-                color: isShuffle ? AppColors.primary : AppColors.onSurfaceVariant,
+                color: isShuffle ? primaryColor : onSurfaceVariant,
               ),
               onPressed: () {
                 audioService.toggleShuffle();
-                bloc.add(ToggleShuffle());
               },
             );
           },
@@ -366,15 +371,15 @@ class _Controls extends StatelessWidget {
           builder: (context, snapshot) {
             final isPlaying = snapshot.data?.playing ?? false;
             return Container(
-              decoration: const BoxDecoration(
+              decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: AppColors.primary,
+                color: primaryColor,
               ),
               child: IconButton(
                 icon: Icon(
                   isPlaying ? Icons.pause : Icons.play_arrow,
                   size: 40,
-                  color: AppColors.onPrimary,
+                  color: Theme.of(context).colorScheme.onPrimary,
                 ),
                 onPressed: () {
                   if (isPlaying) {
@@ -400,12 +405,11 @@ class _Controls extends StatelessWidget {
               icon: Icon(
                 _getRepeatIcon(repeatMode),
                 color: repeatMode != RepeatMode.off
-                    ? AppColors.primary
-                    : AppColors.onSurfaceVariant,
+                    ? primaryColor
+                    : onSurfaceVariant,
               ),
               onPressed: () {
                 audioService.toggleRepeat();
-                bloc.add(ToggleRepeat());
               },
             );
           },
