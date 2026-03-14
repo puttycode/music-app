@@ -1,7 +1,9 @@
 import 'dart:async';
 import 'package:just_audio/just_audio.dart';
 import 'package:rxdart/rxdart.dart';
+import 'package:hive_flutter/hive_flutter.dart';
 import '../features/player/domain/entities/song.dart';
+import '../core/constants/app_constants.dart';
 import 'music_api_service.dart';
 
 enum RepeatMode { off, one, all }
@@ -88,7 +90,30 @@ class AudioPlayerService {
     final song = songs[startIndex];
     AppLogger.log('Playing song: ${song.title} - ${song.artist}, url: ${song.audioUrl}');
     _currentSongSubject.add(song);
+    await _saveToRecentPlays(song);
     await _playSong(song);
+  }
+
+  Future<void> _saveToRecentPlays(Song song) async {
+    try {
+      final recentBox = Hive.box(AppConstants.recentPlaysBox);
+      
+      final existing = recentBox.values.where((s) => (s as Song).id == song.id).toList();
+      for (var s in existing) {
+        await recentBox.delete(s.hashCode);
+      }
+      
+      await recentBox.put(song.hashCode, song);
+      
+      if (recentBox.length > AppConstants.recentPlaysMax) {
+        final keys = recentBox.keys.toList();
+        await recentBox.delete(keys.first);
+      }
+      
+      AppLogger.log('Saved to recent plays: ${song.title}');
+    } catch (e) {
+      AppLogger.log('Error saving to recent: $e');
+    }
   }
 
   Future<void> _playSong(Song song) async {
