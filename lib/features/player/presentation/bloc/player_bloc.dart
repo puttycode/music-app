@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:just_audio/just_audio.dart' hide PlayerState;
 import 'package:music_app/services/audio_player_service.dart';
+import 'package:music_app/services/music_api_service.dart';
 import 'package:music_app/features/player/domain/entities/song.dart';
 import 'player_event_state.dart';
 
@@ -48,12 +49,14 @@ class PlayerBloc extends Bloc<PlayerEvent, PlayerState> {
     });
 
     _currentSongSubscription = _audioService.currentSongStream.listen((song) {
+      AppLogger.log('PlayerBloc received song: ${song?.title} - ${song?.artist}');
       add(_UpdateCurrentSong(song));
     });
   }
 
   Future<void> _onPlaySong(PlaySong event, Emitter<PlayerState> emit) async {
-    emit(state.copyWith(isLoading: true));
+    AppLogger.log('_onPlaySong called: ${event.song.title} - ${event.song.artist}');
+    emit(state.copyWith(isLoading: true, currentSong: event.song));
     
     if (event.playlist != null) {
       await _audioService.setPlaylist(
