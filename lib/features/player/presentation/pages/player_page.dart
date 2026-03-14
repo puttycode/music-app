@@ -31,7 +31,7 @@ class _PlayerPageState extends State<PlayerPage> {
     
     // Initialize bloc with current song if exists and no new playlist is provided
     if (audioService.currentSong != null && audioService.playlist.isNotEmpty) {
-      _bloc.add(_InitializeWithCurrentSong(
+      _bloc.add(InitializeWithCurrentSong(
         song: audioService.currentSong!,
         playlist: audioService.playlist,
         index: audioService.currentIndex,

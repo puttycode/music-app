@@ -50,14 +50,14 @@ class ToggleRepeat extends PlayerEvent {}
 
 class ToggleShuffle extends PlayerEvent {}
 
-class _InitializeWithCurrentSong extends PlayerEvent {
+class InitializeWithCurrentSong extends PlayerEvent {
   final Song song;
   final List<Song> playlist;
   final int index;
   final RepeatMode repeatMode;
   final bool isShuffle;
 
-  const _InitializeWithCurrentSong({
+  const InitializeWithCurrentSong({
     required this.song,
     required this.playlist,
     required this.index,

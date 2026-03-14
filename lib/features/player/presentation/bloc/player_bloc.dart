@@ -25,7 +25,7 @@ class PlayerBloc extends Bloc<PlayerEvent, PlayerState> {
     on<SeekRelative>(_onSeekRelative);
     on<ToggleRepeat>(_onToggleRepeat);
     on<ToggleShuffle>(_onToggleShuffle);
-    on<_InitializeWithCurrentSong>(_onInitializeWithCurrentSong);
+    on<InitializeWithCurrentSong>(_onInitializeWithCurrentSong);
 
     _initStreams();
   }
@@ -118,7 +118,7 @@ class PlayerBloc extends Bloc<PlayerEvent, PlayerState> {
     _audioService.toggleShuffle();
   }
 
-  void _onInitializeWithCurrentSong(_InitializeWithCurrentSong event, Emitter<PlayerState> emit) {
+  void _onInitializeWithCurrentSong(InitializeWithCurrentSong event, Emitter<PlayerState> emit) {
     AppLogger.log('_onInitializeWithCurrentSong: ${event.song.title} - ${event.song.artist}');
     emit(state.copyWith(
       currentSong: event.song,
