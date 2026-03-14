@@ -113,7 +113,7 @@ class _PlayerViewState extends State<_PlayerView> {
               gradient: LinearGradient(
                 colors: isDark 
                     ? [AppColors.primaryDark, Theme.of(context).scaffoldBackgroundColor]
-                    : [primaryColor.withValues(alpha: 0.8), Colors.white],
+                    : [Colors.indigo.shade300, Colors.white],
                 begin: Alignment.topCenter,
                 end: Alignment.bottomCenter,
               ),

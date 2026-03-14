@@ -29,8 +29,14 @@ class _LibraryView extends StatelessWidget {
       length: 4,
       child: Scaffold(
         appBar: AppBar(
-          title: const Text('音乐库'),
+          title: Text('音乐库', style: Theme.of(context).textTheme.headlineMedium),
           backgroundColor: Theme.of(context).appBarTheme.backgroundColor,
+          actions: [
+            IconButton(
+              icon: const Icon(Icons.add),
+              onPressed: () => _showCreatePlaylistDialog(context),
+            ),
+          ],
           bottom: const TabBar(
             tabs: [
               Tab(text: '本地音乐'),
@@ -247,6 +253,38 @@ class _AlbumsTab extends StatelessWidget {
           onTap: () {},
         );
       },
+    );
+  }
+
+  void _showCreatePlaylistDialog(BuildContext context) {
+    final controller = TextEditingController();
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('新建播放列表'),
+        content: TextField(
+          controller: controller,
+          decoration: const InputDecoration(
+            hintText: '播放列表名称',
+          ),
+          autofocus: true,
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('取消'),
+          ),
+          TextButton(
+            onPressed: () {
+              if (controller.text.isNotEmpty) {
+                context.read<LibraryBloc>().add(CreatePlaylist(controller.text));
+                Navigator.pop(context);
+              }
+            },
+            child: const Text('创建'),
+          ),
+        ],
+      ),
     );
   }
 }

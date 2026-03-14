@@ -44,7 +44,9 @@ class AudioPlayerService {
 
   void _init() {
     _audioPlayer.playerStateStream.listen((state) {
+      AppLogger.log('Player state: playing=${state.playing}, processing=${state.processingState}');
       if (state.processingState == ProcessingState.completed) {
+        AppLogger.log('Song completed, repeatMode=$repeatMode');
         _onSongComplete();
       }
     });
@@ -55,17 +57,23 @@ class AudioPlayerService {
       return;
     }
 
+    AppLogger.log('Processing repeat mode: $repeatMode');
     switch (repeatMode) {
       case RepeatMode.one:
+        AppLogger.log('Repeating current song');
         _audioPlayer.seek(Duration.zero);
         _audioPlayer.play();
         break;
       case RepeatMode.all:
+        AppLogger.log('Playing next in loop');
         playNext();
         break;
       case RepeatMode.off:
         if (currentIndex < playlist.length - 1) {
+          AppLogger.log('Playing next song');
           playNext();
+        } else {
+          AppLogger.log('End of playlist, stopping');
         }
         break;
     }

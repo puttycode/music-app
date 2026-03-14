@@ -68,6 +68,7 @@ class LibraryBloc extends Bloc<LibraryEvent, LibraryState> {
     on<LoadLocalMusic>(_onLoadLocalMusic);
     on<RequestPermission>(_onRequestPermission);
     on<LoadPlaylists>(_onLoadPlaylists);
+    on<CreatePlaylist>(_onCreatePlaylist);
   }
 
   Future<void> _onLoadLocalMusic(LoadLocalMusic event, Emitter<LibraryState> emit) async {
@@ -99,6 +100,8 @@ class LibraryBloc extends Bloc<LibraryEvent, LibraryState> {
     final audioService = AudioPlayerService.instance;
     final currentPlaylist = audioService.playlist;
     
+    final existingPlaylists = List<Playlist>.from(state.playlists);
+    
     emit(state.copyWith(
       playlists: [
         Playlist(
@@ -107,6 +110,21 @@ class LibraryBloc extends Bloc<LibraryEvent, LibraryState> {
           icon: 'favorite',
         ),
         Playlist(
+          name: '最近播放',
+          songs: currentPlaylist.isNotEmpty ? currentPlaylist : const [],
+          icon: 'history',
+        ),
+        ...existingPlaylists.where((p) => p.name != '我喜欢的音乐' && p.name != '最近播放'),
+      ],
+    ));
+  }
+
+  Future<void> _onCreatePlaylist(CreatePlaylist event, Emitter<LibraryState> emit) async {
+    final newPlaylist = Playlist(name: event.name, songs: const [], icon: 'queue_music');
+    emit(state.copyWith(
+      playlists: [...state.playlists, newPlaylist],
+    ));
+  }
           name: '最近播放',
           songs: currentPlaylist.isNotEmpty ? currentPlaylist : const [],
           icon: 'history',
