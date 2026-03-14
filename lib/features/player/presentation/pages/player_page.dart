@@ -188,29 +188,32 @@ class _ProgressBar extends StatelessWidget {
   Widget build(BuildContext context) {
     return StreamBuilder(
       stream: audioService.positionStream,
-      builder: (context, snapshot) {
-        final position = snapshot.data ?? Duration.zero;
-        final duration = state.duration;
+      builder: (context, positionSnapshot) {
+        return StreamBuilder(
+          stream: audioService.durationStream,
+          builder: (context, durationSnapshot) {
+            final position = positionSnapshot.data ?? Duration.zero;
+            final duration = durationSnapshot.data ?? Duration.zero;
 
-        return Column(
-          children: [
-            SliderTheme(
-              data: SliderTheme.of(context).copyWith(
-                trackHeight: 4,
-                thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 6),
-              ),
-              child: Slider(
-                value: duration.inMilliseconds > 0
-                    ? position.inMilliseconds / duration.inMilliseconds
-                    : 0,
-                onChanged: (value) {
-                  final newPosition = Duration(
-                    milliseconds: (value * duration.inMilliseconds).toInt(),
-                  );
-                  audioService.seek(newPosition);
-                },
-              ),
-            ),
+            return Column(
+              children: [
+                SliderTheme(
+                  data: SliderTheme.of(context).copyWith(
+                    trackHeight: 4,
+                    thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 6),
+                  ),
+                  child: Slider(
+                    value: duration.inMilliseconds > 0
+                        ? position.inMilliseconds / duration.inMilliseconds
+                        : 0,
+                    onChanged: (value) {
+                      final newPosition = Duration(
+                        milliseconds: (value * duration.inMilliseconds).toInt(),
+                      );
+                      audioService.seek(newPosition);
+                    },
+                  ),
+                ),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 8),
               child: Row(
