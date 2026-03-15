@@ -39,8 +39,8 @@ class LibraryState extends Equatable {
     this.isLoading = false,
     this.error,
     this.localSongs = const [],
-    this.artists = const [],
-    this.albums = const [],
+    this.artists = const <Artist>[],
+    this.albums = const <Album>[],
     this.playlists = const [],
   });
 
@@ -87,8 +87,18 @@ class LibraryBloc extends Bloc<LibraryEvent, LibraryState> {
         return null;
       }).whereType<Song>().toList();
       
-      final artists = recentSongs.map((s) => s.artist).toSet().toList();
-      final albums = recentSongs.map((s) => s.album).toSet().toList();
+      final artistNames = recentSongs.map((s) => s.artist).toSet().toList();
+      final albumNames = recentSongs.map((s) => s.album).toSet().toList();
+      
+      final artists = artistNames.map((name) => Artist(
+        id: name,
+        name: name,
+      )).toList();
+      
+      final albums = albumNames.map((name) => Album(
+        id: name,
+        name: name,
+      )).toList();
       
       emit(state.copyWith(
         isLoading: false,
