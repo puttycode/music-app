@@ -83,6 +83,103 @@ class _PlayerView extends StatefulWidget {
 class _PlayerViewState extends State<_PlayerView> {
   bool _showLyrics = false;
 
+  void _handleMenuAction(BuildContext context, String action) {
+    final audioService = AudioPlayerService.instance;
+    final song = audioService.currentSong;
+    
+    if (song == null) return;
+    
+    switch (action) {
+      case 'details':
+        _showSongDetails(context, song);
+        break;
+      case 'add_to_playlist':
+        _showAddToPlaylistDialog(context, song);
+        break;
+      case 'download':
+        _downloadSong(context, song);
+        break;
+    }
+  }
+
+  void _showSongDetails(BuildContext context, Song song) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('歌曲详情'),
+        content: SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              _buildDetailRow('歌曲名', song.title),
+              _buildDetailRow('艺术家', song.artist),
+              _buildDetailRow('专辑', song.album),
+              _buildDetailRow('时长', DurationFormatter.format(song.duration)),
+              if (song.localPath != null)
+                _buildDetailRow('路径', song.localPath!),
+              _buildDetailRow('类型', song.isLocal ? '本地音乐' : '在线音乐'),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('关闭'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDetailRow(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 60,
+            child: Text(
+              '$label:',
+              style: const TextStyle(fontWeight: FontWeight.bold),
+            ),
+          ),
+          Expanded(
+            child: Text(
+              value,
+              style: const TextStyle(color: Colors.grey),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showAddToPlaylistDialog(BuildContext context, Song song) {
+    // Implementation will be added - shows list of playlists to add to
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('添加到播放列表'),
+        content: const Text('此功能开发中...'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('关闭'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _downloadSong(BuildContext context, Song song) {
+    // Implementation will be added - downloads song to local storage
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('下载功能开发中...')),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final audioService = AudioPlayerService.instance;
@@ -97,9 +194,14 @@ class _PlayerViewState extends State<_PlayerView> {
         title: const Text('正在播放', style: TextStyle(fontSize: 14)),
         centerTitle: true,
         actions: [
-          IconButton(
+          PopupMenuButton<String>(
             icon: const Icon(Icons.more_vert),
-            onPressed: () {},
+            onSelected: (value) => _handleMenuAction(context, value),
+            itemBuilder: (context) => [
+              const PopupMenuItem(value: 'details', child: Text('歌曲详情')),
+              const PopupMenuItem(value: 'add_to_playlist', child: Text('添加到播放列表')),
+              const PopupMenuItem(value: 'download', child: Text('下载')),
+            ],
           ),
         ],
       ),
