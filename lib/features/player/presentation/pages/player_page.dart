@@ -437,37 +437,40 @@ class _BottomControls extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-      children: [
-        IconButton(
-          icon: const Icon(Icons.devices),
-          onPressed: () {},
-        ),
-        StreamBuilder<bool>(
-          stream: FavoriteService.instance.favoritesChanged.map((_) => true).startWith(true),
-          initialData: true,
-          builder: (context, snapshot) {
-            final song = state.currentSong;
-            final isFavorite = song != null ? FavoriteService.instance.isFavorite(song) : false;
-            return IconButton(
-              icon: Icon(
-                isFavorite ? Icons.favorite : Icons.favorite_border,
-                color: isFavorite ? Colors.red : Theme.of(context).colorScheme.onSurfaceVariant,
-              ),
-              onPressed: () {
-                if (song != null) {
-                  FavoriteService.instance.toggleFavorite(song);
-                }
+    return BlocBuilder<PlayerBloc, PlayerState>(
+      builder: (context, state) {
+        final song = state.currentSong;
+        return Row(
+          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+          children: [
+            IconButton(
+              icon: const Icon(Icons.devices),
+              onPressed: () {},
+            ),
+            StreamBuilder<void>(
+              stream: FavoriteService.instance.favoritesChanged,
+              builder: (context, snapshot) {
+                final isFavorite = song != null ? FavoriteService.instance.isFavorite(song) : false;
+                return IconButton(
+                  icon: Icon(
+                    isFavorite ? Icons.favorite : Icons.favorite_border,
+                    color: isFavorite ? Colors.red : Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
+                  onPressed: () {
+                    if (song != null) {
+                      FavoriteService.instance.toggleFavorite(song);
+                    }
+                  },
+                );
               },
-            );
-          },
-        ),
-        IconButton(
-          icon: const Icon(Icons.share),
-          onPressed: () {},
-        ),
-      ],
+            ),
+            IconButton(
+              icon: const Icon(Icons.share),
+              onPressed: () {},
+            ),
+          ],
+        );
+      },
     );
   }
 }
