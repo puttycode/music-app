@@ -21,6 +21,7 @@ class SettingsPage extends StatefulWidget {
 class _SettingsPageState extends State<SettingsPage> {
   late Box _settingsBox;
   late TextEditingController _customApiController;
+  late TextEditingController _downloadPathController;
   MusicSource _currentSource = MusicSource.kuwo;
 
   @override
@@ -28,6 +29,7 @@ class _SettingsPageState extends State<SettingsPage> {
     super.initState();
     _settingsBox = Hive.box('settings');
     _customApiController = TextEditingController();
+    _downloadPathController = TextEditingController();
     _loadSettings();
   }
 
@@ -35,10 +37,12 @@ class _SettingsPageState extends State<SettingsPage> {
     final savedTheme = _settingsBox.get('themeMode', defaultValue: 'dark');
     final savedSource = _settingsBox.get('musicSource', defaultValue: 'kuwo');
     final savedCustomUrl = _settingsBox.get('customApiUrl', defaultValue: '');
+    final savedDownloadPath = _settingsBox.get('downloadPath', defaultValue: '/storage/emulated/0/Music');
     
     setState(() {
       _currentSource = savedSource == 'custom' ? MusicSource.custom : MusicSource.kuwo;
       _customApiController.text = savedCustomUrl;
+      _downloadPathController.text = savedDownloadPath;
     });
   }
 
@@ -173,6 +177,32 @@ class _SettingsPageState extends State<SettingsPage> {
           ),
           const SizedBox(height: 24),
           _buildSection(
+            title: '下载',
+            children: [
+              const SizedBox(height: 8),
+              Container(
+                decoration: BoxDecoration(
+                  color: Theme.of(context).colorScheme.surface,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Column(
+                  children: [
+                    ListTile(
+                      leading: const Icon(Icons.folder),
+                      title: const Text('下载路径'),
+                      subtitle: Text(_downloadPathController.text),
+                      trailing: IconButton(
+                        icon: const Icon(Icons.edit),
+                        onPressed: _showDownloadPathDialog,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 24),
+          _buildSection(
             title: '关于',
             children: [
               const SizedBox(height: 8),
@@ -207,6 +237,42 @@ class _SettingsPageState extends State<SettingsPage> {
         const SizedBox(height: 8),
         ...children,
       ],
+    );
+  }
+
+  void _showDownloadPathDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('设置下载路径'),
+        content: TextField(
+          controller: _downloadPathController,
+          decoration: const InputDecoration(
+            hintText: '/storage/emulated/0/Music',
+            labelText: '下载路径',
+          ),
+          maxLines: 2,
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('取消'),
+          ),
+          TextButton(
+            onPressed: () {
+              final path = _downloadPathController.text.trim();
+              if (path.isNotEmpty) {
+                _settingsBox.put('downloadPath', path);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('下载路径已保存')),
+                );
+              }
+              Navigator.pop(context);
+            },
+            child: const Text('确定'),
+          ),
+        ],
+      ),
     );
   }
 }

@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'package:device_info_plus/device_info_plus.dart';
+import 'dart:io';
 import 'package:music_app/core/widgets/loading_widget.dart';
 import 'package:music_app/core/widgets/error_widget.dart' as app_widgets;
 import 'package:music_app/services/audio_player_service.dart';
@@ -141,10 +143,38 @@ class _LocalSongsTab extends StatelessWidget {
         icon: Icons.music_off,
         action: ElevatedButton(
           onPressed: () async {
-            final status = await Permission.storage.request();
-            if (status.isGranted) {
+            // For Android 13+, use photos/videos permission
+            // For older versions, use storage permission
+            Map<Permission, PermissionStatus> statuses;
+            
+            if (Platform.isAndroid) {
+              final androidInfo = await DeviceInfoPlugin().androidInfo;
+              if (androidInfo.version.sdkInt >= 33) {
+                // Android 13+
+                statuses = await [
+                  Permission.photos,
+                  Permission.videos,
+                  Permission.audio,
+                ].request();
+              } else {
+                // Android 12 and below
+                statuses = await [
+                  Permission.storage,
+                ].request();
+              }
+            } else {
+              statuses = await [Permission.storage].request();
+            }
+            
+            if (statuses.values.any((s) => s.isGranted)) {
               if (context.mounted) {
                 context.read<LibraryBloc>().add(LoadLocalMusic());
+              }
+            } else {
+              if (context.mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('需要存储权限才能扫描本地音乐')),
+                );
               }
             }
           },
