@@ -110,15 +110,18 @@ class AudioPlayerService {
         await recentBox.delete(key);
       }
       
+      // Update song with playedAt timestamp
+      final songWithPlayedAt = song.copyWith(playedAt: DateTime.now());
+      
       // Save as JSON map
-      await recentBox.put(song.hashCode, song.toJson());
+      await recentBox.put(songWithPlayedAt.hashCode, songWithPlayedAt.toJson());
       
       if (recentBox.length > AppConstants.recentPlaysMax) {
         final keys = recentBox.keys.toList();
         await recentBox.delete(keys.first);
       }
       
-      AppLogger.log('Saved to recent plays: ${song.title}');
+      AppLogger.log('Saved to recent plays: ${songWithPlayedAt.title}');
     } catch (e) {
       AppLogger.log('Error saving to recent: $e');
     }

@@ -144,6 +144,14 @@ class LibraryBloc extends Bloc<LibraryEvent, LibraryState> {
       return null;
     }).whereType<Song>().toList();
     
+    // Sort recent plays by playedAt timestamp (newest first)
+    recentSongs.sort((a, b) {
+      if (a.playedAt == null && b.playedAt == null) return 0;
+      if (a.playedAt == null) return 1;
+      if (b.playedAt == null) return -1;
+      return b.playedAt!.compareTo(a.playedAt!);
+    });
+    
     // Load user playlists from Hive
     final playlistBox = Hive.box(AppConstants.playlistBox);
     final userPlaylists = playlistBox.values.map((e) {

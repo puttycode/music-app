@@ -11,6 +11,7 @@ class Song extends Equatable {
   final bool isLocal;
   final String? localPath;
   final List<String>? lyrics;
+  final DateTime? playedAt;
 
   const Song({
     required this.id,
@@ -23,6 +24,7 @@ class Song extends Equatable {
     this.isLocal = false,
     this.localPath,
     this.lyrics,
+    this.playedAt,
   });
 
   factory Song.fromJson(Map<String, dynamic> json) {
@@ -53,6 +55,7 @@ class Song extends Equatable {
       isLocal: true,
       localPath: json['localPath'],
       lyrics: json['lyrics'] != null ? List<String>.from(json['lyrics']) : null,
+      playedAt: json['playedAt'] != null ? DateTime.parse(json['playedAt']) : null,
     );
   }
 
@@ -68,6 +71,7 @@ class Song extends Equatable {
       'isLocal': isLocal,
       'localPath': localPath,
       'lyrics': lyrics,
+      'playedAt': playedAt?.toIso8601String(),
     };
   }
 
