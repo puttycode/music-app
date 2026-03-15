@@ -17,6 +17,7 @@ void main() async {
   await Hive.openBox(AppConstants.playlistBox);
   await Hive.openBox(AppConstants.recentPlaysBox);
   await Hive.openBox(AppConstants.settingsBox);
+  await Hive.openBox(AppConstants.downloadTasksBox);
 
   final settingsBox = Hive.box(AppConstants.settingsBox);
   final savedSource = settingsBox.get('musicSource', defaultValue: 'kuwo');

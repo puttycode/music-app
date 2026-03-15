@@ -6,6 +6,7 @@ import 'package:music_app/core/utils/duration_formatter.dart';
 import 'package:music_app/services/audio_player_service.dart';
 import 'package:music_app/services/music_api_service.dart';
 import 'package:music_app/services/favorite_service.dart';
+import 'package:music_app/services/download_service.dart';
 import 'package:music_app/features/player/domain/entities/song.dart';
 import 'package:music_app/features/player/presentation/bloc/player_bloc.dart';
 import 'package:music_app/features/player/presentation/bloc/player_event_state.dart';
@@ -82,6 +83,30 @@ class _PlayerView extends StatefulWidget {
 
 class _PlayerViewState extends State<_PlayerView> {
   bool _showLyrics = false;
+  DownloadTask? _downloadTask;
+  StreamSubscription? _downloadSubscription;
+
+  @override
+  void initState() {
+    super.initState();
+    _initDownloadListener();
+  }
+
+  @override
+  void dispose() {
+    _downloadSubscription?.cancel();
+    super.dispose();
+  }
+
+  void _initDownloadListener() {
+    _downloadSubscription = DownloadService.instance.downloadProgressStream.listen((task) {
+      if (mounted) {
+        setState(() {
+          _downloadTask = task;
+        });
+      }
+    });
+  }
 
   void _handleMenuAction(BuildContext context, String action) {
     final audioService = AudioPlayerService.instance;
@@ -173,10 +198,95 @@ class _PlayerViewState extends State<_PlayerView> {
     );
   }
 
-  void _downloadSong(BuildContext context, Song song) {
-    // Implementation will be added - downloads song to local storage
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('下载功能开发中...')),
+  void _downloadSong(BuildContext context, Song song) async {
+    try {
+      await DownloadService.instance.startDownload(song);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('开始下载...')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('下载失败：$e')),
+        );
+      }
+    }
+  }
+
+  Widget _buildDownloadIndicator() {
+    if (_downloadTask == null) {
+      return const SizedBox.shrink();
+    }
+
+    final status = _downloadTask!.status;
+    
+    if (status == DownloadStatus.completed) {
+      return Container(
+        width: 40,
+        height: 40,
+        decoration: const BoxDecoration(
+          color: Colors.green,
+          shape: BoxShape.circle,
+        ),
+        child: const Icon(
+          Icons.check,
+          color: Colors.white,
+          size: 24,
+        ),
+      );
+    }
+
+    if (status == DownloadStatus.failed) {
+      return Container(
+        width: 40,
+        height: 40,
+        decoration: const BoxDecoration(
+          color: Colors.red,
+          shape: BoxShape.circle,
+        ),
+        child: const Icon(
+          Icons.error,
+          color: Colors.white,
+          size: 24,
+        ),
+      );
+    }
+
+    // Downloading or paused
+    return GestureDetector(
+      onTap: () {
+        if (status == DownloadStatus.downloading) {
+          DownloadService.instance.pauseDownload(_downloadTask!.id);
+        } else if (status == DownloadStatus.paused) {
+          DownloadService.instance.resumeDownload(_downloadTask!.id);
+        }
+      },
+      child: SizedBox(
+        width: 40,
+        height: 40,
+        child: Stack(
+          alignment: Alignment.center,
+          children: [
+            CircularProgressIndicator(
+              value: _downloadTask!.progress / 100,
+              strokeWidth: 3,
+              valueColor: const AlwaysStoppedAnimation<Color>(Colors.white),
+            ),
+            Text(
+              '${_downloadTask!.progress}%',
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 10,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            if (status == DownloadStatus.paused)
+              const Icon(Icons.play_arrow, color: Colors.white, size: 20),
+          ],
+        ),
+      ),
     );
   }
 
@@ -194,6 +304,8 @@ class _PlayerViewState extends State<_PlayerView> {
         title: const Text('正在播放', style: TextStyle(fontSize: 14)),
         centerTitle: true,
         actions: [
+          _buildDownloadIndicator(),
+          const SizedBox(width: 8),
           PopupMenuButton<String>(
             icon: const Icon(Icons.more_vert),
             onSelected: (value) => _handleMenuAction(context, value),

@@ -10,6 +10,7 @@ class AppConstants {
   static const String recentPlaysBox = 'recent_plays';
   static const String searchHistoryBox = 'search_history';
   static const String settingsBox = 'settings';
+  static const String downloadTasksBox = 'download_tasks';
   
   static const Duration animationDuration = Duration(milliseconds: 300);
   static const Duration seekDuration = Duration(seconds: 10);
