@@ -5,6 +5,7 @@ import 'package:music_app/core/theme/text_styles.dart';
 import 'package:music_app/core/utils/duration_formatter.dart';
 import 'package:music_app/services/audio_player_service.dart';
 import 'package:music_app/services/music_api_service.dart';
+import 'package:music_app/services/favorite_service.dart';
 import 'package:music_app/features/player/domain/entities/song.dart';
 import 'package:music_app/features/player/presentation/bloc/player_bloc.dart';
 import 'package:music_app/features/player/presentation/bloc/player_event_state.dart';
@@ -443,9 +444,24 @@ class _BottomControls extends StatelessWidget {
           icon: const Icon(Icons.devices),
           onPressed: () {},
         ),
-        IconButton(
-          icon: const Icon(Icons.favorite_border),
-          onPressed: () {},
+        StreamBuilder<bool>(
+          stream: FavoriteService.instance.favoritesChanged.map((_) => true).startWith(true),
+          initialData: true,
+          builder: (context, snapshot) {
+            final song = state.currentSong;
+            final isFavorite = song != null ? FavoriteService.instance.isFavorite(song) : false;
+            return IconButton(
+              icon: Icon(
+                isFavorite ? Icons.favorite : Icons.favorite_border,
+                color: isFavorite ? Colors.red : Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
+              onPressed: () {
+                if (song != null) {
+                  FavoriteService.instance.toggleFavorite(song);
+                }
+              },
+            );
+          },
         ),
         IconButton(
           icon: const Icon(Icons.share),
