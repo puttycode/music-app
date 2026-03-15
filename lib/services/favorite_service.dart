@@ -47,7 +47,7 @@ class FavoriteService {
     }
   }
 
-  Future<bool> isFavorite(Song song) async {
+  bool isFavorite(Song song) {
     try {
       final playlistBox = Hive.box(AppConstants.playlistBox);
       const favoritePlaylistName = '我喜欢的音乐';
