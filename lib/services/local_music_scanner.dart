@@ -1,11 +1,19 @@
 import 'dart:io';
 import 'package:path_provider/path_provider.dart';
+import 'package:permission_handler/permission_handler.dart';
 import 'package:music_app/features/player/domain/entities/song.dart';
 
 class LocalMusicScanner {
   /// Scan the device for local music files and return a list of Song objects.
   /// Only scans common audio file extensions.
   static Future<List<Song>> scan() async {
+    // Request storage permission first
+    final status = await Permission.storage.request();
+    if (!status.isGranted) {
+      // If permission is not granted, return empty list
+      return [];
+    }
+
     final List<Song> songs = [];
     try {
       // Get the external storage directory (where music is usually stored)
