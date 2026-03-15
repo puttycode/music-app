@@ -32,12 +32,12 @@ class _ArtistDetailPageState extends State<ArtistDetailPage> {
     });
 
     try {
-      final songs = await MusicApiService.instance.searchArtists(widget.artist.name).then((artists) {
-        if (artists.isNotEmpty) {
-          return MusicApiService.instance.searchSongs(widget.artist.name);
-        }
-        return <Song>[];
-      });
+      final artists = await MusicApiService.instance.searchArtists(widget.artist.name);
+      List<Song> songs = [];
+      
+      if (artists.isNotEmpty) {
+        songs = await MusicApiService.instance.searchSongs(widget.artist.name);
+      }
       
       setState(() {
         _songs = songs;

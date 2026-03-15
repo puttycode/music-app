@@ -343,7 +343,6 @@ class _PlaylistsTab extends StatelessWidget {
             labelText: '播放列表名称',
           ),
           autofocus: true,
-          selectAllOnFocus: true,
         ),
         actions: [
           TextButton(

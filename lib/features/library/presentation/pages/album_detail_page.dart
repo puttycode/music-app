@@ -32,12 +32,12 @@ class _AlbumDetailPageState extends State<AlbumDetailPage> {
     });
 
     try {
-      final songs = await MusicApiService.instance.searchAlbums(widget.album.name).then((albums) {
-        if (albums.isNotEmpty) {
-          return MusicApiService.instance.searchSongs(widget.album.name);
-        }
-        return <Song>[];
-      });
+      final albums = await MusicApiService.instance.searchAlbums(widget.album.name);
+      List<Song> songs = [];
+      
+      if (albums.isNotEmpty) {
+        songs = await MusicApiService.instance.searchSongs(widget.album.name);
+      }
       
       setState(() {
         _songs = songs;
