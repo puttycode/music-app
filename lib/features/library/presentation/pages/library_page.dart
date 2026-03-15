@@ -2,11 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:device_info_plus/device_info_plus.dart';
+import 'dart:async';
 import 'dart:io';
 import 'package:music_app/core/widgets/loading_widget.dart';
 import 'package:music_app/core/widgets/error_widget.dart' as app_widgets;
 import 'package:music_app/services/audio_player_service.dart';
 import 'package:music_app/services/favorite_service.dart';
+import 'package:music_app/services/download_service.dart';
 import 'package:music_app/features/player/domain/entities/song.dart';
 import 'package:music_app/features/player/domain/entities/artist.dart';
 import 'package:music_app/features/player/domain/entities/album.dart';
@@ -130,37 +132,80 @@ class _LibraryViewState extends State<_LibraryView> {
   }
 }
 
-class _LocalSongsTab extends StatelessWidget {
+class _LocalSongsTab extends StatefulWidget {
   final List<Song> songs;
 
   const _LocalSongsTab({required this.songs});
 
   @override
+  State<_LocalSongsTab> createState() => _LocalSongsTabState();
+}
+
+class _LocalSongsTabState extends State<_LocalSongsTab> {
+  final Map<String, DownloadTask> _downloadTasks = {};
+  StreamSubscription? _downloadSubscription;
+
+  @override
+  void initState() {
+    super.initState();
+    _initDownloadListener();
+    _loadDownloadTasks();
+  }
+
+  @override
+  void dispose() {
+    _downloadSubscription?.cancel();
+    super.dispose();
+  }
+
+  void _initDownloadListener() {
+    _downloadSubscription = DownloadService.instance.downloadProgressStream.listen((task) {
+      if (mounted) {
+        setState(() {
+          _downloadTasks[task.id] = task;
+        });
+      }
+    });
+  }
+
+  void _loadDownloadTasks() {
+    final tasks = DownloadService.instance.getAllDownloads();
+    setState(() {
+      for (final task in tasks) {
+        _downloadTasks[task.id] = task;
+      }
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
-    if (songs.isEmpty) {
+    // Combine local songs with downloading songs
+    final allSongs = [...widget.songs];
+    final downloadingSongs = _downloadTasks.values
+        .where((task) => task.status != DownloadStatus.completed)
+        .map((task) => task.song)
+        .toList();
+    
+    final displaySongs = [...allSongs, ...downloadingSongs];
+    
+    if (displaySongs.isEmpty) {
       return app_widgets.EmptyWidget(
         message: '没有找到本地音乐\n请授予存储权限以扫描音乐',
         icon: Icons.music_off,
         action: ElevatedButton(
           onPressed: () async {
-            // For Android 13+, use photos/videos permission
-            // For older versions, use storage permission
             Map<Permission, PermissionStatus> statuses;
             
             if (Platform.isAndroid) {
               final androidInfo = await DeviceInfoPlugin().androidInfo;
               if (androidInfo.version.sdkInt >= 33) {
-                // Android 13+
                 statuses = await [
                   Permission.photos,
                   Permission.videos,
                   Permission.audio,
                 ].request();
               } else {
-                // Android 12 and below
-                statuses = await [
-                  Permission.storage,
-                ].request();
+                statuses = await [Permission.storage].request();
               }
             } else {
               statuses = await [Permission.storage].request();
@@ -184,48 +229,119 @@ class _LocalSongsTab extends StatelessWidget {
     }
 
     return ListView.builder(
-      itemCount: songs.length,
+      itemCount: displaySongs.length,
       itemBuilder: (context, index) {
-        final song = songs[index];
+        final song = displaySongs[index];
+        final downloadTask = _downloadTasks[song.id.toString()];
+        final isDownloading = downloadTask != null && 
+            downloadTask.status != DownloadStatus.completed;
+        
         return ListTile(
           leading: ClipRRect(
             borderRadius: BorderRadius.circular(8),
-            child: song.albumArt != null
-                ? Image.network(
-                    song.albumArt!,
+            child: isDownloading
+                ? SizedBox(
                     width: 56,
                     height: 56,
-                    fit: BoxFit.cover,
-                    errorBuilder: (_, __, ___) => Container(
-                      width: 56,
-                      height: 56,
-                      color: Theme.of(context).colorScheme.surface,
-                      child: const Icon(Icons.music_note),
+                    child: Stack(
+                      alignment: Alignment.center,
+                      children: [
+                        Container(
+                          width: 56,
+                          height: 56,
+                          color: Theme.of(context).colorScheme.surface,
+                          child: const Icon(Icons.music_note),
+                        ),
+                        CircularProgressIndicator(
+                          value: downloadTask.progress / 100,
+                          strokeWidth: 3,
+                          valueColor: AlwaysStoppedAnimation<Color>(
+                            Theme.of(context).colorScheme.primary,
+                          ),
+                        ),
+                      ],
                     ),
                   )
-                : Container(
-                    width: 56,
-                    height: 56,
-                    color: Theme.of(context).colorScheme.surface,
-                    child: const Icon(Icons.music_note),
-                  ),
+                : song.albumArt != null
+                    ? Image.network(
+                        song.albumArt!,
+                        width: 56,
+                        height: 56,
+                        fit: BoxFit.cover,
+                        errorBuilder: (_, __, ___) => Container(
+                          width: 56,
+                          height: 56,
+                          color: Theme.of(context).colorScheme.surface,
+                          child: const Icon(Icons.music_note),
+                        ),
+                      )
+                    : Container(
+                        width: 56,
+                        height: 56,
+                        color: Theme.of(context).colorScheme.surface,
+                        child: const Icon(Icons.music_note),
+                      ),
           ),
           title: Text(
             song.title,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
           ),
-          subtitle: Text(
-            song.artist,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
+          subtitle: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                song.artist,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+              if (isDownloading)
+                Text(
+                  '下载中 ${downloadTask.progress}%',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: Theme.of(context).colorScheme.primary,
+                  ),
+                ),
+            ],
           ),
-          trailing: IconButton(
-            icon: const Icon(Icons.play_circle_filled),
-            color: Theme.of(context).colorScheme.primary,
-            onPressed: () => _playSong(context, songs, index),
-          ),
-          onTap: () => _playSong(context, songs, index),
+          trailing: isDownloading
+              ? Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    IconButton(
+                      icon: Icon(
+                        downloadTask.status == DownloadStatus.paused
+                            ? Icons.play_arrow
+                            : Icons.pause,
+                      ),
+                      onPressed: () {
+                        if (downloadTask.status == DownloadStatus.paused) {
+                          DownloadService.instance.resumeDownload(downloadTask.id);
+                        } else {
+                          DownloadService.instance.pauseDownload(downloadTask.id);
+                        }
+                      },
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.close),
+                      onPressed: () {
+                        DownloadService.instance.cancelDownload(downloadTask.id);
+                        setState(() {
+                          _downloadTasks.remove(downloadTask.id);
+                        });
+                      },
+                    ),
+                  ],
+                )
+              : IconButton(
+                  icon: const Icon(Icons.play_circle_filled),
+                  color: Theme.of(context).colorScheme.primary,
+                  onPressed: () => _playSong(context, displaySongs, index),
+                ),
+          onTap: isDownloading
+              ? null
+              : () => _playSong(context, displaySongs, index),
         );
       },
     );

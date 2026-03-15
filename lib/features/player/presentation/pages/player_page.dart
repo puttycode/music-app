@@ -142,6 +142,18 @@ class _PlayerViewState extends State<_PlayerView> {
               _buildDetailRow('艺术家', song.artist),
               _buildDetailRow('专辑', song.album),
               _buildDetailRow('时长', DurationFormatter.format(song.duration)),
+              if (song.releaseDate != null)
+                _buildDetailRow('发行日期', song.releaseDate!),
+              if (song.format != null)
+                _buildDetailRow('格式', song.format!),
+              if (song.bitrate != null)
+                _buildDetailRow('比特率', song.bitrate!),
+              if (song.sampleRate != null)
+                _buildDetailRow('采样率', song.sampleRate!),
+              if (song.fileSize != null && song.fileSize! > 0)
+                _buildDetailRow('文件大小', _formatFileSize(song.fileSize!)),
+              if (song.publisher != null)
+                _buildDetailRow('发行公司', song.publisher!),
               if (song.localPath != null)
                 _buildDetailRow('路径', song.localPath!),
               _buildDetailRow('类型', song.isLocal ? '本地音乐' : '在线音乐'),
@@ -156,6 +168,13 @@ class _PlayerViewState extends State<_PlayerView> {
         ],
       ),
     );
+  }
+
+  String _formatFileSize(int bytes) {
+    if (bytes < 1024) return '$bytes B';
+    if (bytes < 1024 * 1024) return '${(bytes / 1024).toStringAsFixed(1)} KB';
+    if (bytes < 1024 * 1024 * 1024) return '${(bytes / (1024 * 1024)).toStringAsFixed(1)} MB';
+    return '${(bytes / (1024 * 1024 * 1024)).toStringAsFixed(2)} GB';
   }
 
   Widget _buildDetailRow(String label, String value) {
