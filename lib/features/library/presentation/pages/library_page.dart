@@ -4,6 +4,7 @@ import 'package:permission_handler/permission_handler.dart';
 import 'package:music_app/core/widgets/loading_widget.dart';
 import 'package:music_app/core/widgets/error_widget.dart' as app_widgets;
 import 'package:music_app/services/audio_player_service.dart';
+import 'package:music_app/services/favorite_service.dart';
 import 'package:music_app/features/player/domain/entities/song.dart';
 import 'package:music_app/features/player/domain/entities/artist.dart';
 import 'package:music_app/features/player/domain/entities/album.dart';
@@ -11,6 +12,7 @@ import 'package:music_app/features/library/presentation/bloc/library_bloc.dart';
 import 'package:music_app/features/player/presentation/pages/player_page.dart';
 import 'package:music_app/features/library/presentation/pages/artist_detail_page.dart';
 import 'package:music_app/features/library/presentation/pages/album_detail_page.dart';
+import 'package:music_app/features/library/presentation/pages/playlist_detail_page.dart';
 
 class LibraryPage extends StatelessWidget {
   const LibraryPage({Key? key}) : super(key: key);
