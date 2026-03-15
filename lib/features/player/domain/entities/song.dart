@@ -28,6 +28,22 @@ class Song extends Equatable {
   });
 
   factory Song.fromJson(Map<String, dynamic> json) {
+    final durationValue = json['duration'];
+    Duration duration;
+    
+    // Handle different duration formats from API
+    if (durationValue is int) {
+      // If duration > 10000, it's likely in milliseconds
+      if (durationValue > 10000) {
+        duration = Duration(milliseconds: durationValue);
+      } else {
+        // Otherwise it's in seconds
+        duration = Duration(seconds: durationValue);
+      }
+    } else {
+      duration = const Duration(seconds: 0);
+    }
+    
     return Song(
       id: json['id'] ?? 0,
       title: json['title'] ?? 'Unknown',
@@ -38,7 +54,7 @@ class Song extends Equatable {
                 json['cover_medium'] ??
                 json['cover'],
       audioUrl: json['preview'] ?? json['audio_url'],
-      duration: Duration(milliseconds: (json['duration'] ?? 0) * 1000),
+      duration: duration,
       isLocal: false,
     );
   }

@@ -224,10 +224,14 @@ class LibraryBloc extends Bloc<LibraryEvent, LibraryState> {
     
     // Get the existing playlist data
     final playlistData = playlistBox.get(event.oldName);
-    if (playlistData != null) {
+    if (playlistData is Map) {
+      // Update the name in the data
+      final updatedData = Map<String, dynamic>.from(playlistData);
+      updatedData['name'] = event.newName;
+      
       // Delete old key and add with new name
       await playlistBox.delete(event.oldName);
-      await playlistBox.put(event.newName, playlistData);
+      await playlistBox.put(event.newName, updatedData);
     }
     
     // Update state with renamed playlist
