@@ -270,6 +270,22 @@ class _PlaylistsTab extends StatelessWidget {
       },
     );
   }
+
+  void _openPlaylist(BuildContext context, Playlist playlist) {
+    if (playlist.songs.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('播放列表为空')),
+      );
+      return;
+    }
+    AudioPlayerService.instance.setPlaylist(playlist.songs, 0);
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => PlayerPage(playlist: playlist.songs, initialIndex: 0),
+      ),
+    );
+  }
 }
 
 class _ArtistsTab extends StatelessWidget {
@@ -365,21 +381,6 @@ class _AlbumsTab extends StatelessWidget {
           },
         );
       },
-    );
-
-  void _openPlaylist(BuildContext context, Playlist playlist) {
-    if (playlist.songs.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('播放列表为空')),
-      );
-      return;
-    }
-    AudioPlayerService.instance.setPlaylist(playlist.songs, 0);
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) => PlayerPage(playlist: playlist.songs, initialIndex: 0),
-      ),
     );
   }
 }
