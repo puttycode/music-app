@@ -16,7 +16,8 @@ class FavoriteService {
       final playlistBox = Hive.box(AppConstants.playlistBox);
       const favoritePlaylistName = '我喜欢的音乐';
 
-      final favoritePlaylistData = playlistBox.get(favoritePlaylistName);
+      // Check if favorite playlist exists in Hive
+      var favoritePlaylistData = playlistBox.get(favoritePlaylistName);
       List<Song> favoriteSongs = [];
 
       if (favoritePlaylistData is Map && favoritePlaylistData['songs'] is List) {
@@ -35,6 +36,7 @@ class FavoriteService {
         favoriteSongs.add(song);
       }
 
+      // Update or create the favorite playlist
       await playlistBox.put(favoritePlaylistName, {
         'name': favoritePlaylistName,
         'songs': favoriteSongs.map((s) => s.toJson()).toList(),

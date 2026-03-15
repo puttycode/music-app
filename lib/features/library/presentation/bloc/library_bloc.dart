@@ -7,6 +7,7 @@ import 'package:music_app/features/player/domain/entities/album.dart';
 import 'package:music_app/core/constants/app_constants.dart';
 import 'package:music_app/services/audio_player_service.dart' show AppLogger, AudioPlayerService;
 import 'package:music_app/services/music_api_service.dart';
+import 'package:music_app/services/local_music_scanner.dart';
 
 part 'library_event.dart';
 
@@ -79,18 +80,12 @@ class LibraryBloc extends Bloc<LibraryEvent, LibraryState> {
     emit(state.copyWith(isLoading: true));
     
     try {
-      // Load from Hive - both local songs and recent plays use the same source for now
-      final recentBox = Hive.box(AppConstants.recentPlaysBox);
-      final recentSongs = recentBox.values.map((e) {
-        if (e is Map) {
-          return Song.fromLocal(Map<String, dynamic>.from(e));
-        }
-        return null;
-      }).whereType<Song>().toList();
+      // Scan device for local music files
+      final localSongs = await LocalMusicScanner.scan();
       
-      // Extract unique artist and album names
-      final artistNames = recentSongs.map((s) => s.artist).toSet().toList();
-      final albumNames = recentSongs.map((s) => s.album).toSet().toList();
+      // Extract unique artist and album names from scanned songs
+      final artistNames = localSongs.map((s) => s.artist).toSet().toList();
+      final albumNames = localSongs.map((s) => s.album).toSet().toList();
       
       // Create Artist and Album objects from names
       final artists = artistNames.map((name) => Artist(
@@ -105,7 +100,7 @@ class LibraryBloc extends Bloc<LibraryEvent, LibraryState> {
       
       emit(state.copyWith(
         isLoading: false,
-        localSongs: recentSongs,
+        localSongs: localSongs,
         artists: artists,
         albums: albums,
       ));
@@ -148,19 +143,24 @@ class LibraryBloc extends Bloc<LibraryEvent, LibraryState> {
       return null;
     }).whereType<Playlist>().toList();
     
+    // Find "我喜欢的音乐" from Hive or create empty one
+    var favoritePlaylist = userPlaylists.firstWhere(
+      (p) => p.name == '我喜欢的音乐',
+      orElse: () => const Playlist(name: '我喜欢的音乐', songs: [], icon: 'favorite'),
+    );
+    
+    // Remove from userPlaylists to avoid duplicates
+    final otherPlaylists = userPlaylists.where((p) => p.name != '我喜欢的音乐').toList();
+    
     emit(state.copyWith(
       playlists: [
-        Playlist(
-          name: '我喜欢的音乐',
-          songs: const [],
-          icon: 'favorite',
-        ),
+        favoritePlaylist,
         Playlist(
           name: '最近播放',
           songs: recentSongs,
           icon: 'history',
         ),
-        ...userPlaylists,
+        ...otherPlaylists,
       ],
     ));
   }

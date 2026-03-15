@@ -9,6 +9,8 @@ import 'package:music_app/features/player/domain/entities/artist.dart';
 import 'package:music_app/features/player/domain/entities/album.dart';
 import 'package:music_app/features/library/presentation/bloc/library_bloc.dart';
 import 'package:music_app/features/player/presentation/pages/player_page.dart';
+import 'package:music_app/features/library/presentation/pages/artist_detail_page.dart';
+import 'package:music_app/features/library/presentation/pages/album_detail_page.dart';
 
 class LibraryPage extends StatelessWidget {
   const LibraryPage({Key? key}) : super(key: key);
@@ -233,7 +235,7 @@ class _PlaylistsTab extends StatelessWidget {
             title: Text(playlist.name),
             subtitle: Text('${playlist.songs.length} 首歌曲'),
             trailing: const Icon(Icons.chevron_right),
-            onTap: () {},
+            onTap: () => _openPlaylist(context, playlist),
           );
         }
         
@@ -262,7 +264,7 @@ class _PlaylistsTab extends StatelessWidget {
             title: Text(playlist.name),
             subtitle: Text('${playlist.songs.length} 首歌曲'),
             trailing: const Icon(Icons.chevron_right),
-            onTap: () {},
+            onTap: () => _openPlaylist(context, playlist),
           ),
         );
       },
@@ -301,7 +303,12 @@ class _ArtistsTab extends StatelessWidget {
               : null,
           trailing: const Icon(Icons.chevron_right),
           onTap: () {
-            // TODO: Implement artist detail page navigation
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => ArtistDetailPage(artist: artist),
+              ),
+            );
           },
         );
       },
@@ -349,10 +356,30 @@ class _AlbumsTab extends StatelessWidget {
               : null,
           trailing: const Icon(Icons.chevron_right),
           onTap: () {
-            // TODO: Implement album detail page navigation
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => AlbumDetailPage(album: album),
+              ),
+            );
           },
         );
       },
+    );
+
+  void _openPlaylist(BuildContext context, Playlist playlist) {
+    if (playlist.songs.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('播放列表为空')),
+      );
+      return;
+    }
+    AudioPlayerService.instance.setPlaylist(playlist.songs, 0);
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => PlayerPage(playlist: playlist.songs, initialIndex: 0),
+      ),
     );
   }
 }
