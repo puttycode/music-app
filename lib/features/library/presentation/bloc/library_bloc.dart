@@ -75,6 +75,7 @@ class LibraryBloc extends Bloc<LibraryEvent, LibraryState> {
     on<RefreshPlaylists>(_onRefreshPlaylists);
     on<CreatePlaylist>(_onCreatePlaylist);
     on<DeletePlaylist>(_onDeletePlaylist);
+    on<RenamePlaylist>(_onRenamePlaylist);
   }
 
   Future<void> _onLoadLocalMusic(LoadLocalMusic event, Emitter<LibraryState> emit) async {
@@ -215,6 +216,28 @@ class LibraryBloc extends Bloc<LibraryEvent, LibraryState> {
     await playlistBox.delete(event.name);
     
     final updatedPlaylists = state.playlists.where((p) => p.name != event.name).toList();
+    emit(state.copyWith(playlists: updatedPlaylists));
+  }
+
+  Future<void> _onRenamePlaylist(RenamePlaylist event, Emitter<LibraryState> emit) async {
+    final playlistBox = Hive.box(AppConstants.playlistBox);
+    
+    // Get the existing playlist data
+    final playlistData = playlistBox.get(event.oldName);
+    if (playlistData != null) {
+      // Delete old key and add with new name
+      await playlistBox.delete(event.oldName);
+      await playlistBox.put(event.newName, playlistData);
+    }
+    
+    // Update state with renamed playlist
+    final updatedPlaylists = state.playlists.map((p) {
+      if (p.name == event.oldName) {
+        return Playlist(name: event.newName, songs: p.songs, icon: p.icon);
+      }
+      return p;
+    }).toList();
+    
     emit(state.copyWith(playlists: updatedPlaylists));
   }
 }

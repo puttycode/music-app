@@ -51,7 +51,7 @@ class Song extends Equatable {
       album: json['album'] ?? 'Unknown Album',
       albumArt: json['albumArt'],
       audioUrl: json['audioUrl'],
-      duration: Duration(milliseconds: json['duration'] ?? 0),
+      duration: Duration(milliseconds: json['duration_ms'] ?? (json['duration'] ?? 0)),
       isLocal: true,
       localPath: json['localPath'],
       lyrics: json['lyrics'] != null ? List<String>.from(json['lyrics']) : null,

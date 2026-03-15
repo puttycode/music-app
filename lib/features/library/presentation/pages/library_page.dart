@@ -280,6 +280,7 @@ class _PlaylistsTab extends StatelessWidget {
             subtitle: Text('${playlist.songs.length} 首歌曲'),
             trailing: const Icon(Icons.chevron_right),
             onTap: () => _openPlaylist(context, playlist),
+            onLongPress: () => _showRenameDialog(context, playlist),
           ),
         );
       },
@@ -294,6 +295,42 @@ class _PlaylistsTab extends StatelessWidget {
           playlistName: playlist.name,
           songs: playlist.songs,
         ),
+      ),
+    );
+  }
+
+  void _showRenameDialog(BuildContext context, Playlist playlist) {
+    final controller = TextEditingController(text: playlist.name);
+    
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('重命名播放列表'),
+        content: TextField(
+          controller: controller,
+          decoration: const InputDecoration(
+            hintText: '输入新名称',
+            labelText: '播放列表名称',
+          ),
+          autofocus: true,
+          selectAllOnFocus: true,
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('取消'),
+          ),
+          TextButton(
+            onPressed: () {
+              final newName = controller.text.trim();
+              if (newName.isNotEmpty && newName != playlist.name) {
+                context.read<LibraryBloc>().add(RenamePlaylist(playlist.name, newName));
+              }
+              Navigator.pop(context);
+            },
+            child: const Text('确定'),
+          ),
+        ],
       ),
     );
   }

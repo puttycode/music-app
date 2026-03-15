@@ -30,3 +30,12 @@ class DeletePlaylist extends LibraryEvent {
   @override
   List<Object?> get props => [name];
 }
+
+class RenamePlaylist extends LibraryEvent {
+  final String oldName;
+  final String newName;
+  const RenamePlaylist(this.oldName, this.newName);
+
+  @override
+  List<Object?> get props => [oldName, newName];
+}
