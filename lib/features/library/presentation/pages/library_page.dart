@@ -26,6 +26,10 @@ class LibraryPage extends StatelessWidget {
         FavoriteService.instance.onFavoriteChanged = () {
           bloc.add(RefreshPlaylists());
         };
+        // Set callback to refresh recent plays when songs are played
+        AudioPlayerService.instance.onRecentPlaysChanged = () {
+          bloc.add(RefreshPlaylists());
+        };
         return bloc;
       },
       child: const _LibraryView(),
@@ -47,7 +51,7 @@ class _LibraryViewState extends State<_LibraryView> {
       length: 4,
       child: Scaffold(
         appBar: AppBar(
-          title: Text('音乐库', style: Theme.of(context).textTheme.headlineMedium),
+          title: Text('音乐库', style: Theme.of(context).textTheme.headlineLarge?.copyWith(fontWeight: FontWeight.bold)),
           backgroundColor: Theme.of(context).appBarTheme.backgroundColor,
           actions: [
             IconButton(

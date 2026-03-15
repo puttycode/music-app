@@ -20,6 +20,7 @@ class AudioPlayerService {
   final _repeatModeSubject = BehaviorSubject<RepeatMode>.seeded(RepeatMode.off);
   final _isShuffleSubject = BehaviorSubject<bool>.seeded(false);
   final _isPreviewModeSubject = BehaviorSubject<bool>.seeded(true);
+  final _recentPlaysChangedSubject = BehaviorSubject<void>.seeded(null);
 
   Stream<Song?> get currentSongStream => _currentSongSubject.stream;
   Stream<List<Song>> get playlistStream => _playlistSubject.stream;
@@ -27,6 +28,7 @@ class AudioPlayerService {
   Stream<RepeatMode> get repeatModeStream => _repeatModeSubject.stream;
   Stream<bool> get isShuffleStream => _isShuffleSubject.stream;
   Stream<bool> get isPreviewModeStream => _isPreviewModeSubject.stream;
+  Stream<void> get recentPlaysChangedStream => _recentPlaysChangedSubject.stream;
 
   Song? get currentSong => _currentSongSubject.value;
   List<Song> get playlist => _playlistSubject.value;
@@ -34,6 +36,9 @@ class AudioPlayerService {
   RepeatMode get repeatMode => _repeatModeSubject.value;
   bool get isShuffle => _isShuffleSubject.value;
   bool get isPreviewMode => _isPreviewModeSubject.value;
+
+  // Callback for library to refresh recent plays
+  VoidCallback? onRecentPlaysChanged;
 
   void setPreviewMode(bool value) {
     _isPreviewModeSubject.add(value);
@@ -122,6 +127,10 @@ class AudioPlayerService {
       }
       
       AppLogger.log('Saved to recent plays: ${songWithPlayedAt.title}');
+      
+      // Notify listeners
+      _recentPlaysChangedSubject.add(null);
+      onRecentPlaysChanged?.call();
     } catch (e) {
       AppLogger.log('Error saving to recent: $e');
     }
@@ -166,6 +175,7 @@ class AudioPlayerService {
     _currentIndexSubject.add(nextIndex);
     _currentSongSubject.add(playlist[nextIndex]);
     await _playSong(playlist[nextIndex]);
+    await _saveToRecentPlays(playlist[nextIndex]);
   }
 
   Future<void> playPrevious() async {
@@ -182,6 +192,7 @@ class AudioPlayerService {
     _currentIndexSubject.add(prevIndex);
     _currentSongSubject.add(playlist[prevIndex]);
     await _playSong(playlist[prevIndex]);
+    await _saveToRecentPlays(playlist[prevIndex]);
   }
 
   Future<void> seek(Duration position) async {
