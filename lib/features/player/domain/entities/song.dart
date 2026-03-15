@@ -86,6 +86,7 @@ class Song extends Equatable {
     bool? isLocal,
     String? localPath,
     List<String>? lyrics,
+    DateTime? playedAt,
   }) {
     return Song(
       id: id ?? this.id,
@@ -98,9 +99,10 @@ class Song extends Equatable {
       isLocal: isLocal ?? this.isLocal,
       localPath: localPath ?? this.localPath,
       lyrics: lyrics ?? this.lyrics,
+      playedAt: playedAt ?? this.playedAt,
     );
   }
 
   @override
-  List<Object?> get props => [id, title, artist, album, audioUrl, isLocal, localPath];
+  List<Object?> get props => [id, title, artist, album, audioUrl, isLocal, localPath, playedAt];
 }

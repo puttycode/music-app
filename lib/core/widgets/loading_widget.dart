@@ -16,14 +16,15 @@ class LoadingWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isLightMode = Theme.of(context).brightness == Brightness.light;
     return Shimmer.fromColors(
-      baseColor: AppColors.surfaceVariant,
-      highlightColor: AppColors.secondary,
+      baseColor: isLightMode ? Colors.grey.shade300 : AppColors.surfaceVariant,
+      highlightColor: isLightMode ? Colors.grey.shade100 : AppColors.secondary,
       child: Container(
         width: width,
         height: height,
         decoration: BoxDecoration(
-          color: AppColors.surfaceVariant,
+          color: isLightMode ? Colors.grey.shade300 : AppColors.surfaceVariant,
           borderRadius: BorderRadius.circular(borderRadius),
         ),
       ),

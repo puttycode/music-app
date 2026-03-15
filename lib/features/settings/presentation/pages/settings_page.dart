@@ -76,7 +76,7 @@ class _SettingsPageState extends State<SettingsPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('设置'),
+        title: Text('设置', style: Theme.of(context).textTheme.headlineLarge?.copyWith(fontWeight: FontWeight.bold)),
         backgroundColor: Theme.of(context).appBarTheme.backgroundColor,
       ),
       body: ListView(

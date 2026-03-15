@@ -37,7 +37,7 @@ class _SearchViewState extends State<_SearchView> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('搜索'),
+        title: Text('搜索', style: Theme.of(context).textTheme.headlineLarge?.copyWith(fontWeight: FontWeight.bold)),
         backgroundColor: Theme.of(context).appBarTheme.backgroundColor,
       ),
       body: Column(
@@ -136,7 +136,7 @@ class _SearchViewState extends State<_SearchView> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('热门搜索', style: Theme.of(context).textTheme.titleLarge),
+          Text('热门搜索', style: Theme.of(context).textTheme.headlineLarge?.copyWith(fontWeight: FontWeight.bold, fontSize: 20)),
           const SizedBox(height: 16),
           Wrap(
             spacing: 8,
