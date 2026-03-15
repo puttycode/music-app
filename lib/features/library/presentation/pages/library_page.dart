@@ -18,7 +18,14 @@ class LibraryPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return BlocProvider(
-      create: (_) => LibraryBloc()..add(LoadLocalMusic())..add(LoadPlaylists()),
+      create: (_) {
+        final bloc = LibraryBloc()..add(LoadLocalMusic())..add(LoadPlaylists());
+        // Set callback to refresh playlists when favorite changes
+        FavoriteService.instance.onFavoriteChanged = () {
+          bloc.add(RefreshPlaylists());
+        };
+        return bloc;
+      },
       child: const _LibraryView(),
     );
   }
@@ -190,6 +197,8 @@ class _LocalSongsTab extends StatelessWidget {
 
   void _playSong(BuildContext context, List<Song> playlist, int index) {
     AudioPlayerService.instance.setPlaylist(playlist, index);
+    // Refresh playlists to update "最近播放"
+    context.read<LibraryBloc>().add(RefreshPlaylists());
     Navigator.push(
       context,
       MaterialPageRoute(
@@ -272,17 +281,13 @@ class _PlaylistsTab extends StatelessWidget {
   }
 
   void _openPlaylist(BuildContext context, Playlist playlist) {
-    if (playlist.songs.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('播放列表为空')),
-      );
-      return;
-    }
-    AudioPlayerService.instance.setPlaylist(playlist.songs, 0);
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (_) => PlayerPage(playlist: playlist.songs, initialIndex: 0),
+        builder: (_) => PlaylistDetailPage(
+          playlistName: playlist.name,
+          songs: playlist.songs,
+        ),
       ),
     );
   }

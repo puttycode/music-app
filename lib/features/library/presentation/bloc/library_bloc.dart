@@ -72,6 +72,7 @@ class LibraryBloc extends Bloc<LibraryEvent, LibraryState> {
     on<LoadLocalMusic>(_onLoadLocalMusic);
     on<RequestPermission>(_onRequestPermission);
     on<LoadPlaylists>(_onLoadPlaylists);
+    on<RefreshPlaylists>(_onRefreshPlaylists);
     on<CreatePlaylist>(_onCreatePlaylist);
     on<DeletePlaylist>(_onDeletePlaylist);
   }
@@ -83,9 +84,21 @@ class LibraryBloc extends Bloc<LibraryEvent, LibraryState> {
       // Scan device for local music files
       final localSongs = await LocalMusicScanner.scan();
       
-      // Extract unique artist and album names from scanned songs
-      final artistNames = localSongs.map((s) => s.artist).toSet().toList();
-      final albumNames = localSongs.map((s) => s.album).toSet().toList();
+      // Also load recent plays for artist/album extraction
+      final recentBox = Hive.box(AppConstants.recentPlaysBox);
+      final recentSongs = recentBox.values.map((e) {
+        if (e is Map) {
+          return Song.fromLocal(Map<String, dynamic>.from(e));
+        }
+        return null;
+      }).whereType<Song>().toList();
+      
+      // Combine local songs and recent songs for artist/album extraction
+      final allSongs = [...localSongs, ...recentSongs];
+      
+      // Extract unique artist and album names
+      final artistNames = allSongs.map((s) => s.artist).where((a) => a.isNotEmpty).toSet().toList();
+      final albumNames = allSongs.map((s) => s.album).where((a) => a.isNotEmpty).toSet().toList();
       
       // Create Artist and Album objects from names
       final artists = artistNames.map((name) => Artist(
@@ -114,6 +127,14 @@ class LibraryBloc extends Bloc<LibraryEvent, LibraryState> {
   }
 
   Future<void> _onLoadPlaylists(LoadPlaylists event, Emitter<LibraryState> emit) async {
+    await _refreshPlaylistsData(emit);
+  }
+
+  Future<void> _onRefreshPlaylists(RefreshPlaylists event, Emitter<LibraryState> emit) async {
+    await _refreshPlaylistsData(emit);
+  }
+
+  Future<void> _refreshPlaylistsData(Emitter<LibraryState> emit) async {
     // Load recent plays from Hive for "最近播放"
     final recentBox = Hive.box(AppConstants.recentPlaysBox);
     final recentSongs = recentBox.values.map((e) {
@@ -150,7 +171,7 @@ class LibraryBloc extends Bloc<LibraryEvent, LibraryState> {
     );
     
     // Remove from userPlaylists to avoid duplicates
-    final otherPlaylists = userPlaylists.where((p) => p.name != '我喜欢的音乐').toList();
+    final otherPlaylists = userPlaylists.where((p) => p.name != '我喜欢的音乐' && p.name != '最近播放').toList();
     
     emit(state.copyWith(
       playlists: [

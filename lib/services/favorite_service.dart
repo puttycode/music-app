@@ -11,6 +11,9 @@ class FavoriteService {
   final _favoritesChangedSubject = BehaviorSubject<void>.seeded(null);
   Stream<void> get favoritesChanged => _favoritesChangedSubject.asBroadcastStream();
 
+  // Callback to refresh library playlists
+  VoidCallback? onFavoriteChanged;
+
   Future<void> toggleFavorite(Song song) async {
     try {
       final playlistBox = Hive.box(AppConstants.playlistBox);
@@ -44,6 +47,9 @@ class FavoriteService {
       });
 
       _favoritesChangedSubject.add(null);
+      
+      // Trigger callback to refresh library playlists
+      onFavoriteChanged?.call();
     } catch (e) {
       // Ignore errors
     }

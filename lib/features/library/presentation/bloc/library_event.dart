@@ -13,6 +13,8 @@ class RequestPermission extends LibraryEvent {}
 
 class LoadPlaylists extends LibraryEvent {}
 
+class RefreshPlaylists extends LibraryEvent {}
+
 class CreatePlaylist extends LibraryEvent {
   final String name;
   const CreatePlaylist(this.name);
