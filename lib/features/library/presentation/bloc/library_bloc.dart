@@ -7,7 +7,6 @@ import 'package:music_app/features/player/domain/entities/album.dart';
 import 'package:music_app/core/constants/app_constants.dart';
 import 'package:music_app/services/audio_player_service.dart' show AppLogger, AudioPlayerService;
 import 'package:music_app/services/music_api_service.dart';
-import 'package:music_app/services/local_music_scanner.dart';
 
 part 'library_event.dart';
 
@@ -80,10 +79,6 @@ class LibraryBloc extends Bloc<LibraryEvent, LibraryState> {
     emit(state.copyWith(isLoading: true));
     
     try {
-      // Scan for local music files
-      final localSongs = await LocalMusicScanner.scan();
-      
-      // Load recent plays from Hive for artist/album extraction
       final recentBox = Hive.box(AppConstants.recentPlaysBox);
       final recentSongs = recentBox.values.map((e) {
         if (e is Map) {
@@ -92,11 +87,9 @@ class LibraryBloc extends Bloc<LibraryEvent, LibraryState> {
         return null;
       }).whereType<Song>().toList();
       
-      // Extract unique artist and album names from recent plays
       final artistNames = recentSongs.map((s) => s.artist).toSet().toList();
       final albumNames = recentSongs.map((s) => s.album).toSet().toList();
       
-      // Create Artist and Album objects from names
       final artists = artistNames.map((name) => Artist(
         id: name,
         name: name,
@@ -109,12 +102,12 @@ class LibraryBloc extends Bloc<LibraryEvent, LibraryState> {
       
       emit(state.copyWith(
         isLoading: false,
-        localSongs: localSongs,
+        localSongs: recentSongs,
         artists: artists,
         albums: albums,
       ));
     } catch (e) {
-      emit(state.copyWith(isLoading: false, error: '加载失败: $e'));
+      emit(state.copyWith(isLoading: false, error: '加载失败'));
     }
   }
 
