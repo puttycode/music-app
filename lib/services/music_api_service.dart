@@ -261,8 +261,11 @@ class CustomApi implements MusicApi {
       );
       
       if (response.statusCode == 200 && response.data['code'] == 200) {
-        final results = response.data['data'] as List? ?? [];
-        return results.map((track) => _parseSong(track)).toList();
+        final results = _extractResultList(response.data);
+        return results
+            .whereType<Map>()
+            .map((track) => _parseSong(Map<String, dynamic>.from(track)))
+            .toList();
       }
       return [];
     } catch (e) {
@@ -282,13 +285,16 @@ class CustomApi implements MusicApi {
       );
       
       if (response.statusCode == 200 && response.data['code'] == 200) {
-        final results = response.data['data'] as List? ?? [];
-        return results.map((artist) => Artist(
-          id: artist['id']?.toString() ?? '',
-          name: artist['name']?.toString() ?? 'Unknown',
-          avatar: artist['avatar'] ?? artist['pic'],
-          musicNum: artist['musicNum'],
-        )).toList();
+        final results = _extractResultList(response.data);
+        return results.whereType<Map>().map((artist) {
+          final data = Map<String, dynamic>.from(artist);
+          return Artist(
+            id: data['id']?.toString() ?? '',
+            name: data['name']?.toString() ?? 'Unknown',
+            avatar: data['avatar'] ?? data['pic'],
+            musicNum: data['musicNum'],
+          );
+        }).toList();
       }
       return [];
     } catch (e) {
@@ -308,13 +314,16 @@ class CustomApi implements MusicApi {
       );
       
       if (response.statusCode == 200 && response.data['code'] == 200) {
-        final results = response.data['data'] as List? ?? [];
-        return results.map((album) => Album(
-          id: album['id']?.toString() ?? '',
-          name: album['name']?.toString() ?? 'Unknown',
-          artist: album['artist']?.toString(),
-          cover: album['cover'] ?? album['pic'],
-        )).toList();
+        final results = _extractResultList(response.data);
+        return results.whereType<Map>().map((album) {
+          final data = Map<String, dynamic>.from(album);
+          return Album(
+            id: data['id']?.toString() ?? '',
+            name: data['name']?.toString() ?? 'Unknown',
+            artist: data['artist']?.toString(),
+            cover: data['cover'] ?? data['pic'],
+          );
+        }).toList();
       }
       return [];
     } catch (e) {
@@ -328,17 +337,73 @@ class CustomApi implements MusicApi {
     return song.duration.inSeconds > 60;
   }
 
+  List<dynamic> _extractResultList(dynamic payload) {
+    if (payload is List) {
+      return payload;
+    }
+
+    if (payload is! Map) {
+      return const [];
+    }
+
+    final map = Map<String, dynamic>.from(payload as Map);
+    final candidates = <dynamic>[
+      map['data'],
+      map['result'],
+      map['results'],
+      map['list'],
+      map['songs'],
+      map['artists'],
+      map['albums'],
+    ];
+
+    for (final candidate in candidates) {
+      if (candidate is List) {
+        return candidate;
+      }
+      if (candidate is Map) {
+        final nested = _extractNestedList(Map<String, dynamic>.from(candidate));
+        if (nested.isNotEmpty) {
+          return nested;
+        }
+      }
+    }
+
+    return _extractNestedList(map);
+  }
+
+  List<dynamic> _extractNestedList(Map<String, dynamic> map) {
+    const listKeys = [
+      'list',
+      'items',
+      'records',
+      'rows',
+      'songList',
+      'artistList',
+      'albumList',
+    ];
+
+    for (final key in listKeys) {
+      final value = map[key];
+      if (value is List) {
+        return value;
+      }
+    }
+
+    return const [];
+  }
+
   Song _parseSong(Map<String, dynamic> track) {
     final rid = track['rid'] ?? track['id'] ?? 0;
     final name = track['name']?.toString() ?? track['title']?.toString() ?? 'Unknown';
     final artist = track['artist']?.toString() ?? track['artist_name'] ?? 'Unknown Artist';
     final album = track['album']?.toString() ?? track['album_name'] ?? 'Unknown Album';
     final pic = track['pic'] ?? track['albumArt'] ?? track['cover'];
-    
-    final durationSec = track['duration'] is int 
-        ? track['duration'] 
+
+    final durationSec = track['duration'] is int
+        ? track['duration']
         : int.tryParse(track['duration']?.toString() ?? '0') ?? 0;
-    
+
     return Song(
       id: int.tryParse(rid.toString()) ?? DateTime.now().millisecondsSinceEpoch,
       title: name,
