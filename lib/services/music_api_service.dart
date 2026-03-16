@@ -308,11 +308,11 @@ class CustomApi implements MusicApi {
     }
   }
 
+
   @override
   Future<List<Album>> getNewAlbums() async {
     try {
       AppLogger.log('获取新专辑');
-      // 使用搜索接口获取新专辑
       final response = await _dio.get(
         '/api/v1/search',
         queryParameters: {'q': '最新', 'type': 'album'},
@@ -325,7 +325,6 @@ class CustomApi implements MusicApi {
           name: album['name']?.toString() ?? 'Unknown',
           artist: album['artist']?.toString(),
           cover: album['cover'] ?? album['pic'],
-          publishDate: album['publishDate'],
         )).toList();
       }
       return [];
@@ -360,77 +359,6 @@ class CustomApi implements MusicApi {
       audioUrl: track['audioUrl'] ?? track['url'],
       duration: Duration(seconds: durationSec),
       isLocal: false,
-      releaseDate: track['releaseDate'],
-      format: track['format'],
-      bitrate: track['bitrate'],
-    );
-  }
-}
-      return [];
-    } catch (e) {
-      AppLogger.log('自定义 API 异常: $e');
-      return [];
-    }
-  }
-
-  @override
-  Future<List<Song>> getTopCharts() async {
-    return searchSongs('热门');
-  }
-
-  Song _parseSong(Map<String, dynamic> track) {
-    final rid = track['rid'] ?? track['id'] ?? 0;
-    final name = track['name']?.toString() ?? track['title']?.toString() ?? 'Unknown';
-    final artist = track['artist']?.toString() ?? track['artist_name'] ?? 'Unknown Artist';
-    final album = track['album']?.toString() ?? track['album_name'] ?? 'Unknown Album';
-    final pic = track['pic'] ?? track['albumArt'] ?? track['cover'];
-    
-    final durationSec = track['duration'] is int 
-        ? track['duration'] 
-        : int.tryParse(track['duration']?.toString() ?? '0') ?? 0;
-    
-    return Song(
-      id: int.tryParse(rid.toString()) ?? DateTime.now().millisecondsSinceEpoch,
-      title: name,
-      artist: artist,
-      album: album,
-      albumArt: pic,
-      audioUrl: track['audioUrl'] ?? track['url'],
-      duration: Duration(seconds: durationSec),
-      isLocal: false,
-      releaseDate: track['releaseDate'],
-      format: track['format'],
-      bitrate: track['bitrate'],
-    );
-  }
-}
-
-  @override
-  Future<List<Artist>> searchArtists(String query) async {
-    return [];
-  }
-
-  @override
-  Future<List<Album>> searchAlbums(String query) async {
-    return [];
-  }
-
-  @override
-  bool isFullAudio(Song song) {
-    if (song.audioUrl == null) return false;
-    return song.audioUrl!.isNotEmpty;
-  }
-
-  Song _parseSong(Map<String, dynamic> track) {
-    return Song(
-      id: track['id'] ?? DateTime.now().millisecondsSinceEpoch,
-      title: track['name']?.toString() ?? 'Unknown',
-      artist: track['artist']?.toString() ?? 'Unknown Artist',
-      album: track['album']?.toString() ?? 'Unknown Album',
-      albumArt: track['pic']?.toString(),
-      audioUrl: track['url']?.toString(),
-      duration: Duration(seconds: track['duration'] ?? 0),
-      isLocal: false,
     );
   }
 }
@@ -439,7 +367,6 @@ class MusicApiService {
   static MusicApiService? _instance;
   static MusicApiService get instance => _instance ??= MusicApiService._();
 
-  // 默认使用自定义 API
   MusicApi _currentApi = CustomApi();
 
   MusicApiService._();
