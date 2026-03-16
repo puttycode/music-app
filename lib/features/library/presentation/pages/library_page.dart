@@ -212,15 +212,36 @@ class _LocalSongsTabState extends State<_LocalSongsTab> {
               statuses = await [Permission.storage].request();
             }
             
-            if (statuses.values.any((s) => s.isGranted)) {
+            bool granted = statuses.values.any((s) => s.isGranted);
+            
+            if (granted) {
               if (context.mounted) {
                 context.read<LibraryBloc>().add(LoadLocalMusic());
               }
             } else {
+              // Permission denied, show dialog to open settings
               if (context.mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('需要存储权限才能扫描本地音乐')),
+                final shouldOpenSettings = await showDialog<bool>(
+                  context: context,
+                  builder: (context) => AlertDialog(
+                    title: const Text('需要权限'),
+                    content: const Text('需要存储权限才能扫描本地音乐，请在设置中开启权限'),
+                    actions: [
+                      TextButton(
+                        onPressed: () => Navigator.pop(context, false),
+                        child: const Text('取消'),
+                      ),
+                      TextButton(
+                        onPressed: () => Navigator.pop(context, true),
+                        child: const Text('去设置'),
+                      ),
+                    ],
+                  ),
                 );
+                
+                if (shouldOpenSettings == true) {
+                  await openAppSettings();
+                }
               }
             }
           },

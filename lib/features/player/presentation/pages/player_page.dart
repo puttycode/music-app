@@ -1,14 +1,17 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:hive_flutter/hive_flutter.dart';
 import 'package:music_app/core/theme/colors.dart';
 import 'package:music_app/core/theme/text_styles.dart';
 import 'package:music_app/core/utils/duration_formatter.dart';
+import 'package:music_app/core/constants/app_constants.dart';
 import 'package:music_app/services/audio_player_service.dart';
 import 'package:music_app/services/music_api_service.dart';
 import 'package:music_app/services/favorite_service.dart';
 import 'package:music_app/services/download_service.dart';
 import 'package:music_app/features/player/domain/entities/song.dart';
+import 'package:music_app/features/library/domain/entities/playlist.dart';
 import 'package:music_app/features/player/presentation/bloc/player_bloc.dart';
 import 'package:music_app/features/player/presentation/bloc/player_event_state.dart';
 
@@ -125,6 +128,9 @@ class _PlayerViewState extends State<_PlayerView> {
       case 'download':
         _downloadSong(context, song);
         break;
+      case 'share':
+        _shareSong(context, song);
+        break;
     }
   }
 
@@ -142,21 +148,24 @@ class _PlayerViewState extends State<_PlayerView> {
               _buildDetailRow('艺术家', song.artist),
               _buildDetailRow('专辑', song.album),
               _buildDetailRow('时长', DurationFormatter.format(song.duration)),
-              if (song.releaseDate != null)
+              if (song.releaseDate != null && song.releaseDate!.isNotEmpty)
                 _buildDetailRow('发行日期', song.releaseDate!),
-              if (song.format != null)
-                _buildDetailRow('格式', song.format!),
-              if (song.bitrate != null)
+              if (song.format != null && song.format!.isNotEmpty)
+                _buildDetailRow('格式', song.format!.toUpperCase()),
+              if (song.bitrate != null && song.bitrate!.isNotEmpty)
                 _buildDetailRow('比特率', song.bitrate!),
-              if (song.sampleRate != null)
+              if (song.sampleRate != null && song.sampleRate!.isNotEmpty)
                 _buildDetailRow('采样率', song.sampleRate!),
               if (song.fileSize != null && song.fileSize! > 0)
                 _buildDetailRow('文件大小', _formatFileSize(song.fileSize!)),
-              if (song.publisher != null)
+              if (song.publisher != null && song.publisher!.isNotEmpty)
                 _buildDetailRow('发行公司', song.publisher!),
               if (song.localPath != null)
-                _buildDetailRow('路径', song.localPath!),
-              _buildDetailRow('类型', song.isLocal ? '本地音乐' : '在线音乐'),
+                _buildDetailRow('本地路径', song.localPath!),
+              if (song.audioUrl != null)
+                _buildDetailRow('在线地址', song.audioUrl!),
+              _buildDetailRow('音乐类型', song.isLocal ? '本地音乐' : '在线音乐'),
+              _buildDetailRow('歌曲 ID', song.id.toString()),
             ],
           ),
         ),
@@ -202,19 +211,119 @@ class _PlayerViewState extends State<_PlayerView> {
   }
 
   void _showAddToPlaylistDialog(BuildContext context, Song song) {
-    // Implementation will be added - shows list of playlists to add to
-    showDialog(
+    final playlistBox = Hive.box(AppConstants.playlistBox);
+    final playlists = playlistBox.values.map((e) {
+      if (e is Map) {
+        return Playlist(
+          name: e['name'] ?? '未知',
+          songs: (e['songs'] as List?)?.map((s) {
+            if (s is Map) {
+              return Song.fromLocal(Map<String, dynamic>.from(s));
+            }
+            return null;
+          }).whereType<Song>().toList() ?? <Song>[],
+          icon: e['icon'] ?? 'queue_music',
+        );
+      }
+      return null;
+    }).whereType<Playlist>().toList();
+    
+    final userPlaylists = playlists.where((p) => 
+      p.name != '我喜欢的音乐' && p.name != '最近播放'
+    ).toList();
+    
+    if (userPlaylists.isEmpty) {
+      showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('添加到播放列表'),
+          content: const Text('暂无自定义播放列表\n请先在音乐库创建播放列表'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('关闭'),
+            ),
+          ],
+        ),
+      );
+      return;
+    }
+    
+    showModalBottomSheet(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('添加到播放列表'),
-        content: const Text('此功能开发中...'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('关闭'),
-          ),
-        ],
+      builder: (context) => Container(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              '选择播放列表',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 16),
+            SizedBox(
+              height: 300,
+              child: ListView.builder(
+                itemCount: userPlaylists.length,
+                itemBuilder: (context, index) {
+                  final playlist = userPlaylists[index];
+                  return ListTile(
+                    leading: const Icon(Icons.queue_music),
+                    title: Text(playlist.name),
+                    subtitle: Text('${playlist.songs.length} 首歌曲'),
+                    onTap: () {
+                      _addToPlaylist(context, song, playlist);
+                      Navigator.pop(context);
+                    },
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
       ),
+    );
+  }
+  
+  void _addToPlaylist(BuildContext context, Song song, Playlist playlist) {
+    final playlistBox = Hive.box(AppConstants.playlistBox);
+    final playlistData = playlistBox.get(playlist.name);
+    
+    List<Song> songs = [];
+    if (playlistData is Map && playlistData['songs'] is List) {
+      songs = (playlistData['songs'] as List)
+          .map((s) {
+            if (s is Map) {
+              return Song.fromLocal(Map<String, dynamic>.from(s));
+            }
+            return null;
+          })
+          .whereType<Song>()
+          .toList();
+    }
+    
+    // Check if song already exists
+    final exists = songs.any((s) => s.id == song.id);
+    if (exists) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('歌曲已在播放列表中')),
+      );
+      return;
+    }
+    
+    songs.add(song);
+    playlistBox.put(playlist.name, {
+      'name': playlist.name,
+      'songs': songs.map((s) => s.toJson()).toList(),
+      'icon': playlist.icon,
+    });
+    
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('已添加到 ${playlist.name}')),
     );
   }
 
@@ -233,6 +342,13 @@ class _PlayerViewState extends State<_PlayerView> {
         );
       }
     }
+  }
+
+  void _shareSong(BuildContext context, Song song) {
+    // TODO: Implement share functionality
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('分享功能开发中...')),
+    );
   }
 
   Widget _buildDownloadIndicator() {
@@ -324,8 +440,6 @@ class _PlayerViewState extends State<_PlayerView> {
         title: const Text('正在播放', style: TextStyle(fontSize: 14)),
         centerTitle: true,
         actions: [
-          _buildDownloadIndicator(),
-          const SizedBox(width: 8),
           PopupMenuButton<String>(
             icon: const Icon(Icons.more_vert),
             onSelected: (value) => _handleMenuAction(context, value),
@@ -333,6 +447,7 @@ class _PlayerViewState extends State<_PlayerView> {
               const PopupMenuItem(value: 'details', child: Text('歌曲详情')),
               const PopupMenuItem(value: 'add_to_playlist', child: Text('添加到播放列表')),
               const PopupMenuItem(value: 'download', child: Text('下载')),
+              const PopupMenuItem(value: 'share', child: Text('分享')),
             ],
           ),
         ],
@@ -348,7 +463,7 @@ class _PlayerViewState extends State<_PlayerView> {
               gradient: LinearGradient(
                 colors: isDark 
                     ? [AppColors.primaryDark, Theme.of(context).scaffoldBackgroundColor]
-                    : [Colors.indigo.shade300, Colors.white],
+                    : [Colors.blue.shade400, Colors.blue.shade100],
                 begin: Alignment.topCenter,
                 end: Alignment.bottomCenter,
               ),
@@ -372,7 +487,6 @@ class _PlayerViewState extends State<_PlayerView> {
                     const SizedBox(height: 24),
                     _Controls(audioService: audioService, state: state, bloc: context.read<PlayerBloc>()),
                     const Spacer(),
-                    _BottomControls(audioService: audioService),
                     const SizedBox(height: 32),
                   ],
                 ),
@@ -430,45 +544,140 @@ class _LyricsView extends StatelessWidget {
   }
 }
 
-class _AlbumArt extends StatelessWidget {
+class _AlbumArt extends StatefulWidget {
   final Song? song;
 
   const _AlbumArt({this.song});
 
   @override
+  State<_AlbumArt> createState() => _AlbumArtState();
+}
+
+class _AlbumArtState extends State<_AlbumArt> {
+  DownloadTask? _downloadTask;
+  StreamSubscription? _subscription;
+
+  @override
+  void initState() {
+    super.initState();
+    _subscription = DownloadService.instance.downloadProgressStream.listen((task) {
+      if (mounted && widget.song != null && task.id == widget.song!.id.toString()) {
+        setState(() {
+          _downloadTask = task;
+        });
+      }
+    });
+    _loadDownloadStatus();
+  }
+
+  @override
+  void dispose() {
+    _subscription?.cancel();
+    super.dispose();
+  }
+
+  void _loadDownloadStatus() {
+    final task = DownloadService.instance.getDownload(widget.song?.id.toString() ?? '');
+    if (task != null && task.status != DownloadStatus.completed) {
+      setState(() {
+        _downloadTask = task;
+      });
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
     final primaryColor = Theme.of(context).colorScheme.primary;
     final surfaceColor = Theme.of(context).colorScheme.surface;
+    final isDownloading = _downloadTask != null;
+    final isDownloaded = _downloadTask?.status == DownloadStatus.completed;
 
     return AspectRatio(
       aspectRatio: 1,
-      child: Container(
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(16),
-          boxShadow: [
-            BoxShadow(
-              color: primaryColor.withValues(alpha: 0.3),
-              blurRadius: 32,
-              offset: const Offset(0, 16),
-            ),
-          ],
-        ),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(16),
-          child: song?.albumArt != null
-              ? Image.network(
-                  song!.albumArt!,
-                  fit: BoxFit.cover,
-                  errorBuilder: (_, __, ___) => Container(
-                    color: surfaceColor,
-                    child: const Icon(Icons.music_note, size: 64),
-                  ),
-                )
-              : Container(
-                  color: surfaceColor,
-                  child: const Icon(Icons.music_note, size: 64),
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          Container(
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(16),
+              boxShadow: [
+                BoxShadow(
+                  color: primaryColor.withValues(alpha: 0.3),
+                  blurRadius: 32,
+                  offset: const Offset(0, 16),
                 ),
-        ),
+              ],
+            ),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(16),
+              child: widget.song?.albumArt != null
+                  ? Image.network(
+                      widget.song!.albumArt!,
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, __, ___) => Container(
+                        color: surfaceColor,
+                        child: const Icon(Icons.music_note, size: 64),
+                      ),
+                    )
+                  : Container(
+                      color: surfaceColor,
+                      child: const Icon(Icons.music_note, size: 64),
+                    ),
+            ),
+          ),
+          if (isDownloading)
+            Positioned(
+              right: 16,
+              bottom: 16,
+              child: Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Colors.black.withValues(alpha: 0.7),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(
+                        value: _downloadTask!.progress / 100,
+                        strokeWidth: 2,
+                        valueColor: const AlwaysStoppedAnimation<Color>(Colors.white),
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    Text(
+                      '${_downloadTask!.progress}%',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 10,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            )
+          else if (isDownloaded)
+            Positioned(
+              right: 16,
+              bottom: 16,
+              child: Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Colors.green,
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.check,
+                  color: Colors.white,
+                  size: 20,
+                ),
+              ),
+            ),
+        ],
       ),
     );
   }
@@ -525,6 +734,32 @@ class _ProgressBar extends StatelessWidget {
 
             return Column(
               children: [
+                // Favorite button above progress bar
+                BlocBuilder<PlayerBloc, PlayerState>(
+                  builder: (context, state) {
+                    final song = state.currentSong;
+                    if (song == null) return const SizedBox.shrink();
+                    
+                    return StreamBuilder<void>(
+                      stream: FavoriteService.instance.favoritesChanged,
+                      builder: (context, snapshot) {
+                        final isFavorite = FavoriteService.instance.isFavorite(song);
+                        return Padding(
+                          padding: const EdgeInsets.only(bottom: 8),
+                          child: IconButton(
+                            icon: Icon(
+                              isFavorite ? Icons.favorite : Icons.favorite_border,
+                              color: isFavorite ? Colors.red : Theme.of(context).colorScheme.onSurfaceVariant,
+                            ),
+                            onPressed: () {
+                              FavoriteService.instance.toggleFavorite(song);
+                            },
+                          ),
+                        );
+                      },
+                    );
+                  },
+                ),
                 SliderTheme(
                   data: SliderTheme.of(context).copyWith(
                     trackHeight: 4,
@@ -661,50 +896,5 @@ class _Controls extends StatelessWidget {
       default:
         return Icons.repeat;
     }
-  }
-}
-
-class _BottomControls extends StatelessWidget {
-  final AudioPlayerService audioService;
-
-  const _BottomControls({required this.audioService});
-
-  @override
-  Widget build(BuildContext context) {
-    return BlocBuilder<PlayerBloc, PlayerState>(
-      builder: (context, state) {
-        final song = state.currentSong;
-        return Row(
-          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-          children: [
-            IconButton(
-              icon: const Icon(Icons.devices),
-              onPressed: () {},
-            ),
-            StreamBuilder<void>(
-              stream: FavoriteService.instance.favoritesChanged,
-              builder: (context, snapshot) {
-                final isFavorite = song != null ? FavoriteService.instance.isFavorite(song) : false;
-                return IconButton(
-                  icon: Icon(
-                    isFavorite ? Icons.favorite : Icons.favorite_border,
-                    color: isFavorite ? Colors.red : Theme.of(context).colorScheme.onSurfaceVariant,
-                  ),
-                  onPressed: () {
-                    if (song != null) {
-                      FavoriteService.instance.toggleFavorite(song);
-                    }
-                  },
-                );
-              },
-            ),
-            IconButton(
-              icon: const Icon(Icons.share),
-              onPressed: () {},
-            ),
-          ],
-        );
-      },
-    );
   }
 }

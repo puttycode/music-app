@@ -87,21 +87,9 @@ class LibraryBloc extends Bloc<LibraryEvent, LibraryState> {
       // Scan device for local music files
       final localSongs = await LocalMusicScanner.scan();
       
-      // Also load recent plays for artist/album extraction
-      final recentBox = Hive.box(AppConstants.recentPlaysBox);
-      final recentSongs = recentBox.values.map((e) {
-        if (e is Map) {
-          return Song.fromLocal(Map<String, dynamic>.from(e));
-        }
-        return null;
-      }).whereType<Song>().toList();
-      
-      // Combine local songs and recent songs for artist/album extraction
-      final allSongs = [...localSongs, ...recentSongs];
-      
-      // Extract unique artist and album names
-      final artistNames = allSongs.map((s) => s.artist).where((a) => a.isNotEmpty).toSet().toList();
-      final albumNames = allSongs.map((s) => s.album).where((a) => a.isNotEmpty).toSet().toList();
+      // Extract unique artist and album names from local songs
+      final artistNames = localSongs.map((s) => s.artist).where((a) => a.isNotEmpty).toSet().toList();
+      final albumNames = localSongs.map((s) => s.album).where((a) => a.isNotEmpty).toSet().toList();
       
       // Create Artist and Album objects from names
       final artists = artistNames.map((name) => Artist(
