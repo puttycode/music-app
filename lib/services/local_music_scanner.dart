@@ -19,6 +19,7 @@ class LocalMusicScanner {
       final directories = <Directory>[];
       final seenPaths = <String>{};
 
+      // Prioritize download path
       if (configuredDownloadPath is String && configuredDownloadPath.isNotEmpty) {
         directories.add(Directory(configuredDownloadPath));
       }
@@ -30,7 +31,7 @@ class LocalMusicScanner {
 
       for (final directory in directories) {
         if (seenPaths.add(directory.path) && directory.existsSync()) {
-          await _scanDirectory(directory, audioExtensions, songs);
+          await _scanDirectory(directory, audioExtensions, songs, maxDepth: 5);
         }
       }
     } catch (e) {
@@ -54,9 +55,10 @@ class LocalMusicScanner {
       Directory dir,
       Set<String> extensions,
       List<Song> songs,
+      {int currentDepth = 0, int maxDepth = 5},
       ) async {
     try {
-      if (!dir.existsSync()) {
+      if (!dir.existsSync() || currentDepth > maxDepth) {
         return;
       }
 
@@ -93,8 +95,18 @@ class LocalMusicScanner {
               lyrics: null,
             ));
           }
-        } else if (entity is Directory) {
-          await _scanDirectory(entity, extensions, songs);
+        } else if (entity is Directory && currentDepth < maxDepth) {
+          // Skip common non-music directories
+          final dirName = entity.path.split(Platform.pathSeparator).last.toLowerCase();
+          if (!['android', 'data', 'obb', 'system', 'cache'].contains(dirName)) {
+            await _scanDirectory(
+              entity,
+              extensions,
+              songs,
+              currentDepth: currentDepth + 1,
+              maxDepth: maxDepth,
+            );
+          }
         }
       }
     } catch (e) {

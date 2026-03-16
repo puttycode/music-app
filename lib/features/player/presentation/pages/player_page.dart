@@ -11,7 +11,7 @@ import 'package:music_app/services/music_api_service.dart';
 import 'package:music_app/services/favorite_service.dart';
 import 'package:music_app/services/download_service.dart';
 import 'package:music_app/features/player/domain/entities/song.dart';
-import 'package:music_app/features/library/domain/entities/playlist.dart';
+import 'package:music_app/features/playlist/domain/entities/playlist.dart';
 import 'package:music_app/features/player/presentation/bloc/player_bloc.dart';
 import 'package:music_app/features/player/presentation/bloc/player_event_state.dart';
 

@@ -33,6 +33,7 @@ class LibraryPage extends StatelessWidget {
         // Set callback to refresh recent plays when songs are played
         AudioPlayerService.instance.onRecentPlaysChanged = () {
           bloc.add(RefreshPlaylists());
+          bloc.add(LoadLocalMusic()); // Also refresh local music for artists/albums
         };
         return bloc;
       },
