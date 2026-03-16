@@ -1,19 +1,8 @@
 import 'package:dio/dio.dart';
+import 'package:music_app/core/utils/app_logger.dart';
 import '../features/player/domain/entities/song.dart';
 import '../features/player/domain/entities/artist.dart';
 import '../features/player/domain/entities/album.dart';
-
-class AppLogger {
-  static Function(String)? _logCallback;
-  
-  static void setLogger(Function(String) callback) {
-    _logCallback = callback;
-  }
-  
-  static void log(String message) {
-    _logCallback?.call(message);
-  }
-}
 
 enum MusicSource {
   kuwo,
@@ -368,10 +357,13 @@ class MusicApiService {
   static MusicApiService get instance => _instance ??= MusicApiService._();
 
   MusicApi _currentApi = CustomApi();
+  MusicSource _currentSource = MusicSource.custom;
 
   MusicApiService._();
 
   void setSource(MusicSource source, {String? customUrl}) {
+    _currentSource = source;
+
     switch (source) {
       case MusicSource.kuwo:
         _currentApi = KuwoApi();
@@ -383,9 +375,62 @@ class MusicApiService {
     AppLogger.log('切换音乐源：${source.name}');
   }
 
-  Future<List<Song>> searchSongs(String query) => _currentApi.searchSongs(query);
-  Future<List<Artist>> searchArtists(String query) => _currentApi.searchArtists(query);
-  Future<List<Album>> searchAlbums(String query) => _currentApi.searchAlbums(query);
-  Future<List<Song>> getTopCharts() => _currentApi.getTopCharts();
+  Future<T> _withReadFallback<T>(
+    String action,
+    Future<T> Function(MusicApi api) request,
+  ) async {
+    try {
+      final result = await request(_currentApi);
+      if (_shouldFallback(result)) {
+        return await _tryKuwoFallback(action, request, 'empty result');
+      }
+      return result;
+    } catch (e) {
+      return await _tryKuwoFallback(action, request, e);
+    }
+  }
+
+  bool _shouldFallback(Object? result) {
+    return _currentSource == MusicSource.custom && result is List && result.isEmpty;
+  }
+
+  Future<T> _tryKuwoFallback<T>(
+    String action,
+    Future<T> Function(MusicApi api) request,
+    Object reason,
+  ) async {
+    if (_currentSource != MusicSource.custom) {
+      rethrow;
+    }
+
+    AppLogger.log('自定义 API $action 失败，尝试回退到 Kuwo：$reason');
+
+    try {
+      final fallbackApi = KuwoApi();
+      final fallbackResult = await request(fallbackApi);
+      if (fallbackResult is List) {
+        AppLogger.log('Kuwo 回退 $action 成功，返回 ${fallbackResult.length} 条数据');
+      } else {
+        AppLogger.log('Kuwo 回退 $action 成功');
+      }
+      return fallbackResult;
+    } catch (fallbackError) {
+      AppLogger.log('Kuwo 回退 $action 也失败：$fallbackError');
+      rethrow;
+    }
+  }
+
+  Future<List<Song>> searchSongs(String query) =>
+      _withReadFallback('searchSongs($query)', (api) => api.searchSongs(query));
+
+  Future<List<Artist>> searchArtists(String query) =>
+      _withReadFallback('searchArtists($query)', (api) => api.searchArtists(query));
+
+  Future<List<Album>> searchAlbums(String query) =>
+      _withReadFallback('searchAlbums($query)', (api) => api.searchAlbums(query));
+
+  Future<List<Song>> getTopCharts() =>
+      _withReadFallback('getTopCharts', (api) => api.getTopCharts());
+
   bool isFullAudio(Song song) => _currentApi.isFullAudio(song);
 }
