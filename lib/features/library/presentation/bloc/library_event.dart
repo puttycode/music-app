@@ -24,18 +24,26 @@ class CreatePlaylist extends LibraryEvent {
 }
 
 class DeletePlaylist extends LibraryEvent {
-  final String name;
-  const DeletePlaylist(this.name);
+  final String playlistId;
+  final String? legacyName;
+
+  const DeletePlaylist({required this.playlistId, this.legacyName});
 
   @override
-  List<Object?> get props => [name];
+  List<Object?> get props => [playlistId, legacyName];
 }
 
 class RenamePlaylist extends LibraryEvent {
+  final String playlistId;
   final String oldName;
   final String newName;
-  const RenamePlaylist(this.oldName, this.newName);
+
+  const RenamePlaylist({
+    required this.playlistId,
+    required this.oldName,
+    required this.newName,
+  });
 
   @override
-  List<Object?> get props => [oldName, newName];
+  List<Object?> get props => [playlistId, oldName, newName];
 }

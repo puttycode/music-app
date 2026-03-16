@@ -401,7 +401,7 @@ class _PlaylistsTab extends StatelessWidget {
         }
         
         return Dismissible(
-          key: Key(playlist.name),
+          key: Key(playlist.id),
           direction: DismissDirection.endToStart,
           background: Container(
             color: Colors.red,
@@ -410,7 +410,9 @@ class _PlaylistsTab extends StatelessWidget {
             child: const Icon(Icons.delete, color: Colors.white),
           ),
           onDismissed: (_) {
-            context.read<LibraryBloc>().add(DeletePlaylist(playlist.name));
+            context.read<LibraryBloc>().add(
+              DeletePlaylist(playlistId: playlist.id, legacyName: playlist.name),
+            );
           },
           child: ListTile(
             leading: Container(
@@ -469,7 +471,13 @@ class _PlaylistsTab extends StatelessWidget {
             onPressed: () {
               final newName = controller.text.trim();
               if (newName.isNotEmpty && newName != playlist.name) {
-                context.read<LibraryBloc>().add(RenamePlaylist(playlist.name, newName));
+                context.read<LibraryBloc>().add(
+                  RenamePlaylist(
+                    playlistId: playlist.id,
+                    oldName: playlist.name,
+                    newName: newName,
+                  ),
+                );
               }
               Navigator.pop(context);
             },

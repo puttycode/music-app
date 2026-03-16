@@ -12,12 +12,14 @@ import 'package:music_app/services/local_music_scanner.dart';
 part 'library_event.dart';
 
 class Playlist extends Equatable {
+  final String id;
   final String name;
   final List<Song> songs;
   final String? coverUrl;
   final String icon;
 
   const Playlist({
+    required this.id,
     required this.name,
     this.songs = const [],
     this.coverUrl,
@@ -25,7 +27,7 @@ class Playlist extends Equatable {
   });
 
   @override
-  List<Object?> get props => [name, songs, coverUrl, icon];
+  List<Object?> get props => [id, name, songs, coverUrl, icon];
 }
 
 class LibraryState extends Equatable {
@@ -155,28 +157,38 @@ class LibraryBloc extends Bloc<LibraryEvent, LibraryState> {
     
     // Load user playlists from Hive
     final playlistBox = Hive.box(AppConstants.playlistBox);
-    final userPlaylists = playlistBox.values.map((e) {
-      if (e is Map) {
-        final songs = (e['songs'] as List?)?.map((s) {
-          if (s is Map) {
-            return Song.fromLocal(Map<String, dynamic>.from(s));
-          }
-          return null;
-        }).whereType<Song>().toList() ?? <Song>[];
-        
-        return Playlist(
-          name: e['name'] ?? '未知',
+    final userPlaylists = <Playlist>[];
+
+    for (final key in playlistBox.keys) {
+      final value = playlistBox.get(key);
+      if (value is! Map) continue;
+
+      final data = Map<String, dynamic>.from(value);
+      final songs = (data['songs'] as List?)?.map((s) {
+        if (s is Map) {
+          return Song.fromLocal(Map<String, dynamic>.from(s));
+        }
+        return null;
+      }).whereType<Song>().toList() ?? <Song>[];
+
+      final id = (data['id'] ?? key).toString();
+      final name = (data['name'] ?? key).toString();
+
+      userPlaylists.add(
+        Playlist(
+          id: id,
+          name: name,
           songs: songs,
-          icon: e['icon'] ?? 'queue_music',
-        );
-      }
-      return null;
-    }).whereType<Playlist>().toList();
+          coverUrl: data['coverImage'] ?? data['coverUrl'],
+          icon: (data['icon'] ?? 'queue_music').toString(),
+        ),
+      );
+    }
     
     // Find "我喜欢的音乐" from Hive or create empty one
-    var favoritePlaylist = userPlaylists.firstWhere(
+    final favoritePlaylist = userPlaylists.firstWhere(
       (p) => p.name == '我喜欢的音乐',
-      orElse: () => const Playlist(name: '我喜欢的音乐', songs: [], icon: 'favorite'),
+      orElse: () => const Playlist(id: 'favorites', name: '我喜欢的音乐', songs: [], icon: 'favorite'),
     );
     
     // Remove from userPlaylists to avoid duplicates
@@ -186,6 +198,7 @@ class LibraryBloc extends Bloc<LibraryEvent, LibraryState> {
       playlists: [
         favoritePlaylist,
         Playlist(
+          id: 'recent',
           name: '最近播放',
           songs: recentSongs,
           icon: 'history',
@@ -196,14 +209,23 @@ class LibraryBloc extends Bloc<LibraryEvent, LibraryState> {
   }
 
   Future<void> _onCreatePlaylist(CreatePlaylist event, Emitter<LibraryState> emit) async {
-    final newPlaylist = Playlist(name: event.name, songs: const [], icon: 'queue_music');
+    final playlistId = DateTime.now().millisecondsSinceEpoch.toString();
+    final newPlaylist = Playlist(
+      id: playlistId,
+      name: event.name,
+      songs: const [],
+      icon: 'queue_music',
+    );
     
-    // Save to Hive
+    // Save to Hive using id as the canonical key
     final playlistBox = Hive.box(AppConstants.playlistBox);
-    await playlistBox.put(event.name, {
+    await playlistBox.put(playlistId, {
+      'id': playlistId,
       'name': event.name,
       'songs': <Map>[],
       'icon': 'queue_music',
+      'createdAt': DateTime.now().toIso8601String(),
+      'updatedAt': DateTime.now().toIso8601String(),
     });
     
     emit(state.copyWith(
@@ -213,31 +235,51 @@ class LibraryBloc extends Bloc<LibraryEvent, LibraryState> {
 
   Future<void> _onDeletePlaylist(DeletePlaylist event, Emitter<LibraryState> emit) async {
     final playlistBox = Hive.box(AppConstants.playlistBox);
-    await playlistBox.delete(event.name);
+    await playlistBox.delete(event.playlistId);
+
+    if (event.legacyName != null && event.legacyName != event.playlistId) {
+      await playlistBox.delete(event.legacyName);
+    }
     
-    final updatedPlaylists = state.playlists.where((p) => p.name != event.name).toList();
+    final updatedPlaylists = state.playlists.where((p) => p.id != event.playlistId).toList();
     emit(state.copyWith(playlists: updatedPlaylists));
   }
 
   Future<void> _onRenamePlaylist(RenamePlaylist event, Emitter<LibraryState> emit) async {
     final playlistBox = Hive.box(AppConstants.playlistBox);
-    
-    // Get the existing playlist data
-    final playlistData = playlistBox.get(event.oldName);
-    if (playlistData is Map) {
-      // Update the name in the data
-      final updatedData = Map<String, dynamic>.from(playlistData);
-      updatedData['name'] = event.newName;
-      
-      // Delete old key and add with new name
-      await playlistBox.delete(event.oldName);
-      await playlistBox.put(event.newName, updatedData);
+
+    Map<String, dynamic>? playlistData;
+    final canonicalData = playlistBox.get(event.playlistId);
+    if (canonicalData is Map) {
+      playlistData = Map<String, dynamic>.from(canonicalData);
+    } else {
+      final legacyData = playlistBox.get(event.oldName);
+      if (legacyData is Map) {
+        playlistData = Map<String, dynamic>.from(legacyData);
+      }
+    }
+
+    if (playlistData != null) {
+      playlistData['id'] = (playlistData['id'] ?? event.playlistId).toString();
+      playlistData['name'] = event.newName;
+      playlistData['updatedAt'] = DateTime.now().toIso8601String();
+
+      await playlistBox.put(event.playlistId, playlistData);
+      if (event.oldName != event.playlistId) {
+        await playlistBox.delete(event.oldName);
+      }
     }
     
     // Update state with renamed playlist
     final updatedPlaylists = state.playlists.map((p) {
-      if (p.name == event.oldName) {
-        return Playlist(name: event.newName, songs: p.songs, icon: p.icon);
+      if (p.id == event.playlistId) {
+        return Playlist(
+          id: p.id,
+          name: event.newName,
+          songs: p.songs,
+          coverUrl: p.coverUrl,
+          icon: p.icon,
+        );
       }
       return p;
     }).toList();
