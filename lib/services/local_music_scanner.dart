@@ -55,7 +55,7 @@ class LocalMusicScanner {
       Directory dir,
       Set<String> extensions,
       List<Song> songs,
-      {int currentDepth = 0, int maxDepth = 5},
+      {int currentDepth = 0, int maxDepth = 5}
       ) async {
     try {
       if (!dir.existsSync() || currentDepth > maxDepth) {

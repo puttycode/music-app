@@ -215,14 +215,18 @@ class _PlayerViewState extends State<_PlayerView> {
     final playlists = playlistBox.values.map((e) {
       if (e is Map) {
         return Playlist(
+          id: e['id'] ?? e['name'] ?? '未知',
           name: e['name'] ?? '未知',
+          description: e['description'],
+          coverImage: e['coverImage'],
           songs: (e['songs'] as List?)?.map((s) {
             if (s is Map) {
               return Song.fromLocal(Map<String, dynamic>.from(s));
             }
             return null;
           }).whereType<Song>().toList() ?? <Song>[],
-          icon: e['icon'] ?? 'queue_music',
+          createdAt: DateTime.now(),
+          updatedAt: DateTime.now(),
         );
       }
       return null;
@@ -317,9 +321,13 @@ class _PlayerViewState extends State<_PlayerView> {
     
     songs.add(song);
     playlistBox.put(playlist.name, {
+      'id': playlist.id,
       'name': playlist.name,
+      'description': playlist.description,
+      'coverImage': playlist.coverImage,
       'songs': songs.map((s) => s.toJson()).toList(),
-      'icon': playlist.icon,
+      'createdAt': playlist.createdAt.toIso8601String(),
+      'updatedAt': DateTime.now().toIso8601String(),
     });
     
     ScaffoldMessenger.of(context).showSnackBar(
