@@ -246,7 +246,7 @@ class CustomApi implements MusicApi {
           name: album['name']?.toString() ?? 'Unknown',
           artist: album['artist']?.toString(),
           cover: album['cover'] ?? album['pic'],
-          publishDate: album['publishDate'],
+          
         )).toList();
       }
       return [];
