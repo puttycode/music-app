@@ -20,7 +20,7 @@ class AudioPlayerService {
   final _currentIndexSubject = BehaviorSubject<int>.seeded(0);
   final _repeatModeSubject = BehaviorSubject<RepeatMode>.seeded(RepeatMode.off);
   final _isShuffleSubject = BehaviorSubject<bool>.seeded(false);
-  final _isPreviewModeSubject = BehaviorSubject<bool>.seeded(true);
+  final _isPreviewModeSubject = BehaviorSubject<bool>.seeded(false);
   final _recentPlaysChangedSubject = BehaviorSubject<void>.seeded(null);
 
   Stream<Song?> get currentSongStream => _currentSongSubject.stream;

@@ -171,6 +171,7 @@ class _LocalSongsTabState extends State<_LocalSongsTab> {
   void _loadDownloadTasks() {
     final tasks = DownloadService.instance.getAllDownloads();
     setState(() {
+      _downloadTasks.clear();
       for (final task in tasks) {
         _downloadTasks[task.id] = task;
       }
@@ -233,6 +234,7 @@ class _LocalSongsTabState extends State<_LocalSongsTab> {
       itemBuilder: (context, index) {
         final song = displaySongs[index];
         final downloadTask = _downloadTasks[song.id.toString()];
+        final isDownloaded = downloadTask?.status == DownloadStatus.completed;
         final isDownloading = downloadTask != null && 
             downloadTask.status != DownloadStatus.completed;
         
@@ -301,6 +303,15 @@ class _LocalSongsTabState extends State<_LocalSongsTab> {
                   style: TextStyle(
                     fontSize: 12,
                     color: Theme.of(context).colorScheme.primary,
+                  ),
+                )
+              else if (isDownloaded)
+                Text(
+                  '已下载',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: Theme.of(context).colorScheme.primary,
+                    fontWeight: FontWeight.w600,
                   ),
                 ),
             ],
