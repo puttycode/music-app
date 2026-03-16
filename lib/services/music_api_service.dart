@@ -161,7 +161,7 @@ class KuwoApi implements MusicApi {
 class CustomApi implements MusicApi {
   final Dio _dio;
   static const String _apiKey = 'your-secret-api-key';
-  static const String _domain = 'http://musicapi.tianqi.wiki';
+  static const String _domain = 'https://music-api.codeseek.me:37280';
   
   CustomApi({String? baseUrl}) 
       : _dio = Dio(BaseOptions(
