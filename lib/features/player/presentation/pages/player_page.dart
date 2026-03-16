@@ -338,11 +338,6 @@ class _PlayerViewState extends State<_PlayerView> {
   void _downloadSong(BuildContext context, Song song) async {
     try {
       await DownloadService.instance.startDownload(song);
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('开始下载...')),
-        );
-      }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -552,16 +547,60 @@ class _LyricsView extends StatelessWidget {
   }
 }
 
-class _AlbumArt extends StatefulWidget {
+class _AlbumArt extends StatelessWidget {
   final Song? song;
 
   const _AlbumArt({this.song});
 
   @override
-  State<_AlbumArt> createState() => _AlbumArtState();
+  Widget build(BuildContext context) {
+    final primaryColor = Theme.of(context).colorScheme.primary;
+    final surfaceColor = Theme.of(context).colorScheme.surface;
+
+    return AspectRatio(
+      aspectRatio: 1,
+      child: Container(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: primaryColor.withValues(alpha: 0.3),
+              blurRadius: 32,
+              offset: const Offset(0, 16),
+            ),
+          ],
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(16),
+          child: song?.albumArt != null
+              ? Image.network(
+                  song!.albumArt!,
+                  fit: BoxFit.cover,
+                  errorBuilder: (_, __, ___) => Container(
+                    color: surfaceColor,
+                    child: const Icon(Icons.music_note, size: 64),
+                  ),
+                )
+              : Container(
+                  color: surfaceColor,
+                  child: const Icon(Icons.music_note, size: 64),
+                ),
+        ),
+      ),
+    );
+  }
 }
 
-class _AlbumArtState extends State<_AlbumArt> {
+class _SongInfo extends StatefulWidget {
+  final Song? song;
+
+  const _SongInfo({this.song});
+
+  @override
+  State<_SongInfo> createState() => _SongInfoState();
+}
+
+class _SongInfoState extends State<_SongInfo> {
   DownloadTask? _downloadTask;
   StreamSubscription? _subscription;
 
@@ -586,7 +625,7 @@ class _AlbumArtState extends State<_AlbumArt> {
 
   void _loadDownloadStatus() {
     final task = DownloadService.instance.getDownload(widget.song?.id.toString() ?? '');
-    if (task != null && task.status != DownloadStatus.completed) {
+    if (task != null) {
       setState(() {
         _downloadTask = task;
       });
@@ -595,109 +634,10 @@ class _AlbumArtState extends State<_AlbumArt> {
 
   @override
   Widget build(BuildContext context) {
-    final primaryColor = Theme.of(context).colorScheme.primary;
-    final surfaceColor = Theme.of(context).colorScheme.surface;
-    final isDownloading = _downloadTask != null;
+    final isDownloading = _downloadTask != null && 
+        _downloadTask!.status != DownloadStatus.completed;
     final isDownloaded = _downloadTask?.status == DownloadStatus.completed;
 
-    return AspectRatio(
-      aspectRatio: 1,
-      child: Stack(
-        alignment: Alignment.center,
-        children: [
-          Container(
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(16),
-              boxShadow: [
-                BoxShadow(
-                  color: primaryColor.withValues(alpha: 0.3),
-                  blurRadius: 32,
-                  offset: const Offset(0, 16),
-                ),
-              ],
-            ),
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(16),
-              child: widget.song?.albumArt != null
-                  ? Image.network(
-                      widget.song!.albumArt!,
-                      fit: BoxFit.cover,
-                      errorBuilder: (_, __, ___) => Container(
-                        color: surfaceColor,
-                        child: const Icon(Icons.music_note, size: 64),
-                      ),
-                    )
-                  : Container(
-                      color: surfaceColor,
-                      child: const Icon(Icons.music_note, size: 64),
-                    ),
-            ),
-          ),
-          if (isDownloading)
-            Positioned(
-              right: 16,
-              bottom: 16,
-              child: Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: Colors.black.withValues(alpha: 0.7),
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    SizedBox(
-                      width: 20,
-                      height: 20,
-                      child: CircularProgressIndicator(
-                        value: _downloadTask!.progress / 100,
-                        strokeWidth: 2,
-                        valueColor: const AlwaysStoppedAnimation<Color>(Colors.white),
-                      ),
-                    ),
-                    const SizedBox(width: 6),
-                    Text(
-                      '${_downloadTask!.progress}%',
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 10,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            )
-          else if (isDownloaded)
-            Positioned(
-              right: 16,
-              bottom: 16,
-              child: Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: Colors.green,
-                  shape: BoxShape.circle,
-                ),
-                child: const Icon(
-                  Icons.check,
-                  color: Colors.white,
-                  size: 20,
-                ),
-              ),
-            ),
-        ],
-      ),
-    );
-  }
-}
-
-class _SongInfo extends StatelessWidget {
-  final Song? song;
-
-  const _SongInfo({this.song});
-
-  @override
-  Widget build(BuildContext context) {
     return Column(
       children: [
         Row(
@@ -705,18 +645,98 @@ class _SongInfo extends StatelessWidget {
           children: [
             Expanded(
               child: Text(
-                song?.title ?? '未知歌曲',
+                widget.song?.title ?? '未知歌曲',
                 style: AppTextStyles.headlineMedium,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
               ),
             ),
+            if (isDownloading)
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    SizedBox(
+                      width: 14,
+                      height: 14,
+                      child: CircularProgressIndicator(
+                        value: _downloadTask!.progress / 100,
+                        strokeWidth: 2,
+                        valueColor: AlwaysStoppedAnimation<Color>(
+                          Theme.of(context).colorScheme.primary,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      '${_downloadTask!.progress}%',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Theme.of(context).colorScheme.primary,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
+              )
+            else if (isDownloaded)
+              Container(
+                padding: const EdgeInsets.all(4),
+                decoration: BoxDecoration(
+                  color: Colors.green,
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.check,
+                  color: Colors.white,
+                  size: 14,
+                ),
+              )
+            else
+              const SizedBox(width: 40),
           ],
         ),
         const SizedBox(height: 8),
-        Text(
-          song?.artist ?? '未知艺术家',
-          style: AppTextStyles.bodyMedium,
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Expanded(
+              child: Text(
+                widget.song?.artist ?? '未知艺术家',
+                style: AppTextStyles.bodyMedium,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+            BlocBuilder<PlayerBloc, PlayerState>(
+              builder: (context, state) {
+                final song = state.currentSong;
+                if (song == null) return const SizedBox(width: 40);
+                
+                return StreamBuilder<void>(
+                  stream: FavoriteService.instance.favoritesChanged,
+                  builder: (context, snapshot) {
+                    final isFavorite = FavoriteService.instance.isFavorite(song);
+                    return IconButton(
+                      icon: Icon(
+                        isFavorite ? Icons.favorite : Icons.favorite_border,
+                        color: isFavorite ? Colors.red : Theme.of(context).colorScheme.onSurfaceVariant,
+                        size: 24,
+                      ),
+                      onPressed: () {
+                        FavoriteService.instance.toggleFavorite(song);
+                      },
+                    );
+                  },
+                );
+              },
+            ),
+          ],
         ),
       ],
     );
@@ -742,32 +762,6 @@ class _ProgressBar extends StatelessWidget {
 
             return Column(
               children: [
-                // Favorite button above progress bar
-                BlocBuilder<PlayerBloc, PlayerState>(
-                  builder: (context, state) {
-                    final song = state.currentSong;
-                    if (song == null) return const SizedBox.shrink();
-                    
-                    return StreamBuilder<void>(
-                      stream: FavoriteService.instance.favoritesChanged,
-                      builder: (context, snapshot) {
-                        final isFavorite = FavoriteService.instance.isFavorite(song);
-                        return Padding(
-                          padding: const EdgeInsets.only(bottom: 8),
-                          child: IconButton(
-                            icon: Icon(
-                              isFavorite ? Icons.favorite : Icons.favorite_border,
-                              color: isFavorite ? Colors.red : Theme.of(context).colorScheme.onSurfaceVariant,
-                            ),
-                            onPressed: () {
-                              FavoriteService.instance.toggleFavorite(song);
-                            },
-                          ),
-                        );
-                      },
-                    );
-                  },
-                ),
                 SliderTheme(
                   data: SliderTheme.of(context).copyWith(
                     trackHeight: 4,

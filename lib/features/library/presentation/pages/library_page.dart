@@ -190,7 +190,8 @@ class _LocalSongsTabState extends State<_LocalSongsTab> {
     
     final displaySongs = [...allSongs, ...downloadingSongs];
     
-    if (displaySongs.isEmpty) {
+    // Only show permission button if there are no local songs AND no downloading songs
+    if (allSongs.isEmpty && downloadingSongs.isEmpty) {
       return app_widgets.EmptyWidget(
         message: '没有找到本地音乐\n请授予存储权限以扫描音乐',
         icon: Icons.music_off,
