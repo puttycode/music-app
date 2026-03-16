@@ -160,31 +160,212 @@ class KuwoApi implements MusicApi {
 
 class CustomApi implements MusicApi {
   final Dio _dio;
-  final String _customBaseUrl;
+  static const String _apiKey = 'your-secret-api-key';
+  static const String _domain = 'http://musicapi.tianqi.wiki';
   
-  CustomApi(this._customBaseUrl) : _dio = Dio(BaseOptions(
-    baseUrl: _customBaseUrl,
-    connectTimeout: const Duration(seconds: 30),
-    receiveTimeout: const Duration(seconds: 60),
-    followRedirects: true,
-    validateStatus: (status) => status! < 500,
-  ));
+  CustomApi({String? baseUrl}) 
+      : _dio = Dio(BaseOptions(
+          baseUrl: baseUrl ?? _domain,
+          connectTimeout: const Duration(seconds: 30),
+          receiveTimeout: const Duration(seconds: 60),
+          followRedirects: true,
+          validateStatus: (status) => status! < 500,
+          headers: {
+            'Authorization': 'Bearer $_apiKey',
+            'Content-Type': 'application/json',
+          },
+        ));
 
   @override
-  String get name => '自定义';
+  String get name => '自定义 API';
 
   @override
-  String get baseUrl => _customBaseUrl;
+  String get baseUrl => _dio.options.baseUrl!;
 
   @override
   Future<List<Song>> searchSongs(String query) async {
     try {
-      final response = await _dio.get('/search', queryParameters: {'keyword': query});
+      AppLogger.log('搜索歌曲：$query');
+      final response = await _dio.get(
+        '/api/v1/search',
+        queryParameters: {'q': query, 'type': 'song'},
+      );
+      AppLogger.log('搜索响应：${response.statusCode}');
+      
+      if (response.statusCode == 200 && response.data['code'] == 200) {
+        final results = response.data['data'] as List? ?? [];
+        AppLogger.log('获取到 ${results.length} 首歌曲');
+        return results.map((track) => _parseSong(track)).toList();
+      }
+      AppLogger.log('搜索失败：${response.data}');
+      return [];
+    } catch (e) {
+      AppLogger.log('自定义 API 搜索歌曲失败：$e');
+      return [];
+    }
+  }
+
+  @override
+  Future<List<Artist>> searchArtists(String query) async {
+    try {
+      AppLogger.log('搜索艺人：$query');
+      final response = await _dio.get(
+        '/api/v1/search',
+        queryParameters: {'q': query, 'type': 'artist'},
+      );
+      
+      if (response.statusCode == 200 && response.data['code'] == 200) {
+        final results = response.data['data'] as List? ?? [];
+        return results.map((artist) => Artist(
+          id: artist['id']?.toString() ?? '',
+          name: artist['name']?.toString() ?? 'Unknown',
+          avatar: artist['avatar'] ?? artist['pic'],
+          musicNum: artist['musicNum'],
+        )).toList();
+      }
+      return [];
+    } catch (e) {
+      AppLogger.log('自定义 API 搜索艺人失败：$e');
+      return [];
+    }
+  }
+
+  @override
+  Future<List<Album>> searchAlbums(String query) async {
+    try {
+      AppLogger.log('搜索专辑：$query');
+      final response = await _dio.get(
+        '/api/v1/search',
+        queryParameters: {'q': query, 'type': 'album'},
+      );
+      
+      if (response.statusCode == 200 && response.data['code'] == 200) {
+        final results = response.data['data'] as List? ?? [];
+        return results.map((album) => Album(
+          id: album['id']?.toString() ?? '',
+          name: album['name']?.toString() ?? 'Unknown',
+          artist: album['artist']?.toString(),
+          cover: album['cover'] ?? album['pic'],
+          publishDate: album['publishDate'],
+        )).toList();
+      }
+      return [];
+    } catch (e) {
+      AppLogger.log('自定义 API 搜索专辑失败：$e');
+      return [];
+    }
+  }
+
+  @override
+  Future<List<Song>> getTopCharts() async {
+    return getHotSongs();
+  }
+
+  @override
+  Future<List<Song>> getHotSongs() async {
+    try {
+      AppLogger.log('获取热门歌曲');
+      // 使用搜索接口获取热门歌曲
+      final response = await _dio.get(
+        '/api/v1/search',
+        queryParameters: {'q': '热门', 'type': 'song'},
+      );
       
       if (response.statusCode == 200 && response.data['code'] == 200) {
         final results = response.data['data'] as List? ?? [];
         return results.map((track) => _parseSong(track)).toList();
       }
+      return [];
+    } catch (e) {
+      AppLogger.log('自定义 API 获取热门歌曲失败：$e');
+      return [];
+    }
+  }
+
+  @override
+  Future<List<Artist>> getHotArtists() async {
+    try {
+      AppLogger.log('获取热门艺人');
+      // 使用搜索接口获取热门艺人
+      final response = await _dio.get(
+        '/api/v1/search',
+        queryParameters: {'q': '热门', 'type': 'artist'},
+      );
+      
+      if (response.statusCode == 200 && response.data['code'] == 200) {
+        final results = response.data['data'] as List? ?? [];
+        return results.map((artist) => Artist(
+          id: artist['id']?.toString() ?? '',
+          name: artist['name']?.toString() ?? 'Unknown',
+          avatar: artist['avatar'] ?? artist['pic'],
+          musicNum: artist['musicNum'],
+        )).toList();
+      }
+      return [];
+    } catch (e) {
+      AppLogger.log('自定义 API 获取热门艺人失败：$e');
+      return [];
+    }
+  }
+
+  @override
+  Future<List<Album>> getNewAlbums() async {
+    try {
+      AppLogger.log('获取新专辑');
+      // 使用搜索接口获取新专辑
+      final response = await _dio.get(
+        '/api/v1/search',
+        queryParameters: {'q': '最新', 'type': 'album'},
+      );
+      
+      if (response.statusCode == 200 && response.data['code'] == 200) {
+        final results = response.data['data'] as List? ?? [];
+        return results.map((album) => Album(
+          id: album['id']?.toString() ?? '',
+          name: album['name']?.toString() ?? 'Unknown',
+          artist: album['artist']?.toString(),
+          cover: album['cover'] ?? album['pic'],
+          publishDate: album['publishDate'],
+        )).toList();
+      }
+      return [];
+    } catch (e) {
+      AppLogger.log('自定义 API 获取新专辑失败：$e');
+      return [];
+    }
+  }
+
+  @override
+  bool isFullAudio(Song song) {
+    return song.duration.inSeconds > 60;
+  }
+
+  Song _parseSong(Map<String, dynamic> track) {
+    final rid = track['rid'] ?? track['id'] ?? 0;
+    final name = track['name']?.toString() ?? track['title']?.toString() ?? 'Unknown';
+    final artist = track['artist']?.toString() ?? track['artist_name'] ?? 'Unknown Artist';
+    final album = track['album']?.toString() ?? track['album_name'] ?? 'Unknown Album';
+    final pic = track['pic'] ?? track['albumArt'] ?? track['cover'];
+    
+    final durationSec = track['duration'] is int 
+        ? track['duration'] 
+        : int.tryParse(track['duration']?.toString() ?? '0') ?? 0;
+    
+    return Song(
+      id: int.tryParse(rid.toString()) ?? DateTime.now().millisecondsSinceEpoch,
+      title: name,
+      artist: artist,
+      album: album,
+      albumArt: pic,
+      audioUrl: track['audioUrl'] ?? track['url'],
+      duration: Duration(seconds: durationSec),
+      isLocal: false,
+      releaseDate: track['releaseDate'],
+      format: track['format'],
+      bitrate: track['bitrate'],
+    );
+  }
+}
       return [];
     } catch (e) {
       AppLogger.log('自定义 API 异常: $e');
@@ -196,6 +377,33 @@ class CustomApi implements MusicApi {
   Future<List<Song>> getTopCharts() async {
     return searchSongs('热门');
   }
+
+  Song _parseSong(Map<String, dynamic> track) {
+    final rid = track['rid'] ?? track['id'] ?? 0;
+    final name = track['name']?.toString() ?? track['title']?.toString() ?? 'Unknown';
+    final artist = track['artist']?.toString() ?? track['artist_name'] ?? 'Unknown Artist';
+    final album = track['album']?.toString() ?? track['album_name'] ?? 'Unknown Album';
+    final pic = track['pic'] ?? track['albumArt'] ?? track['cover'];
+    
+    final durationSec = track['duration'] is int 
+        ? track['duration'] 
+        : int.tryParse(track['duration']?.toString() ?? '0') ?? 0;
+    
+    return Song(
+      id: int.tryParse(rid.toString()) ?? DateTime.now().millisecondsSinceEpoch,
+      title: name,
+      artist: artist,
+      album: album,
+      albumArt: pic,
+      audioUrl: track['audioUrl'] ?? track['url'],
+      duration: Duration(seconds: durationSec),
+      isLocal: false,
+      releaseDate: track['releaseDate'],
+      format: track['format'],
+      bitrate: track['bitrate'],
+    );
+  }
+}
 
   @override
   Future<List<Artist>> searchArtists(String query) async {
@@ -228,16 +436,32 @@ class CustomApi implements MusicApi {
 }
 
 class MusicApiService {
-  static final MusicApiService _instance = MusicApiService._();
-  static MusicApiService get instance => _instance;
-  
-  MusicApi _currentApi = KuwoApi();
-  MusicSource _currentSource = MusicSource.kuwo;
-  String _customApiUrl = '';
+  static MusicApiService? _instance;
+  static MusicApiService get instance => _instance ??= MusicApiService._();
 
-  MusicApiService._() {
-    AppLogger.log('MusicApiService 初始化完成');
+  // 默认使用自定义 API
+  MusicApi _currentApi = CustomApi();
+
+  MusicApiService._();
+
+  void setSource(MusicSource source, {String? customUrl}) {
+    switch (source) {
+      case MusicSource.kuwo:
+        _currentApi = KuwoApi();
+        break;
+      case MusicSource.custom:
+        _currentApi = CustomApi(baseUrl: customUrl);
+        break;
+    }
+    AppLogger.log('切换音乐源：${source.name}');
   }
+
+  Future<List<Song>> searchSongs(String query) => _currentApi.searchSongs(query);
+  Future<List<Artist>> searchArtists(String query) => _currentApi.searchArtists(query);
+  Future<List<Album>> searchAlbums(String query) => _currentApi.searchAlbums(query);
+  Future<List<Song>> getTopCharts() => _currentApi.getTopCharts();
+  bool isFullAudio(Song song) => _currentApi.isFullAudio(song);
+}
 
   void setSource(MusicSource source, {String? customUrl}) {
     _currentSource = source;
