@@ -104,30 +104,49 @@ class _LibraryViewState extends State<_LibraryView> {
     final controller = TextEditingController();
     showDialog(
       context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('新建播放列表'),
-        content: TextField(
-          controller: controller,
-          decoration: const InputDecoration(
-            hintText: '播放列表名称',
+      builder: (dialogContext) => BlocListener<LibraryBloc, LibraryState>(
+        listener: (context, state) {
+          if (state.error == '播放列表名称已存在') {
+            Navigator.pop(dialogContext);
+            showDialog(
+              context: context,
+              builder: (_) => AlertDialog(
+                title: const Text('提示'),
+                content: const Text('播放列表名称已存在'),
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.pop(context),
+                    child: const Text('确定'),
+                  ),
+                ],
+              ),
+            );
+          }
+        },
+        child: AlertDialog(
+          title: const Text('新建播放列表'),
+          content: TextField(
+            controller: controller,
+            decoration: const InputDecoration(
+              hintText: '播放列表名称',
+            ),
+            autofocus: true,
           ),
-          autofocus: true,
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext),
+              child: const Text('取消'),
+            ),
+            TextButton(
+              onPressed: () {
+                if (controller.text.isNotEmpty) {
+                  context.read<LibraryBloc>().add(CreatePlaylist(controller.text));
+                }
+              },
+              child: const Text('创建'),
+            ),
+          ],
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext),
-            child: const Text('取消'),
-          ),
-          TextButton(
-            onPressed: () {
-              if (controller.text.isNotEmpty) {
-                context.read<LibraryBloc>().add(CreatePlaylist(controller.text));
-                Navigator.pop(dialogContext);
-              }
-            },
-            child: const Text('创建'),
-          ),
-        ],
       ),
     );
   }
@@ -539,38 +558,57 @@ class _PlaylistsTab extends StatelessWidget {
     
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('重命名播放列表'),
-        content: TextField(
-          controller: controller,
-          decoration: const InputDecoration(
-            hintText: '输入新名称',
-            labelText: '播放列表名称',
-          ),
-          autofocus: true,
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('取消'),
-          ),
-          TextButton(
-            onPressed: () {
-              final newName = controller.text.trim();
-              if (newName.isNotEmpty && newName != playlist.name) {
-                context.read<LibraryBloc>().add(
-                  RenamePlaylist(
-                    playlistId: playlist.id,
-                    oldName: playlist.name,
-                    newName: newName,
+      builder: (dialogContext) => BlocListener<LibraryBloc, LibraryState>(
+        listener: (context, state) {
+          if (state.error == '播放列表名称已存在') {
+            Navigator.pop(dialogContext);
+            showDialog(
+              context: context,
+              builder: (_) => AlertDialog(
+                title: const Text('提示'),
+                content: const Text('播放列表名称已存在'),
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.pop(context),
+                    child: const Text('确定'),
                   ),
-                );
-              }
-              Navigator.pop(context);
-            },
-            child: const Text('确定'),
+                ],
+              ),
+            );
+          }
+        },
+        child: AlertDialog(
+          title: const Text('重命名播放列表'),
+          content: TextField(
+            controller: controller,
+            decoration: const InputDecoration(
+              hintText: '输入新名称',
+              labelText: '播放列表名称',
+            ),
+            autofocus: true,
           ),
-        ],
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext),
+              child: const Text('取消'),
+            ),
+            TextButton(
+              onPressed: () {
+                final newName = controller.text.trim();
+                if (newName.isNotEmpty && newName != playlist.name) {
+                  context.read<LibraryBloc>().add(
+                    RenamePlaylist(
+                      playlistId: playlist.id,
+                      oldName: playlist.name,
+                      newName: newName,
+                    ),
+                  );
+                }
+              },
+              child: const Text('确定'),
+            ),
+          ],
+        ),
       ),
     );
   }
