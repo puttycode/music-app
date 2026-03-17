@@ -5,6 +5,7 @@ import 'package:hive_flutter/hive_flutter.dart';
 import 'package:music_app/core/theme/colors.dart';
 import 'package:music_app/core/theme/text_styles.dart';
 import 'package:music_app/core/utils/duration_formatter.dart';
+import 'package:music_app/core/utils/lrc_parser.dart';
 import 'package:music_app/core/constants/app_constants.dart';
 import 'package:music_app/core/utils/app_logger.dart';
 import 'package:music_app/services/audio_player_service.dart';
@@ -337,21 +338,37 @@ class _PlayerViewState extends State<_PlayerView> {
   }
 
   void _downloadSong(BuildContext context, Song song) async {
-    final existingTask = DownloadService.instance.getDownload(song.id.toString());
-    if (existingTask != null && existingTask.status == DownloadStatus.completed) {
+    // Check if song is already local (downloaded)
+    if (song.isLocal && song.localPath != null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('歌曲已下载')),
+        const SnackBar(content: Text('此歌曲已保存在本地')),
       );
       return;
     }
-    if (existingTask != null && existingTask.status == DownloadStatus.downloading) {
+    
+    // Check if already downloaded via download service
+    if (DownloadService.instance.isDownloaded(song.id.toString())) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('歌曲已下载，可在离线音乐中找到')),
+      );
+      return;
+    }
+    
+    // Check if currently downloading
+    if (DownloadService.instance.isDownloading(song.id.toString())) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('歌曲正在下载中')),
       );
       return;
     }
+    
     try {
       await DownloadService.instance.startDownload(song);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('开始下载')),
+        );
+      }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -456,18 +473,38 @@ class _PlayerViewState extends State<_PlayerView> {
         ),
         title: const Text('正在播放', style: TextStyle(fontSize: 14)),
         centerTitle: true,
-        actions: [
-          PopupMenuButton<String>(
-            icon: const Icon(Icons.more_vert),
-            onSelected: (value) => _handleMenuAction(context, value),
-            itemBuilder: (context) => [
-              const PopupMenuItem(value: 'details', child: Text('歌曲详情')),
-              const PopupMenuItem(value: 'add_to_playlist', child: Text('添加到播放列表')),
-              const PopupMenuItem(value: 'download', child: Text('下载')),
-              const PopupMenuItem(value: 'share', child: Text('分享')),
-            ],
-          ),
-        ],
+actions: [
+           PopupMenuButton<String>(
+             icon: const Icon(Icons.more_vert),
+             onSelected: (value) => _handleMenuAction(context, value),
+             itemBuilder: (context) {
+               final audioService = AudioPlayerService.instance;
+               final song = audioService.currentSong;
+               final isDownloaded = song != null && 
+                   (song.isLocal || DownloadService.instance.isDownloaded(song.id.toString()));
+               
+               return [
+                 const PopupMenuItem(value: 'details', child: Text('歌曲详情')),
+                 const PopupMenuItem(value: 'add_to_playlist', child: Text('添加到播放列表')),
+                 PopupMenuItem(
+                   value: 'download',
+                   child: Row(
+                     children: [
+                       Icon(
+                         isDownloaded ? Icons.check_circle : Icons.download,
+                         size: 20,
+                         color: isDownloaded ? Colors.green : null,
+                       ),
+                       const SizedBox(width: 8),
+                       Text(isDownloaded ? '已下载' : '下载'),
+                     ],
+                   ),
+                 ),
+                 const PopupMenuItem(value: 'share', child: Text('分享')),
+               ];
+             },
+           ),
+         ],
       ),
       body: BlocBuilder<PlayerBloc, PlayerState>(
         builder: (context, state) {
@@ -516,10 +553,107 @@ class _PlayerViewState extends State<_PlayerView> {
   }
 }
 
-class _LyricsView extends StatelessWidget {
+class _LyricsView extends StatefulWidget {
   final Song? song;
 
   const _LyricsView({this.song});
+
+  @override
+  State<_LyricsView> createState() => _LyricsViewState();
+}
+
+class _LyricsViewState extends State<_LyricsView> {
+  List<LyricLine> _lyrics = [];
+  bool _isLoading = true;
+  String? _error;
+  int _currentLineIndex = 0;
+  StreamSubscription<Duration>? _positionSubscription;
+  final ScrollController _scrollController = ScrollController();
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchLyrics();
+    _initPositionListener();
+  }
+
+  @override
+  void didUpdateWidget(_LyricsView oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.song?.id != widget.song?.id) {
+      _fetchLyrics();
+    }
+  }
+
+  @override
+  void dispose() {
+    _positionSubscription?.cancel();
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  void _initPositionListener() {
+    final audioService = AudioPlayerService.instance;
+    _positionSubscription = audioService.positionStream.listen((position) {
+      if (_lyrics.isNotEmpty && mounted) {
+        final newIndex = LrcParser.findCurrentLineIndex(_lyrics, position);
+        if (newIndex != _currentLineIndex) {
+          setState(() => _currentLineIndex = newIndex);
+          _scrollToCurrentLine();
+        }
+      }
+    });
+  }
+
+  void _scrollToCurrentLine() {
+    if (_scrollController.hasClients && _lyrics.length > 3) {
+      final itemHeight = 40.0;
+      final offset = (_currentLineIndex - 2) * itemHeight;
+      _scrollController.animateTo(
+        offset.clamp(0.0, _scrollController.position.maxScrollExtent),
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeOut,
+      );
+    }
+  }
+
+  Future<void> _fetchLyrics() async {
+    if (widget.song == null) {
+      setState(() {
+        _isLoading = false;
+        _error = '无歌曲信息';
+      });
+      return;
+    }
+
+    setState(() {
+      _isLoading = true;
+      _error = null;
+    });
+
+    try {
+      final lyricText = await MusicApiService.instance.getSongLyric(widget.song!.id.toString());
+      
+      if (lyricText == null || lyricText.isEmpty) {
+        setState(() {
+          _isLoading = false;
+          _lyrics = [];
+        });
+        return;
+      }
+
+      final parsedLyrics = LrcParser.parse(lyricText);
+      setState(() {
+        _lyrics = parsedLyrics;
+        _isLoading = false;
+      });
+    } catch (e) {
+      setState(() {
+        _isLoading = false;
+        _error = '获取歌词失败';
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -530,31 +664,82 @@ class _LyricsView extends StatelessWidget {
           borderRadius: BorderRadius.circular(16),
           color: Theme.of(context).colorScheme.surface.withValues(alpha: 0.5),
         ),
-        child: Center(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.all(24),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Text(
-                  song?.title ?? '未知歌曲',
-                  style: AppTextStyles.headlineMedium.copyWith(color: Theme.of(context).colorScheme.onSurface),
-                  textAlign: TextAlign.center,
-                ),
-                const SizedBox(height: 16),
-                Text(
-                  song?.artist ?? '未知艺术家',
-                  style: AppTextStyles.bodyMedium.copyWith(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7)),
-                  textAlign: TextAlign.center,
-                ),
-                const SizedBox(height: 32),
-                Text(
-                  '暂无歌词',
-                  style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5)),
-                ),
-              ],
+        child: _buildContent(context),
+      ),
+    );
+  }
+
+  Widget _buildContent(BuildContext context) {
+    if (_isLoading) {
+      return const Center(
+        child: CircularProgressIndicator(),
+      );
+    }
+
+    if (_error != null) {
+      return _buildPlaceholder(context, _error!);
+    }
+
+    if (_lyrics.isEmpty) {
+      return _buildPlaceholder(context, '暂无歌词');
+    }
+
+    return ListView.builder(
+      controller: _scrollController,
+      padding: const EdgeInsets.symmetric(vertical: 48),
+      itemCount: _lyrics.length,
+      itemBuilder: (context, index) {
+        final line = _lyrics[index];
+        final isCurrentLine = index == _currentLineIndex;
+        final onSurface = Theme.of(context).colorScheme.onSurface;
+        final primary = Theme.of(context).colorScheme.primary;
+
+        return GestureDetector(
+          onTap: () {
+            final audioService = AudioPlayerService.instance;
+            audioService.seek(line.timestamp);
+          },
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+            child: Text(
+              line.text,
+              style: TextStyle(
+                color: isCurrentLine ? primary : onSurface.withValues(alpha: 0.6),
+                fontSize: isCurrentLine ? 18 : 16,
+                fontWeight: isCurrentLine ? FontWeight.w600 : FontWeight.normal,
+              ),
+              textAlign: TextAlign.center,
             ),
           ),
+        );
+      },
+    );
+  }
+
+  Widget _buildPlaceholder(BuildContext context, String message) {
+    return Center(
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Text(
+              widget.song?.title ?? '未知歌曲',
+              style: AppTextStyles.headlineMedium.copyWith(color: Theme.of(context).colorScheme.onSurface),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 16),
+            Text(
+              widget.song?.artist ?? '未知艺术家',
+              style: AppTextStyles.bodyMedium.copyWith(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7)),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 32),
+            Text(
+              message,
+              style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5)),
+            ),
+          ],
         ),
       ),
     );

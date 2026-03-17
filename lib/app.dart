@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:music_app/features/player/presentation/pages/player_page.dart';
@@ -7,6 +8,7 @@ import 'package:music_app/features/library/presentation/pages/library_page.dart'
 import 'package:music_app/features/settings/presentation/pages/settings_page.dart';
 import 'package:music_app/core/theme/app_theme.dart';
 import 'package:music_app/services/audio_player_service.dart';
+import 'package:music_app/services/music_api_service.dart';
 
 class MusicApp extends StatefulWidget {
   const MusicApp({Key? key}) : super(key: key);
@@ -66,6 +68,8 @@ class MainPage extends StatefulWidget {
 class _MainPageState extends State<MainPage> {
   int _currentIndex = 0;
   final AudioPlayerService _audioService = AudioPlayerService.instance;
+  StreamSubscription<ApiError>? _errorSubscription;
+  final GlobalKey<ScaffoldMessengerState> _scaffoldMessengerKey = GlobalKey();
 
   List<Widget> get _pages => [
     const HomePage(),
@@ -78,51 +82,78 @@ class _MainPageState extends State<MainPage> {
   ];
 
   @override
+  void initState() {
+    super.initState();
+    _initErrorListener();
+  }
+
+  @override
+  void dispose() {
+    _errorSubscription?.cancel();
+    super.dispose();
+  }
+
+  void _initErrorListener() {
+    _errorSubscription = MusicApiService.instance.errorStream.listen((error) {
+      _scaffoldMessengerKey.currentState?.showSnackBar(
+        SnackBar(
+          content: Text(error.message),
+          duration: const Duration(seconds: 3),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: IndexedStack(
-        index: _currentIndex,
-        children: _pages,
-      ),
-      bottomNavigationBar: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          StreamBuilder(
-            stream: _audioService.currentSongStream,
-            builder: (context, snapshot) {
-              if (snapshot.hasData && snapshot.data != null) {
-                return const MiniPlayer();
-              }
-              return const SizedBox.shrink();
-            },
-          ),
-          BottomNavigationBar(
-            currentIndex: _currentIndex,
-            onTap: (index) => setState(() => _currentIndex = index),
-            items: const [
-              BottomNavigationBarItem(
-                icon: Icon(Icons.home_outlined),
-                activeIcon: Icon(Icons.home),
-                label: '首页',
-              ),
-              BottomNavigationBarItem(
-                icon: Icon(Icons.search_outlined),
-                activeIcon: Icon(Icons.search),
-                label: '搜索',
-              ),
-              BottomNavigationBarItem(
-                icon: Icon(Icons.library_music_outlined),
-                activeIcon: Icon(Icons.library_music),
-                label: '音乐库',
-              ),
-              BottomNavigationBarItem(
-                icon: Icon(Icons.settings_outlined),
-                activeIcon: Icon(Icons.settings),
-                label: '设置',
-              ),
-            ],
-          ),
-        ],
+    return ScaffoldMessenger(
+      key: _scaffoldMessengerKey,
+      child: Scaffold(
+        body: IndexedStack(
+          index: _currentIndex,
+          children: _pages,
+        ),
+        bottomNavigationBar: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            StreamBuilder(
+              stream: _audioService.currentSongStream,
+              builder: (context, snapshot) {
+                if (snapshot.hasData && snapshot.data != null) {
+                  return const MiniPlayer();
+                }
+                return const SizedBox.shrink();
+              },
+            ),
+            BottomNavigationBar(
+              currentIndex: _currentIndex,
+              onTap: (index) => setState(() => _currentIndex = index),
+              items: const [
+                BottomNavigationBarItem(
+                  icon: Icon(Icons.home_outlined),
+                  activeIcon: Icon(Icons.home),
+                  label: '首页',
+                ),
+                BottomNavigationBarItem(
+                  icon: Icon(Icons.search_outlined),
+                  activeIcon: Icon(Icons.search),
+                  label: '搜索',
+                ),
+                BottomNavigationBarItem(
+                  icon: Icon(Icons.library_music_outlined),
+                  activeIcon: Icon(Icons.library_music),
+                  label: '音乐库',
+                ),
+                BottomNavigationBarItem(
+                  icon: Icon(Icons.settings_outlined),
+                  activeIcon: Icon(Icons.settings),
+                  label: '设置',
+                ),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }

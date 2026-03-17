@@ -73,7 +73,6 @@ class Song extends Equatable {
     Duration duration;
     
     if (durationValue is int) {
-      // If > 10000, assume milliseconds; otherwise assume seconds
       if (durationValue > 10000) {
         duration = Duration(milliseconds: durationValue);
       } else if (durationValue > 0) {
@@ -85,6 +84,15 @@ class Song extends Equatable {
       duration = Duration.zero;
     }
     
+    DateTime? playedAt;
+    if (json['playedAt'] != null) {
+      try {
+        playedAt = DateTime.parse(json['playedAt'].toString());
+      } catch (_) {
+        playedAt = null;
+      }
+    }
+    
     return Song(
       id: json['id'] ?? 0,
       title: json['title'] ?? 'Unknown',
@@ -93,10 +101,10 @@ class Song extends Equatable {
       albumArt: json['albumArt'],
       audioUrl: json['audioUrl'],
       duration: duration,
-      isLocal: true,
+      isLocal: json['isLocal'] ?? true,
       localPath: json['localPath'],
       lyrics: json['lyrics'] != null ? List<String>.from(json['lyrics']) : null,
-      playedAt: json['playedAt'] != null ? DateTime.parse(json['playedAt']) : null,
+      playedAt: playedAt,
     );
   }
 

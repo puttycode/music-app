@@ -8,6 +8,7 @@ import 'package:music_app/core/constants/app_constants.dart';
 import 'package:music_app/services/audio_player_service.dart' show AppLogger, AudioPlayerService;
 import 'package:music_app/services/music_api_service.dart';
 import 'package:music_app/services/local_music_scanner.dart';
+import 'package:music_app/services/download_service.dart';
 
 part 'library_event.dart';
 
@@ -53,6 +54,7 @@ class LibraryState extends Equatable {
   final List<Artist> artists;
   final List<Album> albums;
   final List<Playlist> playlists;
+  final bool playlistCreated;
 
   const LibraryState({
     this.isLoading = false,
@@ -61,28 +63,32 @@ class LibraryState extends Equatable {
     this.artists = const <Artist>[],
     this.albums = const <Album>[],
     this.playlists = const [],
+    this.playlistCreated = false,
   });
 
   LibraryState copyWith({
     bool? isLoading,
     String? error,
+    bool clearError = false,
     List<Song>? localSongs,
     List<Artist>? artists,
     List<Album>? albums,
     List<Playlist>? playlists,
+    bool? playlistCreated,
   }) {
     return LibraryState(
       isLoading: isLoading ?? this.isLoading,
-      error: error,
+      error: clearError ? null : (error ?? this.error),
       localSongs: localSongs ?? this.localSongs,
       artists: artists ?? this.artists,
       albums: albums ?? this.albums,
       playlists: playlists ?? this.playlists,
+      playlistCreated: playlistCreated ?? false,
     );
   }
 
   @override
-  List<Object?> get props => [isLoading, error, localSongs, artists, albums, playlists];
+  List<Object?> get props => [isLoading, error, localSongs, artists, albums, playlists, playlistCreated];
 }
 
 class LibraryBloc extends Bloc<LibraryEvent, LibraryState> {
@@ -94,6 +100,7 @@ class LibraryBloc extends Bloc<LibraryEvent, LibraryState> {
     on<CreatePlaylist>(_onCreatePlaylist);
     on<DeletePlaylist>(_onDeletePlaylist);
     on<RenamePlaylist>(_onRenamePlaylist);
+    on<ClearPlaylistCreatedFlag>(_onClearPlaylistCreatedFlag);
   }
 
   Future<void> _onLoadLocalMusic(LoadLocalMusic event, Emitter<LibraryState> emit) async {
@@ -101,7 +108,20 @@ class LibraryBloc extends Bloc<LibraryEvent, LibraryState> {
     
     try {
       // Scan device for local music files
-      final localSongs = await LocalMusicScanner.scan();
+      final scannedSongs = await LocalMusicScanner.scan();
+      
+      // Get downloaded songs
+      final downloadedSongs = DownloadService.instance.getDownloadedSongs();
+      
+      // Combine and deduplicate (prefer downloaded versions with correct metadata)
+      final songsMap = <int, Song>{};
+      for (final song in scannedSongs) {
+        songsMap[song.id] = song;
+      }
+      for (final song in downloadedSongs) {
+        songsMap[song.id] = song;
+      }
+      final localSongs = songsMap.values.toList();
       
       // Also load recent plays for artist/album extraction
       final recentBox = Hive.box(AppConstants.recentPlaysBox);
@@ -132,6 +152,7 @@ class LibraryBloc extends Bloc<LibraryEvent, LibraryState> {
       
       emit(state.copyWith(
         isLoading: false,
+        clearError: true,
         localSongs: localSongs,
         artists: artists,
         albums: albums,
@@ -211,6 +232,7 @@ class LibraryBloc extends Bloc<LibraryEvent, LibraryState> {
     final otherPlaylists = userPlaylists.where((p) => p.name != '我喜欢的音乐' && p.name != '最近播放').toList();
     
     emit(state.copyWith(
+      clearError: true,
       playlists: [
         favoritePlaylist,
         Playlist(
@@ -251,6 +273,8 @@ class LibraryBloc extends Bloc<LibraryEvent, LibraryState> {
     });
     
     emit(state.copyWith(
+      clearError: true,
+      playlistCreated: true,
       playlists: [...state.playlists, newPlaylist],
     ));
   }
@@ -295,5 +319,9 @@ class LibraryBloc extends Bloc<LibraryEvent, LibraryState> {
     }).toList();
     
     emit(state.copyWith(playlists: updatedPlaylists));
+  }
+
+  void _onClearPlaylistCreatedFlag(ClearPlaylistCreatedFlag event, Emitter<LibraryState> emit) {
+    emit(state.copyWith(playlistCreated: false));
   }
 }

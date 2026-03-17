@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:dio/dio.dart';
 import '../features/player/domain/entities/song.dart';
 import '../features/player/domain/entities/artist.dart';
@@ -5,6 +6,18 @@ import '../features/player/domain/entities/album.dart';
 import '../core/utils/app_logger.dart';
 
 enum MusicSource { custom }
+
+class ApiError {
+  final String message;
+  final String operation;
+  final dynamic error;
+
+  const ApiError({
+    required this.message,
+    required this.operation,
+    this.error,
+  });
+}
 
 abstract class MusicApi {
   String get name;
@@ -29,16 +42,16 @@ abstract class MusicApi {
 
 class CustomApi implements MusicApi {
   final Dio _dio;
-  static const String _apiKey = 'your-secret-api-key';
-  static const String _domain = 'https://music-api.codeseek.me:37280';
+  static const String _defaultApiKey = 'your-secret-api-key';
+  static const String _defaultDomain = 'https://music-api.codeseek.me:37280';
   
-  CustomApi({String? baseUrl}) : _dio = Dio(BaseOptions(
-    baseUrl: baseUrl ?? _domain,
+  CustomApi({String? baseUrl, String? apiKey}) : _dio = Dio(BaseOptions(
+    baseUrl: baseUrl ?? _defaultDomain,
     connectTimeout: const Duration(seconds: 30),
     receiveTimeout: const Duration(seconds: 60),
     followRedirects: true,
     validateStatus: (status) => status! < 500,
-    headers: {'Authorization': 'Bearer $_apiKey', 'Content-Type': 'application/json'},
+    headers: {'Authorization': 'Bearer ${apiKey ?? _defaultApiKey}', 'Content-Type': 'application/json'},
   ));
 
   @override String get name => '自定义 API';
@@ -290,27 +303,164 @@ class CustomApi implements MusicApi {
 class MusicApiService {
   static MusicApiService? _instance;
   static MusicApiService get instance => _instance ??= MusicApiService._();
+  
+  final _errorController = StreamController<ApiError>.broadcast();
+  Stream<ApiError> get errorStream => _errorController.stream;
+  
   MusicApi _currentApi = CustomApi();
   MusicApiService._();
 
-  void setSource(MusicSource source, {String? customUrl}) {
-    _currentApi = CustomApi(baseUrl: customUrl);
+  void setSource(MusicSource source, {String? customUrl, String? apiKey}) {
+    _currentApi = CustomApi(baseUrl: customUrl, apiKey: apiKey);
   }
 
-  Future<List<Song>> searchSongs(String query) => _currentApi.searchSongs(query);
-  Future<List<Artist>> searchArtists(String query) => _currentApi.searchArtists(query);
-  Future<List<Album>> searchAlbums(String query) => _currentApi.searchAlbums(query);
-  Future<List<Song>> getTopCharts() => _currentApi.getTopCharts();
-  Future<Song?> getSongDetail(String id) => _currentApi.getSongDetail(id);
-  Future<Artist?> getArtistDetail(String id) => _currentApi.getArtistDetail(id);
-  Future<Album?> getAlbumDetail(String id) => _currentApi.getAlbumDetail(id);
-  Future<List<Album>> getArtistAlbums(String artistId) => _currentApi.getArtistAlbums(artistId);
-  Future<List<Song>> getAlbumTracks(String albumId) => _currentApi.getAlbumTracks(albumId);
-  Future<List<Song>> getChartSongs(String chartName) => _currentApi.getChartSongs(chartName);
-  Future<List<Song>> getHotSongs() => _currentApi.getHotSongs();
-  Future<List<Artist>> getHotArtists() => _currentApi.getHotArtists();
-  Future<List<Album>> getNewAlbums() => _currentApi.getNewAlbums();
-  Future<String?> getSongUrl(String id, {String quality = 'exhigh'}) => _currentApi.getSongUrl(id, quality: quality);
-  Future<String?> getSongLyric(String id) => _currentApi.getSongLyric(id);
+  void _emitError(String operation, String message, [dynamic error]) {
+    _errorController.add(ApiError(
+      message: message,
+      operation: operation,
+      error: error,
+    ));
+    AppLogger.log('API Error [$operation]: $message');
+  }
+
+  Future<List<Song>> searchSongs(String query) async {
+    try {
+      return await _currentApi.searchSongs(query);
+    } catch (e) {
+      _emitError('searchSongs', '搜索歌曲失败', e);
+      return [];
+    }
+  }
+
+  Future<List<Artist>> searchArtists(String query) async {
+    try {
+      return await _currentApi.searchArtists(query);
+    } catch (e) {
+      _emitError('searchArtists', '搜索歌手失败', e);
+      return [];
+    }
+  }
+
+  Future<List<Album>> searchAlbums(String query) async {
+    try {
+      return await _currentApi.searchAlbums(query);
+    } catch (e) {
+      _emitError('searchAlbums', '搜索专辑失败', e);
+      return [];
+    }
+  }
+
+  Future<List<Song>> getTopCharts() async {
+    try {
+      return await _currentApi.getTopCharts();
+    } catch (e) {
+      _emitError('getTopCharts', '获取榜单失败', e);
+      return [];
+    }
+  }
+
+  Future<Song?> getSongDetail(String id) async {
+    try {
+      return await _currentApi.getSongDetail(id);
+    } catch (e) {
+      _emitError('getSongDetail', '获取歌曲详情失败', e);
+      return null;
+    }
+  }
+
+  Future<Artist?> getArtistDetail(String id) async {
+    try {
+      return await _currentApi.getArtistDetail(id);
+    } catch (e) {
+      _emitError('getArtistDetail', '获取歌手详情失败', e);
+      return null;
+    }
+  }
+
+  Future<Album?> getAlbumDetail(String id) async {
+    try {
+      return await _currentApi.getAlbumDetail(id);
+    } catch (e) {
+      _emitError('getAlbumDetail', '获取专辑详情失败', e);
+      return null;
+    }
+  }
+
+  Future<List<Album>> getArtistAlbums(String artistId) async {
+    try {
+      return await _currentApi.getArtistAlbums(artistId);
+    } catch (e) {
+      _emitError('getArtistAlbums', '获取歌手专辑失败', e);
+      return [];
+    }
+  }
+
+  Future<List<Song>> getAlbumTracks(String albumId) async {
+    try {
+      return await _currentApi.getAlbumTracks(albumId);
+    } catch (e) {
+      _emitError('getAlbumTracks', '获取专辑歌曲失败', e);
+      return [];
+    }
+  }
+
+  Future<List<Song>> getChartSongs(String chartName) async {
+    try {
+      return await _currentApi.getChartSongs(chartName);
+    } catch (e) {
+      _emitError('getChartSongs', '获取榜单歌曲失败', e);
+      return [];
+    }
+  }
+
+  Future<List<Song>> getHotSongs() async {
+    try {
+      return await _currentApi.getHotSongs();
+    } catch (e) {
+      _emitError('getHotSongs', '获取热门歌曲失败', e);
+      return [];
+    }
+  }
+
+  Future<List<Artist>> getHotArtists() async {
+    try {
+      return await _currentApi.getHotArtists();
+    } catch (e) {
+      _emitError('getHotArtists', '获取热门歌手失败', e);
+      return [];
+    }
+  }
+
+  Future<List<Album>> getNewAlbums() async {
+    try {
+      return await _currentApi.getNewAlbums();
+    } catch (e) {
+      _emitError('getNewAlbums', '获取新专辑失败', e);
+      return [];
+    }
+  }
+
+  Future<String?> getSongUrl(String id, {String quality = 'exhigh'}) async {
+    try {
+      return await _currentApi.getSongUrl(id, quality: quality);
+    } catch (e) {
+      _emitError('getSongUrl', '获取播放链接失败', e);
+      return null;
+    }
+  }
+
+  Future<String?> getSongLyric(String id) async {
+    try {
+      return await _currentApi.getSongLyric(id);
+    } catch (e) {
+      _emitError('getSongLyric', '获取歌词失败', e);
+      return null;
+    }
+  }
+
   bool isFullAudio(Song song) => _currentApi.isFullAudio(song);
+
+  void dispose() {
+    _errorController.close();
+  }
 }

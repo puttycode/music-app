@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:hive_flutter/hive_flutter.dart';
+import 'package:music_app/core/constants/app_constants.dart';
 import 'package:music_app/features/player/domain/entities/artist.dart';
 import 'package:music_app/features/player/domain/entities/song.dart';
 import 'package:music_app/features/player/presentation/pages/player_page.dart';
@@ -32,11 +34,39 @@ class _ArtistDetailPageState extends State<ArtistDetailPage> {
     });
 
     try {
-      final artists = await MusicApiService.instance.searchArtists(widget.artist.name);
       List<Song> songs = [];
       
-      if (artists.isNotEmpty) {
-        songs = await MusicApiService.instance.searchSongs(widget.artist.name);
+      // Try API first if artist has a valid numeric ID
+      final artistId = widget.artist.id;
+      if (artistId.isNotEmpty && !artistId.startsWith('artist_')) {
+        try {
+          final artistDetail = await MusicApiService.instance.getArtistDetail(artistId);
+          if (artistDetail != null) {
+            songs = await MusicApiService.instance.searchSongs(widget.artist.name);
+            songs = songs.where((s) => s.artist.contains(widget.artist.name)).toList();
+          }
+        } catch (e) {
+          // API failed, fall back to local
+        }
+      }
+      
+      // If no songs from API, try local songs
+      if (songs.isEmpty) {
+        final recentBox = Hive.box(AppConstants.recentPlaysBox);
+        final recentSongs = recentBox.values.map((e) {
+          if (e is Map) {
+            return Song.fromLocal(Map<String, dynamic>.from(e));
+          }
+          return null;
+        }).whereType<Song>().toList();
+        
+        songs = recentSongs.where((s) => s.artist == widget.artist.name).toList();
+        
+        // Also search API for this artist name
+        if (songs.isEmpty) {
+          final apiSongs = await MusicApiService.instance.searchSongs(widget.artist.name);
+          songs = apiSongs.where((s) => s.artist.contains(widget.artist.name)).toList();
+        }
       }
       
       setState(() {

@@ -23,11 +23,12 @@ void main() async {
 
   final settingsBox = Hive.box(AppConstants.settingsBox);
   final savedCustomUrl = settingsBox.get('customApiUrl', defaultValue: '');
+  final savedApiKey = settingsBox.get('apiKey', defaultValue: '');
   
-  // 使用自定义 API（默认或用户配置）
   MusicApiService.instance.setSource(
     MusicSource.custom,
     customUrl: savedCustomUrl.isNotEmpty ? savedCustomUrl : null,
+    apiKey: savedApiKey.isNotEmpty ? savedApiKey : null,
   );
   
   // 恢复上次播放的歌曲（暂停状态）

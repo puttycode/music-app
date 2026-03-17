@@ -47,3 +47,5 @@ class RenamePlaylist extends LibraryEvent {
   @override
   List<Object?> get props => [playlistId, oldName, newName];
 }
+
+class ClearPlaylistCreatedFlag extends LibraryEvent {}

@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:music_app/features/player/domain/entities/song.dart';
 import 'package:music_app/core/constants/app_constants.dart';
@@ -37,6 +38,14 @@ class DownloadTask {
     this.completedAt,
   });
 
+  Song toLocalSong() {
+    return song.copyWith(
+      isLocal: true,
+      localPath: savePath,
+      audioUrl: null,
+    );
+  }
+
   Map<String, dynamic> toJson() {
     return {
       'id': id,
@@ -68,6 +77,8 @@ class DownloadTask {
   }
 }
 
+typedef DownloadCompletedCallback = void Function(DownloadTask task);
+
 class DownloadService {
   static DownloadService? _instance;
   static DownloadService get instance => _instance ??= DownloadService._();
@@ -76,6 +87,7 @@ class DownloadService {
   late Box _downloadBox;
   final Map<String, CancelToken> _cancelTokens = {};
   final _downloadProgressSubject = StreamController<DownloadTask>.broadcast();
+  DownloadCompletedCallback? onDownloadCompleted;
 
   Stream<DownloadTask> get downloadProgressStream => _downloadProgressSubject.stream;
 
@@ -98,6 +110,25 @@ class DownloadService {
     }
   }
 
+  bool isDownloaded(String songId) {
+    final taskData = _downloadBox.get(songId);
+    if (taskData is Map) {
+      final task = DownloadTask.fromJson(Map<String, dynamic>.from(taskData));
+      return task.status == DownloadStatus.completed;
+    }
+    return false;
+  }
+
+  bool isDownloading(String songId) {
+    final taskData = _downloadBox.get(songId);
+    if (taskData is Map) {
+      final task = DownloadTask.fromJson(Map<String, dynamic>.from(taskData));
+      return task.status == DownloadStatus.downloading || 
+             task.status == DownloadStatus.pending;
+    }
+    return false;
+  }
+
   Future<String> startDownload(Song song, {String? customUrl}) async {
     final taskId = song.id.toString();
     
@@ -105,13 +136,21 @@ class DownloadService {
       final existing = DownloadTask.fromJson(
         Map<String, dynamic>.from(_downloadBox.get(taskId)),
       );
-      if (existing.status == DownloadStatus.completed || 
-          existing.status == DownloadStatus.downloading) {
+      if (existing.status == DownloadStatus.completed) {
+        debugPrint('Song already downloaded: ${song.title}');
+        return taskId;
+      }
+      if (existing.status == DownloadStatus.downloading) {
+        debugPrint('Song is already downloading: ${song.title}');
         return taskId;
       }
       if (existing.status == DownloadStatus.paused) {
         await resumeDownload(taskId);
         return taskId;
+      }
+      if (existing.status == DownloadStatus.failed) {
+        // Retry failed download
+        await _downloadBox.delete(taskId);
       }
     }
 
@@ -178,6 +217,11 @@ class DownloadService {
       await _updateTask(task);
       _downloadProgressSubject.add(task);
       _cancelTokens.remove(task.id);
+      
+      // Notify listeners that download completed
+      onDownloadCompleted?.call(task);
+      
+      debugPrint('Download completed: ${task.song.title}');
     } on DioException catch (e) {
       if (e.type == DioExceptionType.cancel) {
         task.status = DownloadStatus.paused;
@@ -188,12 +232,14 @@ class DownloadService {
         task.errorMessage = e.message;
         await _updateTask(task);
         _downloadProgressSubject.add(task);
+        debugPrint('Download failed: ${e.message}');
       }
     } catch (e) {
       task.status = DownloadStatus.failed;
       task.errorMessage = e.toString();
       await _updateTask(task);
       _downloadProgressSubject.add(task);
+      debugPrint('Download failed: $e');
     }
   }
 
@@ -245,6 +291,18 @@ class DownloadService {
     await _downloadBox.delete(taskId);
   }
 
+  Future<void> deleteDownload(String taskId) async {
+    final taskData = _downloadBox.get(taskId);
+    if (taskData is Map) {
+      final task = DownloadTask.fromJson(Map<String, dynamic>.from(taskData));
+      final file = File(task.savePath);
+      if (await file.exists()) {
+        await file.delete();
+      }
+    }
+    await _downloadBox.delete(taskId);
+  }
+
   List<DownloadTask> getAllDownloads() {
     final tasks = <DownloadTask>[];
     for (final key in _downloadBox.keys) {
@@ -254,6 +312,20 @@ class DownloadService {
       }
     }
     return tasks;
+  }
+
+  List<Song> getDownloadedSongs() {
+    final songs = <Song>[];
+    for (final key in _downloadBox.keys) {
+      final taskData = _downloadBox.get(key);
+      if (taskData is Map) {
+        final task = DownloadTask.fromJson(Map<String, dynamic>.from(taskData));
+        if (task.status == DownloadStatus.completed) {
+          songs.add(task.toLocalSong());
+        }
+      }
+    }
+    return songs;
   }
 
   DownloadTask? getDownload(String taskId) {

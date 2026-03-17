@@ -21,6 +21,7 @@ class SettingsPage extends StatefulWidget {
 class _SettingsPageState extends State<SettingsPage> {
   late Box _settingsBox;
   late TextEditingController _customApiController;
+  late TextEditingController _apiKeyController;
   late TextEditingController _downloadPathController;
 
   @override
@@ -28,16 +29,19 @@ class _SettingsPageState extends State<SettingsPage> {
     super.initState();
     _settingsBox = Hive.box('settings');
     _customApiController = TextEditingController();
+    _apiKeyController = TextEditingController();
     _downloadPathController = TextEditingController();
     _loadSettings();
   }
 
   void _loadSettings() {
     final savedCustomUrl = _settingsBox.get('customApiUrl', defaultValue: '');
+    final savedApiKey = _settingsBox.get('apiKey', defaultValue: '');
     final savedDownloadPath = _settingsBox.get('downloadPath', defaultValue: '/storage/emulated/0/Music');
     
     setState(() {
       _customApiController.text = savedCustomUrl;
+      _apiKeyController.text = savedApiKey;
       _downloadPathController.text = savedDownloadPath;
     });
   }
@@ -45,18 +49,31 @@ class _SettingsPageState extends State<SettingsPage> {
   @override
   void dispose() {
     _customApiController.dispose();
+    _apiKeyController.dispose();
     _downloadPathController.dispose();
     super.dispose();
   }
 
   void _onCustomUrlSaved() {
-    if (_customApiController.text.isNotEmpty) {
-      _settingsBox.put('customApiUrl', _customApiController.text);
-      MusicApiService.instance.setSource(MusicSource.custom, customUrl: _customApiController.text);
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('API 配置已保存')),
-      );
+    final url = _customApiController.text.trim();
+    final apiKey = _apiKeyController.text.trim();
+    
+    if (url.isNotEmpty) {
+      _settingsBox.put('customApiUrl', url);
     }
+    if (apiKey.isNotEmpty) {
+      _settingsBox.put('apiKey', apiKey);
+    }
+    
+    MusicApiService.instance.setSource(
+      MusicSource.custom,
+      customUrl: url.isNotEmpty ? url : null,
+      apiKey: apiKey.isNotEmpty ? apiKey : null,
+    );
+    
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('API 配置已保存')),
+    );
   }
 
   @override
@@ -115,7 +132,18 @@ class _SettingsPageState extends State<SettingsPage> {
                           border: OutlineInputBorder(),
                           prefixIcon: Icon(Icons.link),
                         ),
-                        onSubmitted: (_) => _onCustomUrlSaved(),
+                      ),
+                      const SizedBox(height: 16),
+                      const Text('API 密钥', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
+                      const SizedBox(height: 8),
+                      TextField(
+                        controller: _apiKeyController,
+                        decoration: const InputDecoration(
+                          hintText: 'your-secret-api-key',
+                          border: OutlineInputBorder(),
+                          prefixIcon: Icon(Icons.key),
+                        ),
+                        obscureText: true,
                       ),
                       const SizedBox(height: 16),
                       SizedBox(

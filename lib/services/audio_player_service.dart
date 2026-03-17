@@ -157,12 +157,31 @@ class AudioPlayerService {
       // Update song with playedAt timestamp
       final songWithPlayedAt = song.copyWith(playedAt: DateTime.now());
       
-      // Save as JSON map
-      await recentBox.put(songWithPlayedAt.hashCode, songWithPlayedAt.toJson());
+      // Save as JSON map with song.id as key
+      await recentBox.put('song_${song.id}', songWithPlayedAt.toJson());
       
       if (recentBox.length > AppConstants.recentPlaysMax) {
-        final keys = recentBox.keys.toList();
-        await recentBox.delete(keys.first);
+        // Find and remove the oldest song by playedAt timestamp
+        final allSongs = <MapEntry<dynamic, Song>>[];
+        for (final key in recentBox.keys) {
+          final item = recentBox.get(key);
+          if (item is Map) {
+            final s = Song.fromLocal(Map<String, dynamic>.from(item));
+            allSongs.add(MapEntry(key, s));
+          }
+        }
+        
+        // Sort by playedAt (oldest first)
+        allSongs.sort((a, b) {
+          final aTime = a.value.playedAt ?? DateTime.fromMillisecondsSinceEpoch(0);
+          final bTime = b.value.playedAt ?? DateTime.fromMillisecondsSinceEpoch(0);
+          return aTime.compareTo(bTime);
+        });
+        
+        // Remove the oldest
+        if (allSongs.isNotEmpty) {
+          await recentBox.delete(allSongs.first.key);
+        }
       }
       
       AppLogger.log('Saved to recent plays: ${songWithPlayedAt.title}');
@@ -213,8 +232,10 @@ class AudioPlayerService {
     if (playlist.isEmpty) return;
     
     int nextIndex;
-    if (isShuffle) {
-      nextIndex = (currentIndex + 1) % playlist.length;
+    if (isShuffle && playlist.length > 1) {
+      final random = DateTime.now().millisecondsSinceEpoch;
+      nextIndex = (random % (playlist.length - 1));
+      if (nextIndex >= currentIndex) nextIndex++;
     } else {
       nextIndex = (currentIndex + 1) % playlist.length;
     }

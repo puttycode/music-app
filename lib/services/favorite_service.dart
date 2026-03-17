@@ -10,19 +10,20 @@ class FavoriteService {
   static final FavoriteService _instance = FavoriteService._();
   static FavoriteService get instance => _instance;
 
+  static const String favoritePlaylistId = 'favorites';
+  static const String favoritePlaylistName = '我喜欢的音乐';
+
   final _favoritesChangedSubject = BehaviorSubject<void>.seeded(null);
   Stream<void> get favoritesChanged => _favoritesChangedSubject.asBroadcastStream();
 
-  // Callback to refresh library playlists
   VoidCallback? onFavoriteChanged;
 
   Future<void> toggleFavorite(Song song) async {
     try {
       final playlistBox = Hive.box(AppConstants.playlistBox);
-      const favoritePlaylistName = '我喜欢的音乐';
 
-      // Check if favorite playlist exists in Hive
-      var favoritePlaylistData = playlistBox.get(favoritePlaylistName);
+      // Check if favorite playlist exists in Hive (check both by ID and name for backwards compatibility)
+      var favoritePlaylistData = playlistBox.get(favoritePlaylistId) ?? playlistBox.get(favoritePlaylistName);
       List<Song> favoriteSongs = [];
 
       if (favoritePlaylistData is Map && favoritePlaylistData['songs'] is List) {
@@ -41,27 +42,30 @@ class FavoriteService {
         favoriteSongs.add(song);
       }
 
-      // Update or create the favorite playlist
-      await playlistBox.put(favoritePlaylistName, {
+      // Save with both ID and proper structure
+      await playlistBox.put(favoritePlaylistId, {
+        'id': favoritePlaylistId,
         'name': favoritePlaylistName,
         'songs': favoriteSongs.map((s) => s.toJson()).toList(),
         'icon': 'favorite',
       });
+      
+      // Clean up old key if exists
+      if (playlistBox.containsKey(favoritePlaylistName)) {
+        await playlistBox.delete(favoritePlaylistName);
+      }
 
       _favoritesChangedSubject.add(null);
-      
-      // Trigger callback to refresh library playlists
       onFavoriteChanged?.call();
     } catch (e) {
-      // Ignore errors
+      debugPrint('Error toggling favorite: $e');
     }
   }
 
   bool isFavorite(Song song) {
     try {
       final playlistBox = Hive.box(AppConstants.playlistBox);
-      const favoritePlaylistName = '我喜欢的音乐';
-      final favoritePlaylistData = playlistBox.get(favoritePlaylistName);
+      final favoritePlaylistData = playlistBox.get(favoritePlaylistId) ?? playlistBox.get(favoritePlaylistName);
 
       if (favoritePlaylistData is Map && favoritePlaylistData['songs'] is List) {
         final songsData = favoritePlaylistData['songs'] as List;

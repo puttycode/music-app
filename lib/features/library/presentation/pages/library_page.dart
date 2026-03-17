@@ -18,25 +18,64 @@ import 'package:music_app/features/library/presentation/pages/artist_detail_page
 import 'package:music_app/features/library/presentation/pages/album_detail_page.dart';
 import 'package:music_app/features/library/presentation/pages/playlist_detail_page.dart';
 
-class LibraryPage extends StatelessWidget {
+class LibraryPage extends StatefulWidget {
   const LibraryPage({Key? key}) : super(key: key);
 
   @override
+  State<LibraryPage> createState() => _LibraryPageState();
+}
+
+class _LibraryPageState extends State<LibraryPage> {
+  late LibraryBloc _bloc;
+  VoidCallback? _favoriteCallback;
+  VoidCallback? _recentPlaysCallback;
+  DownloadCompletedCallback? _downloadCompletedCallback;
+
+  @override
+  void initState() {
+    super.initState();
+    _bloc = LibraryBloc()..add(LoadLocalMusic())..add(LoadPlaylists());
+    
+    _favoriteCallback = () {
+      if (mounted) _bloc.add(RefreshPlaylists());
+    };
+    FavoriteService.instance.onFavoriteChanged = _favoriteCallback;
+    
+    _recentPlaysCallback = () {
+      if (mounted) {
+        _bloc.add(RefreshPlaylists());
+        _bloc.add(LoadLocalMusic());
+      }
+    };
+    AudioPlayerService.instance.onRecentPlaysChanged = _recentPlaysCallback;
+    
+    _downloadCompletedCallback = (task) {
+      if (mounted) {
+        _bloc.add(LoadLocalMusic());
+      }
+    };
+    DownloadService.instance.onDownloadCompleted = _downloadCompletedCallback;
+  }
+
+  @override
+  void dispose() {
+    if (FavoriteService.instance.onFavoriteChanged == _favoriteCallback) {
+      FavoriteService.instance.onFavoriteChanged = null;
+    }
+    if (AudioPlayerService.instance.onRecentPlaysChanged == _recentPlaysCallback) {
+      AudioPlayerService.instance.onRecentPlaysChanged = null;
+    }
+    if (DownloadService.instance.onDownloadCompleted == _downloadCompletedCallback) {
+      DownloadService.instance.onDownloadCompleted = null;
+    }
+    _bloc.close();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return BlocProvider(
-      create: (_) {
-        final bloc = LibraryBloc()..add(LoadLocalMusic())..add(LoadPlaylists());
-        // Set callback to refresh playlists when favorite changes
-        FavoriteService.instance.onFavoriteChanged = () {
-          bloc.add(RefreshPlaylists());
-        };
-        // Set callback to refresh recent plays when songs are played
-        AudioPlayerService.instance.onRecentPlaysChanged = () {
-          bloc.add(RefreshPlaylists());
-          bloc.add(LoadLocalMusic()); // Also refresh local music for artists/albums
-        };
-        return bloc;
-      },
+    return BlocProvider.value(
+      value: _bloc,
       child: const _LibraryView(),
     );
   }
@@ -106,7 +145,13 @@ class _LibraryViewState extends State<_LibraryView> {
       context: context,
       builder: (dialogContext) => BlocListener<LibraryBloc, LibraryState>(
         listener: (context, state) {
-          if (state.error == '播放列表名称已存在') {
+          if (state.playlistCreated) {
+            Navigator.pop(dialogContext);
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('播放列表创建成功')),
+            );
+            context.read<LibraryBloc>().add(ClearPlaylistCreatedFlag());
+          } else if (state.error == '播放列表名称已存在') {
             Navigator.pop(dialogContext);
             showDialog(
               context: context,
@@ -200,17 +245,30 @@ class _LocalSongsTabState extends State<_LocalSongsTab> {
 
   @override
   Widget build(BuildContext context) {
-    // Combine local songs with downloading songs
-    final allSongs = [...widget.songs];
+    final localSongs = widget.songs;
+    
+    // Get currently downloading songs (not completed)
     final downloadingSongs = _downloadTasks.values
-        .where((task) => task.status != DownloadStatus.completed)
+        .where((task) => task.status != DownloadStatus.completed && 
+                        task.status != DownloadStatus.failed)
         .map((task) => task.song)
         .toList();
     
-    final displaySongs = [...allSongs, ...downloadingSongs];
+    // Deduplicate by song id, preferring local versions (which include downloaded)
+    final songsMap = <int, Song>{};
+    for (final song in localSongs) {
+      songsMap[song.id] = song;
+    }
+    for (final song in downloadingSongs) {
+      songsMap.putIfAbsent(song.id, () => song);
+    }
+    final displaySongs = songsMap.values.toList();
+    
+    // Sort by title
+    displaySongs.sort((a, b) => a.title.compareTo(b.title));
     
     // Only show permission button if there are no local songs AND no downloading songs
-    if (allSongs.isEmpty && downloadingSongs.isEmpty) {
+    if (localSongs.isEmpty && downloadingSongs.isEmpty) {
       return app_widgets.EmptyWidget(
         message: '没有找到本地音乐\n请授予存储权限以扫描音乐',
         icon: Icons.music_off,
@@ -271,12 +329,12 @@ class _LocalSongsTabState extends State<_LocalSongsTab> {
       );
     }
 
-    return ListView.builder(
+return ListView.builder(
       itemCount: displaySongs.length,
       itemBuilder: (context, index) {
         final song = displaySongs[index];
         final downloadTask = _downloadTasks[song.id.toString()];
-        final isDownloaded = downloadTask?.status == DownloadStatus.completed;
+        final isDownloaded = song.isLocal || downloadTask?.status == DownloadStatus.completed;
         final isDownloading = downloadTask != null && 
             downloadTask.status != DownloadStatus.completed &&
             downloadTask.status != DownloadStatus.failed;
@@ -350,7 +408,7 @@ class _LocalSongsTabState extends State<_LocalSongsTab> {
                 )
               else if (isDownloaded)
                 Text(
-                  '已下载',
+                  '本地音乐',
                   style: TextStyle(
                     fontSize: 12,
                     color: Theme.of(context).colorScheme.primary,
@@ -665,26 +723,10 @@ class _AlbumsTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Only show downloaded songs (completed downloads)
-    final downloadedSongs = _downloadTasks.values
-        .where((task) => task.status == DownloadStatus.completed)
-        .map((task) => task.song)
-        .toList();
-    
-    // Combine with local songs from scanner
-    final allSongs = [...widget.songs.where((s) => s.isLocal), ...downloadedSongs];
-    
-    // Remove duplicates by song id
-    final uniqueSongsMap = <int, Song>{};
-    for (final song in allSongs) {
-      uniqueSongsMap[song.id] = song;
-    }
-    final displaySongs = uniqueSongsMap.values.toList();
-    
-    if (displaySongs.isEmpty) {
-      return app_widgets.EmptyWidget(
-        message: '没有离线音乐\n下载的歌曲将显示在这里',
-        icon: Icons.cloud_off,
+    if (albums.isEmpty) {
+      return const app_widgets.EmptyWidget(
+        message: '没有找到专辑',
+        icon: Icons.album,
       );
     }
 
