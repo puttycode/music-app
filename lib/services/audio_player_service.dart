@@ -88,18 +88,28 @@ class AudioPlayerService {
     }
   }
 
-  Future<void> setPlaylist(List<Song> songs, int startIndex) async {
-    AppLogger.log('setPlaylist called: ${songs.length} songs, startIndex: $startIndex');
+  Future<void> setPlaylist(List<Song> songs, int startIndex, {bool autoPlay = true}) async {
+    AppLogger.log('setPlaylist called: ${songs.length} songs, startIndex: $startIndex, autoPlay: $autoPlay');
     if (songs.isEmpty) return;
     
     _playlistSubject.add(songs);
     _currentIndexSubject.add(startIndex);
     final song = songs[startIndex];
-    AppLogger.log('Playing song: ${song.title} - ${song.artist}, url: ${song.audioUrl}');
+    AppLogger.log('Current song: ${song.title} - ${song.artist}, url: ${song.audioUrl}');
     _currentSongSubject.add(song);
     await _saveToRecentPlays(song);
     await _saveCurrentSong(song);
-    await _playSong(song);
+    
+    if (autoPlay) {
+      await _playSong(song);
+    } else {
+      AppLogger.log('AutoPlay disabled, setting URL only');
+      if (song.isLocal && song.localPath != null) {
+        await _audioPlayer.setFilePath(song.localPath!);
+      } else if (song.audioUrl != null) {
+        await _audioPlayer.setUrl(song.audioUrl!);
+      }
+    }
   }
 
   Future<void> _saveCurrentSong(Song song) async {

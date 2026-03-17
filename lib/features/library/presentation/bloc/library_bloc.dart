@@ -212,7 +212,7 @@ class LibraryBloc extends Bloc<LibraryEvent, LibraryState> {
     // Check for duplicate name
     final existingPlaylist = state.playlists.firstWhere(
       (p) => p.name == event.name,
-      orElse: () => Playlist(id: '', name: '', songs: [], icon: '', createdAt: DateTime.now(), updatedAt: DateTime.now()),
+      orElse: () => Playlist(id: '', name: '', songs: [], createdAt: DateTime.now(), updatedAt: DateTime.now()),
     );
     
     if (existingPlaylist.id.isNotEmpty) {
@@ -221,13 +221,13 @@ class LibraryBloc extends Bloc<LibraryEvent, LibraryState> {
     }
     
     final playlistId = DateTime.now().millisecondsSinceEpoch.toString();
+    final now = DateTime.now();
     final newPlaylist = Playlist(
       id: playlistId,
       name: event.name,
       songs: const [],
-      icon: 'queue_music',
-      createdAt: DateTime.now(),
-      updatedAt: DateTime.now(),
+      createdAt: now,
+      updatedAt: now,
     );
     
     final playlistBox = Hive.box(AppConstants.playlistBox);
@@ -235,9 +235,8 @@ class LibraryBloc extends Bloc<LibraryEvent, LibraryState> {
       'id': playlistId,
       'name': event.name,
       'songs': <Map>[],
-      'icon': 'queue_music',
-      'createdAt': DateTime.now().toIso8601String(),
-      'updatedAt': DateTime.now().toIso8601String(),
+      'createdAt': now.toIso8601String(),
+      'updatedAt': now.toIso8601String(),
     });
     
     emit(state.copyWith(
@@ -261,7 +260,7 @@ class LibraryBloc extends Bloc<LibraryEvent, LibraryState> {
     // Check for duplicate name (excluding current playlist)
     final existingPlaylist = state.playlists.firstWhere(
       (p) => p.name == event.newName && p.id != event.playlistId,
-      orElse: () => Playlist(id: '', name: '', songs: [], icon: '', createdAt: DateTime.now(), updatedAt: DateTime.now()),
+      orElse: () => Playlist(id: '', name: '', songs: [], createdAt: DateTime.now(), updatedAt: DateTime.now()),
     );
     
     if (existingPlaylist.id.isNotEmpty) {

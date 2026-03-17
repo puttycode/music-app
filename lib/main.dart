@@ -30,12 +30,11 @@ void main() async {
     customUrl: savedCustomUrl.isNotEmpty ? savedCustomUrl : null,
   );
   
-  // 恢复上次播放的歌曲
+  // 恢复上次播放的歌曲（暂停状态）
   final audioService = AudioPlayerService.instance;
   final lastSong = await audioService.restoreCurrentSong();
   if (lastSong != null) {
-    audioService.setPlaylist([lastSong], 0);
-    await audioService.pause(); // 恢复为暂停状态
+    audioService.setPlaylist([lastSong], 0, autoPlay: false);
   }
   
   runApp(const MusicApp());

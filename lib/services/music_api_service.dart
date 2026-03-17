@@ -258,6 +258,22 @@ class CustomApi implements MusicApi {
   @override bool isFullAudio(Song song) => song.duration.inSeconds > 60;
 
   Song _parseSong(Map<String, dynamic> track) {
+    final durationValue = track['duration'];
+    Duration duration;
+    
+    if (durationValue is int) {
+      // If > 10000, assume milliseconds; otherwise assume seconds
+      if (durationValue > 10000) {
+        duration = Duration(milliseconds: durationValue);
+      } else if (durationValue > 0) {
+        duration = Duration(seconds: durationValue);
+      } else {
+        duration = Duration.zero;
+      }
+    } else {
+      duration = Duration.zero;
+    }
+    
     return Song(
       id: int.tryParse((track['rid'] ?? track['id']).toString()) ?? DateTime.now().millisecondsSinceEpoch,
       title: track['name']?.toString() ?? track['title']?.toString() ?? 'Unknown',
@@ -265,7 +281,7 @@ class CustomApi implements MusicApi {
       album: track['album']?.toString() ?? 'Unknown Album',
       albumArt: track['pic'] ?? track['albumArt'] ?? track['cover'],
       audioUrl: track['url'] ?? track['audioUrl'],
-      duration: Duration(seconds: track['duration'] is int ? track['duration'] : 0),
+      duration: duration,
       isLocal: false,
     );
   }

@@ -73,13 +73,16 @@ class Song extends Equatable {
     Duration duration;
     
     if (durationValue is int) {
+      // If > 10000, assume milliseconds; otherwise assume seconds
       if (durationValue > 10000) {
         duration = Duration(milliseconds: durationValue);
-      } else {
+      } else if (durationValue > 0) {
         duration = Duration(seconds: durationValue);
+      } else {
+        duration = Duration.zero;
       }
     } else {
-      duration = const Duration(seconds: 0);
+      duration = Duration.zero;
     }
     
     return Song(
