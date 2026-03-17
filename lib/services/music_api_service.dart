@@ -473,7 +473,7 @@ class MusicApiService {
     Object reason,
   ) async {
     if (_currentSource != MusicSource.custom) {
-      rethrow;
+      throw reason;
     }
 
     AppLogger.log('自定义 API $action 失败，尝试回退到 Kuwo：$reason');

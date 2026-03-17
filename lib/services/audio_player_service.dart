@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import 'package:just_audio/just_audio.dart';
 import 'package:rxdart/rxdart.dart';
 import 'package:hive_flutter/hive_flutter.dart';
+import '../core/utils/app_logger.dart';
 import '../features/player/domain/entities/song.dart';
 import '../core/constants/app_constants.dart';
 import 'music_api_service.dart';
