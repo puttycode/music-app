@@ -143,9 +143,17 @@ class AudioPlayerService {
       AppLogger.log('_playSong: ${song.title}, url: ${song.audioUrl}');
       if (song.isLocal && song.localPath != null) {
         await _audioPlayer.setFilePath(song.localPath!);
-      } else if (song.audioUrl != null) {
-        AppLogger.log('Setting URL: ${song.audioUrl}');
-        await _audioPlayer.setUrl(song.audioUrl!);
+      } else {
+        var audioUrl = song.audioUrl;
+        if (audioUrl == null || audioUrl.isEmpty) {
+          audioUrl = await MusicApiService.instance.getSongUrl(song.id);
+          AppLogger.log('Resolved audio URL from API: $audioUrl');
+        }
+        if (audioUrl == null || audioUrl.isEmpty) {
+          throw Exception('No audio URL available');
+        }
+        AppLogger.log('Setting URL: $audioUrl');
+        await _audioPlayer.setUrl(audioUrl);
       }
       AppLogger.log('Starting playback');
       await _audioPlayer.play();
