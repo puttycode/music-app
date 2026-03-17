@@ -6,6 +6,7 @@ import 'package:music_app/core/theme/colors.dart';
 import 'package:music_app/core/theme/text_styles.dart';
 import 'package:music_app/core/utils/duration_formatter.dart';
 import 'package:music_app/core/constants/app_constants.dart';
+import 'package:music_app/core/utils/app_logger.dart';
 import 'package:music_app/services/audio_player_service.dart';
 import 'package:music_app/services/music_api_service.dart';
 import 'package:music_app/services/favorite_service.dart';

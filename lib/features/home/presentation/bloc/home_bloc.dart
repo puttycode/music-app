@@ -4,7 +4,7 @@ import 'package:hive_flutter/hive_flutter.dart';
 import 'package:music_app/features/player/domain/entities/song.dart';
 import 'package:music_app/services/music_api_service.dart';
 import 'package:music_app/core/constants/app_constants.dart';
-import 'package:music_app/services/music_api_service.dart' show AppLogger;
+import 'package:music_app/core/utils/app_logger.dart';
 
 abstract class HomeEvent extends Equatable {
   const HomeEvent();
@@ -67,32 +67,50 @@ class HomeBloc extends Bloc<HomeEvent, HomeState> {
   }
 
   Future<void> _onLoadHomeData(LoadHomeData event, Emitter<HomeState> emit) async {
-    emit(state.copyWith(isLoading: true));
+    emit(state.copyWith(isLoading: true, error: null));
+
+    final recentSongs = <Song>[];
+    final errors = <String>[];
 
     try {
       final recentBox = Hive.box(AppConstants.recentPlaysBox);
-      final recentSongs = recentBox.values.map((e) {
+      recentSongs.addAll(recentBox.values.map((e) {
         if (e is Map) {
           return Song.fromLocal(Map<String, dynamic>.from(e));
         }
         return null;
-      }).whereType<Song>().toList();
-      
-      final topCharts = await _apiService.getTopCharts();
-      final recommendations = await _apiService.searchSongs('pop');
-
-      emit(state.copyWith(
-        isLoading: false,
-        recentPlays: recentSongs,
-        topCharts: topCharts,
-        recommendations: recommendations,
-      ));
+      }).whereType<Song>());
     } catch (e) {
-      emit(state.copyWith(
-        isLoading: false,
-        error: '加载数据失败: $e',
-      ));
+      AppLogger.log('Load recent plays failed: $e');
+      errors.add('最近播放加载失败');
     }
+
+    List<Song> topCharts = const [];
+    List<Song> recommendations = const [];
+
+    try {
+      topCharts = await _apiService.getTopCharts();
+    } catch (e) {
+      AppLogger.log('Load top charts failed: $e');
+      errors.add('热门榜单加载失败');
+    }
+
+    try {
+      recommendations = await _apiService.searchSongs('pop');
+    } catch (e) {
+      AppLogger.log('Load recommendations failed: $e');
+      errors.add('推荐歌曲加载失败');
+    }
+
+    final hasAnyData = recentSongs.isNotEmpty || topCharts.isNotEmpty || recommendations.isNotEmpty;
+
+    emit(state.copyWith(
+      isLoading: false,
+      error: hasAnyData ? null : (errors.isEmpty ? '暂无数据' : errors.join('，')),
+      recentPlays: recentSongs,
+      topCharts: topCharts,
+      recommendations: recommendations,
+    ));
   }
 
   Future<void> _onAddToRecentPlays(AddToRecentPlays event, Emitter<HomeState> emit) async {
