@@ -337,6 +337,19 @@ class _PlayerViewState extends State<_PlayerView> {
   }
 
   void _downloadSong(BuildContext context, Song song) async {
+    final existingTask = DownloadService.instance.getDownload(song.id.toString());
+    if (existingTask != null && existingTask.status == DownloadStatus.completed) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('歌曲已下载')),
+      );
+      return;
+    }
+    if (existingTask != null && existingTask.status == DownloadStatus.downloading) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('歌曲正在下载中')),
+      );
+      return;
+    }
     try {
       await DownloadService.instance.startDownload(song);
     } catch (e) {
@@ -467,7 +480,7 @@ class _PlayerViewState extends State<_PlayerView> {
               gradient: LinearGradient(
                 colors: isDark 
                     ? [AppColors.primaryDark, Theme.of(context).scaffoldBackgroundColor]
-                    : [Colors.blue.shade400, Colors.blue.shade100],
+                    : [Colors.blue.shade600, Colors.blue.shade400],
                 begin: Alignment.topCenter,
                 end: Alignment.bottomCenter,
               ),

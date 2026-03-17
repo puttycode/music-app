@@ -66,7 +66,7 @@ class _LibraryViewState extends State<_LibraryView> {
           ],
           bottom: const TabBar(
             tabs: [
-              Tab(text: '本地音乐'),
+              Tab(text: '离线音乐'),
               Tab(text: '播放列表'),
               Tab(text: '歌手'),
               Tab(text: '专辑'),
@@ -259,7 +259,8 @@ class _LocalSongsTabState extends State<_LocalSongsTab> {
         final downloadTask = _downloadTasks[song.id.toString()];
         final isDownloaded = downloadTask?.status == DownloadStatus.completed;
         final isDownloading = downloadTask != null && 
-            downloadTask.status != DownloadStatus.completed;
+            downloadTask.status != DownloadStatus.completed &&
+            downloadTask.status != DownloadStatus.failed;
         
         return ListTile(
           leading: ClipRRect(
@@ -343,11 +344,31 @@ class _LocalSongsTabState extends State<_LocalSongsTab> {
               ? Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
+                    SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(
+                        value: downloadTask.progress / 100,
+                        strokeWidth: 2,
+                        valueColor: AlwaysStoppedAnimation<Color>(
+                          Theme.of(context).colorScheme.primary,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      '${downloadTask.progress}%',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Theme.of(context).colorScheme.primary,
+                      ),
+                    ),
                     IconButton(
                       icon: Icon(
                         downloadTask.status == DownloadStatus.paused
                             ? Icons.play_arrow
                             : Icons.pause,
+                        size: 20,
                       ),
                       onPressed: () {
                         if (downloadTask.status == DownloadStatus.paused) {
@@ -358,7 +379,7 @@ class _LocalSongsTabState extends State<_LocalSongsTab> {
                       },
                     ),
                     IconButton(
-                      icon: const Icon(Icons.close),
+                      icon: const Icon(Icons.close, size: 20),
                       onPressed: () {
                         DownloadService.instance.cancelDownload(downloadTask.id);
                         setState(() {
@@ -368,11 +389,44 @@ class _LocalSongsTabState extends State<_LocalSongsTab> {
                     ),
                   ],
                 )
-              : IconButton(
-                  icon: const Icon(Icons.play_circle_filled),
-                  color: Theme.of(context).colorScheme.primary,
-                  onPressed: () => _playSong(context, displaySongs, index),
-                ),
+              : isDownloaded
+                  ? Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(4),
+                          decoration: const BoxDecoration(
+                            color: Colors.green,
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(
+                            Icons.check,
+                            color: Colors.white,
+                            size: 14,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        const Text(
+                          '已下载',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Colors.green,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        IconButton(
+                          icon: const Icon(Icons.play_circle_filled),
+                          color: Theme.of(context).colorScheme.primary,
+                          onPressed: () => _playSong(context, displaySongs, index),
+                        ),
+                      ],
+                    )
+                  : IconButton(
+                      icon: const Icon(Icons.play_circle_filled),
+                      color: Theme.of(context).colorScheme.primary,
+                      onPressed: () => _playSong(context, displaySongs, index),
+                    ),
           onTap: isDownloading
               ? null
               : () => _playSong(context, displaySongs, index),
@@ -383,7 +437,6 @@ class _LocalSongsTabState extends State<_LocalSongsTab> {
 
   void _playSong(BuildContext context, List<Song> playlist, int index) {
     AudioPlayerService.instance.setPlaylist(playlist, index);
-    // Refresh playlists to update "最近播放"
     context.read<LibraryBloc>().add(RefreshPlaylists());
     Navigator.push(
       context,
@@ -574,8 +627,27 @@ class _AlbumsTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (albums.isEmpty) {
-      return const app_widgets.EmptyWidget(message: '没有找到专辑');
+    // Only show downloaded songs (completed downloads)
+    final downloadedSongs = _downloadTasks.values
+        .where((task) => task.status == DownloadStatus.completed)
+        .map((task) => task.song)
+        .toList();
+    
+    // Combine with local songs from scanner
+    final allSongs = [...widget.songs.where((s) => s.isLocal), ...downloadedSongs];
+    
+    // Remove duplicates by song id
+    final uniqueSongsMap = <int, Song>{};
+    for (final song in allSongs) {
+      uniqueSongsMap[song.id] = song;
+    }
+    final displaySongs = uniqueSongsMap.values.toList();
+    
+    if (displaySongs.isEmpty) {
+      return app_widgets.EmptyWidget(
+        message: '没有离线音乐\n下载的歌曲将显示在这里',
+        icon: Icons.cloud_off,
+      );
     }
 
     return ListView.builder(
