@@ -4,6 +4,7 @@ import 'package:dio/dio.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:music_app/features/player/domain/entities/song.dart';
 import 'package:music_app/core/constants/app_constants.dart';
+import 'package:music_app/services/music_api_service.dart';
 
 enum DownloadStatus {
   pending,
@@ -127,7 +128,10 @@ class DownloadService {
         .replaceAll(RegExp(r'[<>:"/\\|?*]'), '_');
     final savePath = '$downloadPath/$filename';
 
-    final url = customUrl ?? song.audioUrl;
+    var url = customUrl ?? song.audioUrl;
+    if (url == null || url.isEmpty) {
+      url = await MusicApiService.instance.getSongUrl(song.id);
+    }
     if (url == null || url.isEmpty) {
       throw Exception('No audio URL available for download');
     }

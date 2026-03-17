@@ -16,6 +16,7 @@ abstract class MusicApi {
   Future<List<Artist>> searchArtists(String query);
   Future<List<Album>> searchAlbums(String query);
   Future<List<Song>> getTopCharts();
+  Future<String?> getSongUrl(int songId);
   bool isFullAudio(Song song);
 }
 
@@ -93,6 +94,12 @@ class KuwoApi implements MusicApi {
   @override
   Future<List<Song>> getTopCharts() async {
     return searchSongs('热门歌曲');
+  }
+
+  @override
+  Future<String?> getSongUrl(int songId) async {
+    if (songId <= 0) return null;
+    return '$baseUrl?id=$songId&type=song&level=exhigh&format=mp3';
   }
 
   @override
@@ -256,6 +263,38 @@ class CustomApi implements MusicApi {
   @override
   Future<List<Song>> getTopCharts() async {
     return getHotSongs();
+  }
+
+  @override
+  Future<String?> getSongUrl(int songId) async {
+    try {
+      if (songId <= 0) return null;
+
+      final response = await _dio.get(
+        '/api/v1/url',
+        queryParameters: {'id': songId},
+      );
+
+      if (response.statusCode == 200 && response.data['code'] == 200) {
+        final payload = response.data['data'];
+        if (payload is String && payload.isNotEmpty) {
+          return payload;
+        }
+        if (payload is Map) {
+          final data = Map<String, dynamic>.from(payload);
+          final url = data['url'] ?? data['audioUrl'];
+          if (url is String && url.isNotEmpty) {
+            return url;
+          }
+        }
+      }
+
+      AppLogger.log('自定义 API 获取歌曲 URL 失败：${response.data}');
+      return null;
+    } catch (e) {
+      AppLogger.log('自定义 API 获取歌曲 URL 异常：$e');
+      return null;
+    }
   }
 
   @override
@@ -452,9 +491,13 @@ class MusicApiService {
     String action,
     Future<T> Function(MusicApi api) request,
   ) async {
+    if (_currentSource != MusicSource.custom) {
+      return request(_currentApi);
+    }
+
     try {
       final result = await request(_currentApi);
-      if (_shouldFallback(result)) {
+      if (_shouldFallback(action, result)) {
         return await _tryKuwoFallback(action, request, 'empty result');
       }
       return result;
@@ -463,8 +506,20 @@ class MusicApiService {
     }
   }
 
-  bool _shouldFallback(Object? result) {
-    return _currentSource == MusicSource.custom && result is List && result.isEmpty;
+  bool _shouldFallback(String action, Object? result) {
+    if (_currentSource != MusicSource.custom) {
+      return false;
+    }
+
+    if (result is List) {
+      return result.isEmpty;
+    }
+
+    if (action.startsWith('getSongUrl')) {
+      return result == null || (result is String && result.isEmpty);
+    }
+
+    return false;
   }
 
   Future<T> _tryKuwoFallback<T>(
@@ -504,6 +559,9 @@ class MusicApiService {
 
   Future<List<Song>> getTopCharts() =>
       _withReadFallback('getTopCharts', (api) => api.getTopCharts());
+
+  Future<String?> getSongUrl(int songId) =>
+      _withReadFallback('getSongUrl($songId)', (api) => api.getSongUrl(songId));
 
   bool isFullAudio(Song song) => _currentApi.isFullAudio(song);
 }
