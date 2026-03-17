@@ -20,19 +20,13 @@ void main() async {
   await Hive.openBox(AppConstants.downloadTasksBox);
 
   final settingsBox = Hive.box(AppConstants.settingsBox);
-  final savedSource = settingsBox.get('musicSource', defaultValue: 'custom');
   final savedCustomUrl = settingsBox.get('customApiUrl', defaultValue: '');
   
-  // 默认使用自定义 API，除非用户明确选择了其他源
-  if (savedSource == 'kuwo') {
-    MusicApiService.instance.setSource(MusicSource.kuwo);
-  } else {
-    // 使用自定义 API（默认或用户配置）
-    MusicApiService.instance.setSource(
-      MusicSource.custom,
-      customUrl: savedCustomUrl.isNotEmpty ? savedCustomUrl : null,
-    );
-  }
+  // 使用自定义 API（默认或用户配置）
+  MusicApiService.instance.setSource(
+    MusicSource.custom,
+    customUrl: savedCustomUrl.isNotEmpty ? savedCustomUrl : null,
+  );
   
   runApp(const MusicApp());
 }
