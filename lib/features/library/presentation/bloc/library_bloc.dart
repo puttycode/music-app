@@ -26,6 +26,22 @@ class Playlist extends Equatable {
     this.icon = 'queue_music',
   });
 
+  Playlist copyWith({
+    String? id,
+    String? name,
+    List<Song>? songs,
+    String? coverUrl,
+    String? icon,
+  }) {
+    return Playlist(
+      id: id ?? this.id,
+      name: name ?? this.name,
+      songs: songs ?? this.songs,
+      coverUrl: coverUrl ?? this.coverUrl,
+      icon: icon ?? this.icon,
+    );
+  }
+
   @override
   List<Object?> get props => [id, name, songs, coverUrl, icon];
 }
@@ -212,7 +228,7 @@ class LibraryBloc extends Bloc<LibraryEvent, LibraryState> {
     // Check for duplicate name
     final existingPlaylist = state.playlists.firstWhere(
       (p) => p.name == event.name,
-      orElse: () => Playlist(id: '', name: '', songs: [], createdAt: DateTime.now(), updatedAt: DateTime.now()),
+      orElse: () => Playlist(id: '', name: '', songs: []),
     );
     
     if (existingPlaylist.id.isNotEmpty) {
@@ -221,13 +237,10 @@ class LibraryBloc extends Bloc<LibraryEvent, LibraryState> {
     }
     
     final playlistId = DateTime.now().millisecondsSinceEpoch.toString();
-    final now = DateTime.now();
     final newPlaylist = Playlist(
       id: playlistId,
       name: event.name,
       songs: const [],
-      createdAt: now,
-      updatedAt: now,
     );
     
     final playlistBox = Hive.box(AppConstants.playlistBox);
@@ -235,8 +248,6 @@ class LibraryBloc extends Bloc<LibraryEvent, LibraryState> {
       'id': playlistId,
       'name': event.name,
       'songs': <Map>[],
-      'createdAt': now.toIso8601String(),
-      'updatedAt': now.toIso8601String(),
     });
     
     emit(state.copyWith(
@@ -260,7 +271,7 @@ class LibraryBloc extends Bloc<LibraryEvent, LibraryState> {
     // Check for duplicate name (excluding current playlist)
     final existingPlaylist = state.playlists.firstWhere(
       (p) => p.name == event.newName && p.id != event.playlistId,
-      orElse: () => Playlist(id: '', name: '', songs: [], createdAt: DateTime.now(), updatedAt: DateTime.now()),
+      orElse: () => Playlist(id: '', name: '', songs: []),
     );
     
     if (existingPlaylist.id.isNotEmpty) {
@@ -269,17 +280,10 @@ class LibraryBloc extends Bloc<LibraryEvent, LibraryState> {
     }
     
     final playlistBox = Hive.box(AppConstants.playlistBox);
-
-    Map<String, dynamic>? playlistData;
-    final canonicalData = playlistBox.get(event.playlistId);
-    if (canonicalData is Map) {
-      playlistData = Map<String, dynamic>.from(canonicalData);
-    }
-
-    if (playlistData != null) {
+    final playlistData = playlistBox.get(event.playlistId);
+    
+    if (playlistData is Map) {
       playlistData['name'] = event.newName;
-      playlistData['updatedAt'] = DateTime.now().toIso8601String();
-
       await playlistBox.put(event.playlistId, playlistData);
     }
     
