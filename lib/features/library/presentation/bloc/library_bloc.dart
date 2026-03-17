@@ -209,15 +209,27 @@ class LibraryBloc extends Bloc<LibraryEvent, LibraryState> {
   }
 
   Future<void> _onCreatePlaylist(CreatePlaylist event, Emitter<LibraryState> emit) async {
+    // Check for duplicate name
+    final existingPlaylist = state.playlists.firstWhere(
+      (p) => p.name == event.name,
+      orElse: () => Playlist(id: '', name: '', songs: [], icon: '', createdAt: DateTime.now(), updatedAt: DateTime.now()),
+    );
+    
+    if (existingPlaylist.id.isNotEmpty) {
+      emit(state.copyWith(error: '播放列表名称已存在'));
+      return;
+    }
+    
     final playlistId = DateTime.now().millisecondsSinceEpoch.toString();
     final newPlaylist = Playlist(
       id: playlistId,
       name: event.name,
       songs: const [],
       icon: 'queue_music',
+      createdAt: DateTime.now(),
+      updatedAt: DateTime.now(),
     );
     
-    // Save to Hive using id as the canonical key
     final playlistBox = Hive.box(AppConstants.playlistBox);
     await playlistBox.put(playlistId, {
       'id': playlistId,
@@ -246,40 +258,35 @@ class LibraryBloc extends Bloc<LibraryEvent, LibraryState> {
   }
 
   Future<void> _onRenamePlaylist(RenamePlaylist event, Emitter<LibraryState> emit) async {
+    // Check for duplicate name (excluding current playlist)
+    final existingPlaylist = state.playlists.firstWhere(
+      (p) => p.name == event.newName && p.id != event.playlistId,
+      orElse: () => Playlist(id: '', name: '', songs: [], icon: '', createdAt: DateTime.now(), updatedAt: DateTime.now()),
+    );
+    
+    if (existingPlaylist.id.isNotEmpty) {
+      emit(state.copyWith(error: '播放列表名称已存在'));
+      return;
+    }
+    
     final playlistBox = Hive.box(AppConstants.playlistBox);
 
     Map<String, dynamic>? playlistData;
     final canonicalData = playlistBox.get(event.playlistId);
     if (canonicalData is Map) {
       playlistData = Map<String, dynamic>.from(canonicalData);
-    } else {
-      final legacyData = playlistBox.get(event.oldName);
-      if (legacyData is Map) {
-        playlistData = Map<String, dynamic>.from(legacyData);
-      }
     }
 
     if (playlistData != null) {
-      playlistData['id'] = (playlistData['id'] ?? event.playlistId).toString();
       playlistData['name'] = event.newName;
       playlistData['updatedAt'] = DateTime.now().toIso8601String();
 
       await playlistBox.put(event.playlistId, playlistData);
-      if (event.oldName != event.playlistId) {
-        await playlistBox.delete(event.oldName);
-      }
     }
     
-    // Update state with renamed playlist
     final updatedPlaylists = state.playlists.map((p) {
       if (p.id == event.playlistId) {
-        return Playlist(
-          id: p.id,
-          name: event.newName,
-          songs: p.songs,
-          coverUrl: p.coverUrl,
-          icon: p.icon,
-        );
+        return p.copyWith(name: event.newName);
       }
       return p;
     }).toList();

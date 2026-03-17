@@ -213,6 +213,7 @@ class AudioPlayerService {
     _currentSongSubject.add(playlist[nextIndex]);
     await _playSong(playlist[nextIndex]);
     await _saveToRecentPlays(playlist[nextIndex]);
+    await _saveCurrentSong(playlist[nextIndex]);
   }
 
   Future<void> playPrevious() async {
@@ -230,6 +231,7 @@ class AudioPlayerService {
     _currentSongSubject.add(playlist[prevIndex]);
     await _playSong(playlist[prevIndex]);
     await _saveToRecentPlays(playlist[prevIndex]);
+    await _saveCurrentSong(playlist[prevIndex]);
   }
 
   Future<void> seek(Duration position) async {
