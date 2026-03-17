@@ -91,16 +91,19 @@ class _PlayerViewState extends State<_PlayerView> {
   bool _showLyrics = false;
   DownloadTask? _downloadTask;
   StreamSubscription? _downloadSubscription;
+  StreamSubscription? _songChangeSubscription;
 
   @override
   void initState() {
     super.initState();
     _initDownloadListener();
+    _initSongChangeListener();
   }
 
   @override
   void dispose() {
     _downloadSubscription?.cancel();
+    _songChangeSubscription?.cancel();
     super.dispose();
   }
 
@@ -109,6 +112,22 @@ class _PlayerViewState extends State<_PlayerView> {
       if (mounted) {
         setState(() {
           _downloadTask = task;
+        });
+      }
+    });
+  }
+  
+  void _initSongChangeListener() {
+    _songChangeSubscription = AudioPlayerService.instance.currentSongStream.listen((song) {
+      if (mounted) {
+        setState(() {
+          // Reset download task when song changes
+          if (song != null) {
+            _downloadTask = DownloadService.instance.getDownload(song.id.toString());
+          } else {
+            _downloadTask = null;
+          }
+          _showLyrics = false;
         });
       }
     });
@@ -338,44 +357,47 @@ class _PlayerViewState extends State<_PlayerView> {
   }
 
   void _downloadSong(BuildContext context, Song song) async {
-    // Check if song is already local (downloaded)
     if (song.isLocal && song.localPath != null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('此歌曲已保存在本地')),
-      );
+      _showToast(context, '此歌曲已保存在本地', Icons.check_circle, Colors.green);
       return;
     }
     
-    // Check if already downloaded via download service
     if (DownloadService.instance.isDownloaded(song.id.toString())) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('歌曲已下载，可在离线音乐中找到')),
-      );
+      _showToast(context, '歌曲已下载', Icons.check_circle, Colors.green);
       return;
     }
     
-    // Check if currently downloading
     if (DownloadService.instance.isDownloading(song.id.toString())) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('歌曲正在下载中')),
-      );
+      _showToast(context, '歌曲正在下载中', Icons.downloading, Colors.blue);
       return;
     }
     
     try {
       await DownloadService.instance.startDownload(song);
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('开始下载')),
-        );
-      }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('下载失败：$e')),
-        );
+        _showToast(context, '下载失败', Icons.error, Colors.red);
       }
     }
+  }
+
+  void _showToast(BuildContext context, String message, IconData icon, Color color) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, color: Colors.white, size: 20),
+            const SizedBox(width: 12),
+            Text(message),
+          ],
+        ),
+        duration: const Duration(seconds: 2),
+        behavior: SnackBarBehavior.floating,
+        margin: const EdgeInsets.only(bottom: 100, left: 16, right: 16),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+      ),
+    );
   }
 
   void _shareSong(BuildContext context, Song song) {
@@ -511,13 +533,15 @@ actions: [
           final song = state.currentSong;
           final isDark = Theme.of(context).brightness == Brightness.dark;
           final primaryColor = Theme.of(context).colorScheme.primary;
+          
+          final gradientColors = isDark 
+              ? [const Color(0xFF1a1a2e), const Color(0xFF16213e), Theme.of(context).scaffoldBackgroundColor]
+              : [const Color(0xFFE8F5E9), const Color(0xFFC8E6C9), Theme.of(context).scaffoldBackgroundColor];
 
           return Container(
             decoration: BoxDecoration(
               gradient: LinearGradient(
-                colors: isDark 
-                    ? [AppColors.primaryDark, Theme.of(context).scaffoldBackgroundColor]
-                    : [Colors.blue.shade600, Colors.blue.shade400],
+                colors: gradientColors,
                 begin: Alignment.topCenter,
                 end: Alignment.bottomCenter,
               ),

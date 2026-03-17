@@ -143,54 +143,57 @@ class _LibraryViewState extends State<_LibraryView> {
     final controller = TextEditingController();
     showDialog(
       context: context,
-      builder: (dialogContext) => BlocListener<LibraryBloc, LibraryState>(
-        listener: (context, state) {
-          if (state.playlistCreated) {
-            Navigator.pop(dialogContext);
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('播放列表创建成功')),
-            );
-            context.read<LibraryBloc>().add(ClearPlaylistCreatedFlag());
-          } else if (state.error == '播放列表名称已存在') {
-            Navigator.pop(dialogContext);
-            showDialog(
-              context: context,
-              builder: (_) => AlertDialog(
-                title: const Text('提示'),
-                content: const Text('播放列表名称已存在'),
-                actions: [
-                  TextButton(
-                    onPressed: () => Navigator.pop(context),
-                    child: const Text('确定'),
-                  ),
-                ],
+      builder: (dialogContext) => BlocProvider.value(
+        value: context.read<LibraryBloc>(),
+        child: BlocListener<LibraryBloc, LibraryState>(
+          listener: (listenerContext, state) {
+            if (state.playlistCreated) {
+              Navigator.pop(dialogContext);
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('播放列表创建成功')),
+              );
+              listenerContext.read<LibraryBloc>().add(ClearPlaylistCreatedFlag());
+            } else if (state.error == '播放列表名称已存在') {
+              Navigator.pop(dialogContext);
+              showDialog(
+                context: context,
+                builder: (_) => AlertDialog(
+                  title: const Text('提示'),
+                  content: const Text('播放列表名称已存在'),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.pop(context),
+                      child: const Text('确定'),
+                    ),
+                  ],
+                ),
+              );
+            }
+          },
+          child: AlertDialog(
+            title: const Text('新建播放列表'),
+            content: TextField(
+              controller: controller,
+              decoration: const InputDecoration(
+                hintText: '播放列表名称',
               ),
-            );
-          }
-        },
-        child: AlertDialog(
-          title: const Text('新建播放列表'),
-          content: TextField(
-            controller: controller,
-            decoration: const InputDecoration(
-              hintText: '播放列表名称',
+              autofocus: true,
             ),
-            autofocus: true,
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(dialogContext),
+                child: const Text('取消'),
+              ),
+              TextButton(
+                onPressed: () {
+                  if (controller.text.isNotEmpty) {
+                    context.read<LibraryBloc>().add(CreatePlaylist(controller.text));
+                  }
+                },
+                child: const Text('创建'),
+              ),
+            ],
           ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(dialogContext),
-              child: const Text('取消'),
-            ),
-            TextButton(
-              onPressed: () {
-                if (controller.text.isNotEmpty) {
-                  context.read<LibraryBloc>().add(CreatePlaylist(controller.text));
-                }
-              },
-              child: const Text('创建'),
-            ),
-          ],
         ),
       ),
     );
