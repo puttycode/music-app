@@ -22,7 +22,7 @@ class _SettingsPageState extends State<SettingsPage> {
   late Box _settingsBox;
   late TextEditingController _customApiController;
   late TextEditingController _downloadPathController;
-  MusicSource _currentSource = MusicSource.kuwo;
+  MusicSource _currentSource = MusicSource.custom;
 
   @override
   void initState() {
@@ -35,12 +35,11 @@ class _SettingsPageState extends State<SettingsPage> {
 
   void _loadSettings() {
     final savedTheme = _settingsBox.get('themeMode', defaultValue: 'dark');
-    final savedSource = _settingsBox.get('musicSource', defaultValue: 'kuwo');
     final savedCustomUrl = _settingsBox.get('customApiUrl', defaultValue: '');
     final savedDownloadPath = _settingsBox.get('downloadPath', defaultValue: '/storage/emulated/0/Music');
     
     setState(() {
-      _currentSource = savedSource == 'custom' ? MusicSource.custom : MusicSource.kuwo;
+      _currentSource = MusicSource.custom;
       _customApiController.text = savedCustomUrl;
       _downloadPathController.text = savedDownloadPath;
     });
@@ -56,13 +55,11 @@ class _SettingsPageState extends State<SettingsPage> {
     setState(() {
       _currentSource = source;
     });
-    _settingsBox.put('musicSource', source == MusicSource.custom ? 'custom' : 'kuwo');
+    _settingsBox.put('musicSource', 'custom');
     
     if (source == MusicSource.custom && _customApiController.text.isNotEmpty) {
       MusicApiService.instance.setSource(source, customUrl: _customApiController.text);
       _settingsBox.put('customApiUrl', _customApiController.text);
-    } else {
-      MusicApiService.instance.setSource(source);
     }
   }
 
@@ -116,7 +113,7 @@ class _SettingsPageState extends State<SettingsPage> {
           ),
           const SizedBox(height: 24),
           _buildSection(
-            title: '音乐源',
+            title: 'API 配置',
             children: [
               const SizedBox(height: 8),
               Container(
@@ -124,6 +121,43 @@ class _SettingsPageState extends State<SettingsPage> {
                   color: Theme.of(context).colorScheme.surface,
                   borderRadius: BorderRadius.circular(12),
                 ),
+                child: Column(
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            '自定义 API URL',
+                            style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+                          ),
+                          const SizedBox(height: 8),
+                          TextField(
+                            controller: _customApiController,
+                            decoration: const InputDecoration(
+                              hintText: 'https://music-api.codeseek.me:37280',
+                              border: OutlineInputBorder(),
+                              prefixIcon: Icon(Icons.link),
+                            ),
+                            onSubmitted: (_) => _onCustomUrlSaved(),
+                          ),
+                          const SizedBox(height: 16),
+                          SizedBox(
+                            width: double.infinity,
+                            child: ElevatedButton(
+                              onPressed: _onCustomUrlSaved,
+                              child: const Text('保存 API 配置'),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
                 child: Column(
                   children: [
                     RadioListTile<MusicSource>(

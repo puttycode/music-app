@@ -173,7 +173,7 @@ class AudioPlayerService {
       } else {
         var audioUrl = song.audioUrl;
         if (audioUrl == null || audioUrl.isEmpty) {
-          audioUrl = await MusicApiService.instance.getSongUrl(song.id);
+          audioUrl = await MusicApiService.instance.getSongUrl(song.id.toString());
           AppLogger.log('Resolved audio URL from API: $audioUrl');
         }
         if (audioUrl == null || audioUrl.isEmpty) {

@@ -130,7 +130,7 @@ class DownloadService {
 
     var url = customUrl ?? song.audioUrl;
     if (url == null || url.isEmpty) {
-      url = await MusicApiService.instance.getSongUrl(song.id);
+      url = await MusicApiService.instance.getSongUrl(song.id.toString());
     }
     if (url == null || url.isEmpty) {
       throw Exception('No audio URL available for download');
