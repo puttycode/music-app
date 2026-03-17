@@ -4,6 +4,7 @@ import 'package:hive_flutter/hive_flutter.dart';
 import 'package:music_app/app.dart';
 import 'package:music_app/core/constants/app_constants.dart';
 import 'package:music_app/services/music_api_service.dart';
+import 'package:music_app/services/audio_player_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -18,6 +19,7 @@ void main() async {
   await Hive.openBox(AppConstants.recentPlaysBox);
   await Hive.openBox(AppConstants.settingsBox);
   await Hive.openBox(AppConstants.downloadTasksBox);
+  await Hive.openBox(AppConstants.playbackBox);
 
   final settingsBox = Hive.box(AppConstants.settingsBox);
   final savedCustomUrl = settingsBox.get('customApiUrl', defaultValue: '');
@@ -27,6 +29,14 @@ void main() async {
     MusicSource.custom,
     customUrl: savedCustomUrl.isNotEmpty ? savedCustomUrl : null,
   );
+  
+  // 恢复上次播放的歌曲
+  final audioService = AudioPlayerService.instance;
+  final lastSong = await audioService.restoreCurrentSong();
+  if (lastSong != null) {
+    audioService.setPlaylist([lastSong], 0);
+    await audioService.pause(); // 恢复为暂停状态
+  }
   
   runApp(const MusicApp());
 }

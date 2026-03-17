@@ -65,16 +65,23 @@ class Song extends Equatable {
       audioUrl: json['preview'] ?? json['audio_url'],
       duration: duration,
       isLocal: false,
-      releaseDate: json['releaseDate'],
-      format: json['format'],
-      bitrate: json['bitrate'],
-      sampleRate: json['sampleRate'],
-      fileSize: json['fileSize'],
-      publisher: json['publisher'],
     );
   }
 
   factory Song.fromLocal(Map<String, dynamic> json) {
+    final durationValue = json['duration'];
+    Duration duration;
+    
+    if (durationValue is int) {
+      if (durationValue > 10000) {
+        duration = Duration(milliseconds: durationValue);
+      } else {
+        duration = Duration(seconds: durationValue);
+      }
+    } else {
+      duration = const Duration(seconds: 0);
+    }
+    
     return Song(
       id: json['id'] ?? 0,
       title: json['title'] ?? 'Unknown',
@@ -82,17 +89,11 @@ class Song extends Equatable {
       album: json['album'] ?? 'Unknown Album',
       albumArt: json['albumArt'],
       audioUrl: json['audioUrl'],
-      duration: Duration(milliseconds: json['duration_ms'] ?? (json['duration'] ?? 0)),
+      duration: duration,
       isLocal: true,
       localPath: json['localPath'],
       lyrics: json['lyrics'] != null ? List<String>.from(json['lyrics']) : null,
       playedAt: json['playedAt'] != null ? DateTime.parse(json['playedAt']) : null,
-      releaseDate: json['releaseDate'],
-      format: json['format'],
-      bitrate: json['bitrate'],
-      sampleRate: json['sampleRate'],
-      fileSize: json['fileSize'],
-      publisher: json['publisher'],
     );
   }
 
@@ -109,12 +110,6 @@ class Song extends Equatable {
       'localPath': localPath,
       'lyrics': lyrics,
       'playedAt': playedAt?.toIso8601String(),
-      'releaseDate': releaseDate,
-      'format': format,
-      'bitrate': bitrate,
-      'sampleRate': sampleRate,
-      'fileSize': fileSize,
-      'publisher': publisher,
     };
   }
 
@@ -130,12 +125,6 @@ class Song extends Equatable {
     String? localPath,
     List<String>? lyrics,
     DateTime? playedAt,
-    String? releaseDate,
-    String? format,
-    String? bitrate,
-    String? sampleRate,
-    int? fileSize,
-    String? publisher,
   }) {
     return Song(
       id: id ?? this.id,
@@ -149,18 +138,9 @@ class Song extends Equatable {
       localPath: localPath ?? this.localPath,
       lyrics: lyrics ?? this.lyrics,
       playedAt: playedAt ?? this.playedAt,
-      releaseDate: releaseDate ?? this.releaseDate,
-      format: format ?? this.format,
-      bitrate: bitrate ?? this.bitrate,
-      sampleRate: sampleRate ?? this.sampleRate,
-      fileSize: fileSize ?? this.fileSize,
-      publisher: publisher ?? this.publisher,
     );
   }
 
   @override
-  List<Object?> get props => [
-    id, title, artist, album, audioUrl, isLocal, localPath, playedAt,
-    releaseDate, format, bitrate, sampleRate, fileSize, publisher,
-  ];
+  List<Object?> get props => [id, title, artist, album, audioUrl, duration, isLocal, localPath, playedAt];
 }

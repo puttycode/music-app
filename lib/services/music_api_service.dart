@@ -2,12 +2,7 @@ import 'package:dio/dio.dart';
 import '../features/player/domain/entities/song.dart';
 import '../features/player/domain/entities/artist.dart';
 import '../features/player/domain/entities/album.dart';
-
-class AppLogger {
-  static Function(String)? _logCallback;
-  static void setLogger(Function(String) callback) { _logCallback = callback; }
-  static void log(String message) { _logCallback?.call(message); }
-}
+import '../core/utils/app_logger.dart';
 
 enum MusicSource { custom }
 

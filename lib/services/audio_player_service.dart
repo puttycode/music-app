@@ -98,7 +98,34 @@ class AudioPlayerService {
     AppLogger.log('Playing song: ${song.title} - ${song.artist}, url: ${song.audioUrl}');
     _currentSongSubject.add(song);
     await _saveToRecentPlays(song);
+    await _saveCurrentSong(song);
     await _playSong(song);
+  }
+
+  Future<void> _saveCurrentSong(Song song) async {
+    try {
+      final playbackBox = Hive.box(AppConstants.playbackBox);
+      await playbackBox.put('currentSong', song.toJson());
+      AppLogger.log('Saved current song: ${song.title}');
+    } catch (e) {
+      AppLogger.log('Error saving current song: $e');
+    }
+  }
+
+  Future<Song?> restoreCurrentSong() async {
+    try {
+      final playbackBox = Hive.box(AppConstants.playbackBox);
+      final songData = playbackBox.get('currentSong');
+      if (songData is Map) {
+        final song = Song.fromLocal(Map<String, dynamic>.from(songData));
+        AppLogger.log('Restored current song: ${song.title}');
+        return song;
+      }
+      return null;
+    } catch (e) {
+      AppLogger.log('Error restoring current song: $e');
+      return null;
+    }
   }
 
   Future<void> _saveToRecentPlays(Song song) async {
