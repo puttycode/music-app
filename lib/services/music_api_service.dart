@@ -182,9 +182,12 @@ class CustomApi implements MusicApi {
       AppLogger.log('搜索响应：${response.statusCode}');
       
       if (response.statusCode == 200 && response.data['code'] == 200) {
-        final results = response.data['data'] as List? ?? [];
+        final results = _extractResultList(response.data);
         AppLogger.log('获取到 ${results.length} 首歌曲');
-        return results.map((track) => _parseSong(track)).toList();
+        return results
+            .whereType<Map>()
+            .map((track) => _parseSong(Map<String, dynamic>.from(track)))
+            .toList();
       }
       AppLogger.log('搜索失败：${response.data}');
       return [];
@@ -204,13 +207,16 @@ class CustomApi implements MusicApi {
       );
       
       if (response.statusCode == 200 && response.data['code'] == 200) {
-        final results = response.data['data'] as List? ?? [];
-        return results.map((artist) => Artist(
-          id: artist['id']?.toString() ?? '',
-          name: artist['name']?.toString() ?? 'Unknown',
-          avatar: artist['avatar'] ?? artist['pic'],
-          musicNum: artist['musicNum'],
-        )).toList();
+        final results = _extractResultList(response.data);
+        return results.whereType<Map>().map((artist) {
+          final data = Map<String, dynamic>.from(artist);
+          return Artist(
+            id: data['id']?.toString() ?? '',
+            name: data['name']?.toString() ?? 'Unknown',
+            avatar: data['avatar'] ?? data['pic'],
+            musicNum: data['musicNum'],
+          );
+        }).toList();
       }
       return [];
     } catch (e) {
@@ -229,14 +235,16 @@ class CustomApi implements MusicApi {
       );
       
       if (response.statusCode == 200 && response.data['code'] == 200) {
-        final results = response.data['data'] as List? ?? [];
-        return results.map((album) => Album(
-          id: album['id']?.toString() ?? '',
-          name: album['name']?.toString() ?? 'Unknown',
-          artist: album['artist']?.toString(),
-          cover: album['cover'] ?? album['pic'],
-          
-        )).toList();
+        final results = _extractResultList(response.data);
+        return results.whereType<Map>().map((album) {
+          final data = Map<String, dynamic>.from(album);
+          return Album(
+            id: data['id']?.toString() ?? '',
+            name: data['name']?.toString() ?? 'Unknown',
+            artist: data['artist']?.toString(),
+            cover: data['cover'] ?? data['pic'],
+          );
+        }).toList();
       }
       return [];
     } catch (e) {
