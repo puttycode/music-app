@@ -149,8 +149,8 @@ class CustomApi implements MusicApi {
         final songs = songsList.map((track) => _parseSong(track)).toList();
         return (artist, songs);
       }
-      return (null, []);
-    } catch (e) { return (null, []); }
+      return (null, <Song>[]);
+    } catch (e) { return (null, <Song>[]); }
   }
 
   @override
@@ -185,8 +185,8 @@ class CustomApi implements MusicApi {
         final songs = songsList.map((track) => _parseSong(track)).toList();
         return (album, songs);
       }
-      return (null, []);
-    } catch (e) { return (null, []); }
+      return (null, <Song>[]);
+    } catch (e) { return (null, <Song>[]); }
   }
 
   @override
@@ -420,7 +420,7 @@ class MusicApiService {
       return await (_currentApi as CustomApi).getArtistDetailWithSongs(id);
     } catch (e) {
       _emitError('getArtistDetailWithSongs', '获取歌手详情失败', e);
-      return (null, []);
+      return (null, <Song>[]);
     }
   }
 
@@ -438,7 +438,7 @@ class MusicApiService {
       return await (_currentApi as CustomApi).getAlbumDetailWithTracks(id);
     } catch (e) {
       _emitError('getAlbumDetailWithTracks', '获取专辑详情失败', e);
-      return (null, []);
+      return (null, <Song>[]);
     }
   }
 

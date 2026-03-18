@@ -673,7 +673,7 @@ class _PlaylistsTab extends StatelessWidget {
     Icons.radio,
     Icons.equalizer,
     Icons.piano,
-    Icons.guitar,
+    Icons.music_note_outlined,
     Icons.queue_music,
   ];
   

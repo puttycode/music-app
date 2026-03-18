@@ -513,18 +513,18 @@ class _PlayerViewState extends State<_PlayerView> {
         builder: (context, state) {
           final song = state.currentSong;
           final isDark = Theme.of(context).brightness == Brightness.dark;
-          final colorScheme = Theme.of(context).colorScheme;
+          final scaffoldBgColor = Theme.of(context).scaffoldBackgroundColor;
           
           final gradientColors = isDark 
-              ? [
+              ? <Color>[
                   const Color(0xFF1a1a2e), 
                   const Color(0xFF16213e), 
-                  colorScheme.scaffoldBackgroundColor
+                  scaffoldBgColor
                 ]
-              : [
+              : <Color>[
                   const Color(0xFFFAFAFA), 
                   const Color(0xFFF5F5F5), 
-                  colorScheme.scaffoldBackgroundColor
+                  scaffoldBgColor
                 ];
 
           return Container(
