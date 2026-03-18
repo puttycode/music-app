@@ -135,19 +135,49 @@ class LibraryBloc extends Bloc<LibraryEvent, LibraryState> {
       // Combine local songs and recent songs for artist/album extraction
       final allSongs = [...localSongs, ...recentSongs];
       
-      // Extract unique artist and album names
-      final artistNames = allSongs.map((s) => s.artist).where((a) => a.isNotEmpty).toSet().toList();
-      final albumNames = allSongs.map((s) => s.album).where((a) => a.isNotEmpty).toSet().toList();
+      // Create artist map with song count and avatar
+      final artistMap = <String, Map<String, dynamic>>{};
+      for (final song in allSongs) {
+        if (song.artist.isNotEmpty) {
+          if (!artistMap.containsKey(song.artist)) {
+            artistMap[song.artist] = {
+              'count': 0,
+              'avatar': song.albumArt, // Use album art as avatar
+            };
+          }
+          artistMap[song.artist]!['count'] = (artistMap[song.artist]!['count'] as int) + 1;
+        }
+      }
       
-      // Create Artist and Album objects from names
-      final artists = artistNames.map((name) => Artist(
-        id: name,
-        name: name,
+      // Create album map with cover
+      final albumMap = <String, Map<String, dynamic>>{};
+      for (final song in allSongs) {
+        if (song.album.isNotEmpty) {
+          if (!albumMap.containsKey(song.album)) {
+            albumMap[song.album] = {
+              'count': 0,
+              'cover': song.albumArt,
+              'artist': song.artist,
+            };
+          }
+          albumMap[song.album]!['count'] = (albumMap[song.album]!['count'] as int) + 1;
+        }
+      }
+      
+      // Create Artist objects
+      final artists = artistMap.entries.map((entry) => Artist(
+        id: entry.key,
+        name: entry.key,
+        avatar: entry.value['avatar'] as String?,
+        musicNum: entry.value['count'] as int,
       )).toList();
       
-      final albums = albumNames.map((name) => Album(
-        id: name,
-        name: name,
+      // Create Album objects
+      final albums = albumMap.entries.map((entry) => Album(
+        id: entry.key,
+        name: entry.key,
+        artist: entry.value['artist'] as String?,
+        cover: entry.value['cover'] as String?,
       )).toList();
       
       emit(state.copyWith(
