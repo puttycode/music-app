@@ -75,25 +75,27 @@ class CustomApi implements MusicApi {
     try {
       AppLogger.log('Searching artists for: $query');
       final response = await _dio.get('/api/v1/search', queryParameters: {'q': query, 'type': 'artist'});
-      AppLogger.log('Search artists response: code=${response.statusCode}, data=${response.data}');
       
       if (response.statusCode == 200 && response.data['code'] == 200) {
         final data = response.data['data'];
         final results = (data is Map) ? (data['list'] as List? ?? []) : (data as List? ?? []);
         AppLogger.log('Found ${results.length} artists for query: $query');
         
-        return results.map((artist) => Artist(
-          id: artist['id']?.toString() ?? '',
-          name: artist['name']?.toString() ?? 'Unknown',
-          avatar: artist['avatar'] ?? artist['pic'],
-          musicNum: artist['musicNum'],
+        return results.map((item) => Artist(
+          id: item['rid']?.toString() ?? item['id']?.toString() ?? '',
+          name: item['artist']?.toString() ?? item['name']?.toString() ?? 'Unknown',
+          avatar: item['albumArt']?.toString() ?? item['avatar']?.toString() ?? item['pic']?.toString(),
+          musicNum: item['musicNum'] is int ? item['musicNum'] : int.tryParse(item['musicNum']?.toString() ?? '0'),
         )).toList();
       }
       AppLogger.log('Search artists failed: code=${response.data['code']}');
       return [];
-    } catch (e) { 
+    } on DioException catch (e) {
+      AppLogger.log('Search artists network error: ${e.type} - ${e.message}');
+      return [];
+    } catch (e) {
       AppLogger.log('Search artists error: $e');
-      return []; 
+      return [];
     }
   }
 
@@ -102,25 +104,27 @@ class CustomApi implements MusicApi {
     try {
       AppLogger.log('Searching albums for: $query');
       final response = await _dio.get('/api/v1/search', queryParameters: {'q': query, 'type': 'album'});
-      AppLogger.log('Search albums response: code=${response.statusCode}, data=${response.data}');
       
       if (response.statusCode == 200 && response.data['code'] == 200) {
         final data = response.data['data'];
         final results = (data is Map) ? (data['list'] as List? ?? []) : (data as List? ?? []);
         AppLogger.log('Found ${results.length} albums for query: $query');
         
-        return results.map((album) => Album(
-          id: album['id']?.toString() ?? '',
-          name: album['name']?.toString() ?? 'Unknown',
-          artist: album['artist']?.toString(),
-          cover: album['cover'] ?? album['pic'],
+        return results.map((item) => Album(
+          id: item['rid']?.toString() ?? item['id']?.toString() ?? '',
+          name: item['name']?.toString() ?? 'Unknown',
+          artist: item['artist']?.toString(),
+          cover: item['albumArt']?.toString() ?? item['cover']?.toString() ?? item['pic']?.toString(),
         )).toList();
       }
       AppLogger.log('Search albums failed: code=${response.data['code']}');
       return [];
-    } catch (e) { 
+    } on DioException catch (e) {
+      AppLogger.log('Search albums network error: ${e.type} - ${e.message}');
+      return [];
+    } catch (e) {
       AppLogger.log('Search albums error: $e');
-      return []; 
+      return [];
     }
   }
 
@@ -272,29 +276,27 @@ class CustomApi implements MusicApi {
       AppLogger.log('Fetching hot artists from /api/v1/hot/artists');
       final response = await _dio.get('/api/v1/hot/artists');
       AppLogger.log('Hot artists response status: ${response.statusCode}');
-      AppLogger.log('Hot artists response data: ${response.data}');
       
       if (response.statusCode == 200 && response.data['code'] == 200) {
         final data = response.data['data'];
         final results = (data is Map) ? (data['list'] as List? ?? []) : (data as List? ?? []);
         AppLogger.log('Hot artists results count: ${results.length}');
         
-        if (results.isNotEmpty) {
-          AppLogger.log('First artist data: ${results.first}');
-        }
-        
-        return results.map((artist) => Artist(
-          id: artist['id']?.toString() ?? '',
-          name: artist['name']?.toString() ?? 'Unknown',
-          avatar: artist['avatar'] ?? artist['pic'],
-          musicNum: artist['musicNum'],
+        return results.map((item) => Artist(
+          id: item['rid']?.toString() ?? item['id']?.toString() ?? '',
+          name: item['artist']?.toString() ?? item['name']?.toString() ?? 'Unknown',
+          avatar: item['albumArt']?.toString() ?? item['avatar']?.toString() ?? item['pic']?.toString(),
+          musicNum: item['musicNum'] is int ? item['musicNum'] : int.tryParse(item['musicNum']?.toString() ?? '0'),
         )).toList();
       }
       AppLogger.log('Hot artists API returned non-200 code: ${response.data['code']}');
       return [];
-    } catch (e) { 
+    } on DioException catch (e) {
+      AppLogger.log('Hot artists network error: ${e.type} - ${e.message}');
+      return [];
+    } catch (e) {
       AppLogger.log('Hot artists fetch error: $e');
-      return []; 
+      return [];
     }
   }
 
@@ -304,29 +306,27 @@ class CustomApi implements MusicApi {
       AppLogger.log('Fetching new albums from /api/v1/new/albums');
       final response = await _dio.get('/api/v1/new/albums');
       AppLogger.log('New albums response status: ${response.statusCode}');
-      AppLogger.log('New albums response data: ${response.data}');
       
       if (response.statusCode == 200 && response.data['code'] == 200) {
         final data = response.data['data'];
         final results = (data is Map) ? (data['list'] as List? ?? []) : (data as List? ?? []);
         AppLogger.log('New albums results count: ${results.length}');
         
-        if (results.isNotEmpty) {
-          AppLogger.log('First album data: ${results.first}');
-        }
-        
-        return results.map((album) => Album(
-          id: album['id']?.toString() ?? '',
-          name: album['name']?.toString() ?? 'Unknown',
-          artist: album['artist']?.toString(),
-          cover: album['cover'] ?? album['pic'],
+        return results.map((item) => Album(
+          id: item['rid']?.toString() ?? item['id']?.toString() ?? '',
+          name: item['name']?.toString() ?? 'Unknown',
+          artist: item['artist']?.toString(),
+          cover: item['albumArt']?.toString() ?? item['cover']?.toString() ?? item['pic']?.toString(),
         )).toList();
       }
       AppLogger.log('New albums API returned non-200 code: ${response.data['code']}');
       return [];
-    } catch (e) { 
+    } on DioException catch (e) {
+      AppLogger.log('New albums network error: ${e.type} - ${e.message}');
+      return [];
+    } catch (e) {
       AppLogger.log('New albums fetch error: $e');
-      return []; 
+      return [];
     }
   }
 
@@ -376,7 +376,7 @@ class CustomApi implements MusicApi {
       title: track['name']?.toString() ?? track['title']?.toString() ?? 'Unknown',
       artist: track['artist']?.toString() ?? 'Unknown Artist',
       album: track['album']?.toString() ?? 'Unknown Album',
-      albumArt: track['pic'] ?? track['albumArt'] ?? track['cover'],
+      albumArt: track['albumArt'] ?? track['pic'] ?? track['cover'],
       audioUrl: track['url'] ?? track['audioUrl'],
       duration: duration,
       isLocal: false,

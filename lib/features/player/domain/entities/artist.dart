@@ -16,9 +16,9 @@ class Artist extends Equatable {
   factory Artist.fromJson(Map<String, dynamic> json) {
     return Artist(
       id: json['rid']?.toString() ?? json['id']?.toString() ?? '',
-      name: json['name']?.toString() ?? 'Unknown Artist',
-      avatar: json['pic']?.toString() ?? json['pic70']?.toString() ?? json['pic120']?.toString(),
-      musicNum: int.tryParse(json['musicNum']?.toString() ?? '0'),
+      name: json['artist']?.toString() ?? json['name']?.toString() ?? 'Unknown Artist',
+      avatar: json['albumArt']?.toString() ?? json['avatar']?.toString() ?? json['pic']?.toString() ?? json['pic70']?.toString() ?? json['pic120']?.toString(),
+      musicNum: json['musicNum'] is int ? json['musicNum'] : int.tryParse(json['musicNum']?.toString() ?? '0'),
     );
   }
 

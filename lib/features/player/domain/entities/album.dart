@@ -17,11 +17,11 @@ class Album extends Equatable {
 
   factory Album.fromJson(Map<String, dynamic> json) {
     return Album(
-      id: json['albumid']?.toString() ?? json['id']?.toString() ?? '',
+      id: json['rid']?.toString() ?? json['albumid']?.toString() ?? json['id']?.toString() ?? '',
       name: json['album']?.toString() ?? json['name']?.toString() ?? 'Unknown Album',
       artist: json['artist']?.toString(),
-      cover: json['pic']?.toString(),
-      songNum: int.tryParse(json['songNum']?.toString() ?? '0'),
+      cover: json['albumArt']?.toString() ?? json['cover']?.toString() ?? json['pic']?.toString() ?? json['pic70']?.toString(),
+      songNum: json['songNum'] is int ? json['songNum'] : int.tryParse(json['songNum']?.toString() ?? '0'),
     );
   }
 
