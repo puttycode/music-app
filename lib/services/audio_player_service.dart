@@ -23,6 +23,8 @@ class AudioPlayerService {
   final _isShuffleSubject = BehaviorSubject<bool>.seeded(false);
   final _isPreviewModeSubject = BehaviorSubject<bool>.seeded(false);
   final _recentPlaysChangedSubject = BehaviorSubject<void>.seeded(null);
+  
+  bool _isTransitioning = false;
 
   Stream<Song?> get currentSongStream => _currentSongSubject.stream;
   Stream<List<Song>> get playlistStream => _playlistSubject.stream;
@@ -62,6 +64,11 @@ class AudioPlayerService {
   }
 
   void _onSongComplete() {
+    if (_isTransitioning) {
+      AppLogger.log('Skipping _onSongComplete: already transitioning');
+      return;
+    }
+    
     if (isPreviewMode) {
       return;
     }
@@ -195,6 +202,7 @@ class AudioPlayerService {
   }
 
   Future<void> _playSong(Song song) async {
+    _isTransitioning = true;
     try {
       AppLogger.log('_playSong: ${song.title}, url: ${song.audioUrl}');
       if (song.isLocal && song.localPath != null) {
@@ -217,6 +225,8 @@ class AudioPlayerService {
     } catch (e) {
       AppLogger.log('Error playing song: $e');
       print('Error playing song: $e');
+    } finally {
+      _isTransitioning = false;
     }
   }
 
