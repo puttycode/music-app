@@ -31,11 +31,15 @@ void main() async {
     apiKey: savedApiKey.isNotEmpty ? savedApiKey : null,
   );
   
-  // 恢复上次播放的歌曲（暂停状态）
+  // 恢复上次播放的歌曲（暂停状态）和播放位置
   final audioService = AudioPlayerService.instance;
   final lastSong = await audioService.restoreCurrentSong();
   if (lastSong != null) {
-    audioService.setPlaylist([lastSong], 0, autoPlay: false);
+    await audioService.setPlaylist([lastSong], 0, autoPlay: false);
+    final savedPosition = await audioService.restorePosition();
+    if (savedPosition != null && savedPosition > Duration.zero) {
+      await audioService.seek(savedPosition);
+    }
   }
   
   runApp(const MusicApp());

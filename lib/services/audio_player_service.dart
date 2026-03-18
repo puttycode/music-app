@@ -122,8 +122,10 @@ class AudioPlayerService {
   Future<void> _saveCurrentSong(Song song) async {
     try {
       final playbackBox = Hive.box(AppConstants.playbackBox);
-      await playbackBox.put('currentSong', song.toJson());
-      AppLogger.log('Saved current song: ${song.title}');
+      final data = song.toJson();
+      data['savedPosition'] = _audioPlayer.position.inMilliseconds;
+      await playbackBox.put('currentSong', data);
+      AppLogger.log('Saved current song: ${song.title} at position ${_audioPlayer.position}');
     } catch (e) {
       AppLogger.log('Error saving current song: $e');
     }
@@ -141,6 +143,20 @@ class AudioPlayerService {
       return null;
     } catch (e) {
       AppLogger.log('Error restoring current song: $e');
+      return null;
+    }
+  }
+
+  Future<Duration?> restorePosition() async {
+    try {
+      final playbackBox = Hive.box(AppConstants.playbackBox);
+      final songData = playbackBox.get('currentSong');
+      if (songData is Map && songData['savedPosition'] != null) {
+        return Duration(milliseconds: songData['savedPosition'] as int);
+      }
+      return null;
+    } catch (e) {
+      AppLogger.log('Error restoring position: $e');
       return null;
     }
   }
