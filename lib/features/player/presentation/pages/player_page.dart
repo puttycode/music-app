@@ -279,85 +279,10 @@ class _PlayerViewState extends State<_PlayerView> {
   }
 
   void _showAddToPlaylistDialog(BuildContext context, Song song) {
-    final playlistBox = Hive.box(AppConstants.playlistBox);
-    final playlists = playlistBox.values.map((e) {
-      if (e is Map) {
-        return Playlist(
-          id: e['id'] ?? e['name'] ?? '未知',
-          name: e['name'] ?? '未知',
-          description: e['description'],
-          coverImage: e['coverImage'],
-          songs: (e['songs'] as List?)?.map((s) {
-            if (s is Map) {
-              return Song.fromLocal(Map<String, dynamic>.from(s));
-            }
-            return null;
-          }).whereType<Song>().toList() ?? <Song>[],
-          createdAt: DateTime.now(),
-          updatedAt: DateTime.now(),
-        );
-      }
-      return null;
-    }).whereType<Playlist>().toList();
-    
-    final userPlaylists = playlists.where((p) => 
-      p.name != '我喜欢的音乐' && p.name != '最近播放'
-    ).toList();
-    
-    if (userPlaylists.isEmpty) {
-      showDialog(
-        context: context,
-        builder: (context) => AlertDialog(
-          title: const Text('添加到播放列表'),
-          content: const Text('暂无自定义播放列表\n请先在音乐库创建播放列表'),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('关闭'),
-            ),
-          ],
-        ),
-      );
-      return;
-    }
-    
     showModalBottomSheet(
       context: context,
-      builder: (context) => Container(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              '选择播放列表',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: 16),
-            SizedBox(
-              height: 300,
-              child: ListView.builder(
-                itemCount: userPlaylists.length,
-                itemBuilder: (context, index) {
-                  final playlist = userPlaylists[index];
-                  return ListTile(
-                    leading: const Icon(Icons.queue_music),
-                    title: Text(playlist.name),
-                    subtitle: Text('${playlist.songs.length} 首歌曲'),
-                    onTap: () {
-                      _addToPlaylist(context, song, playlist);
-                      Navigator.pop(context);
-                    },
-                  );
-                },
-              ),
-            ),
-          ],
-        ),
-      ),
+      isScrollControlled: true,
+      builder: (sheetContext) => _AddToPlaylistSheet(song: song),
     );
   }
   
@@ -1168,5 +1093,244 @@ class _Controls extends StatelessWidget {
       default:
         return Icons.repeat;
     }
+  }
+}
+
+class _AddToPlaylistSheet extends StatefulWidget {
+  final Song song;
+
+  const _AddToPlaylistSheet({required this.song});
+
+  @override
+  State<_AddToPlaylistSheet> createState() => _AddToPlaylistSheetState();
+}
+
+class _AddToPlaylistSheetState extends State<_AddToPlaylistSheet> {
+  List<Playlist> _playlists = [];
+  bool _isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadPlaylists();
+  }
+
+  void _loadPlaylists() {
+    final playlistBox = Hive.box(AppConstants.playlistBox);
+    final playlists = playlistBox.values.map((e) {
+      if (e is Map) {
+        return Playlist(
+          id: e['id'] ?? e['name'] ?? '未知',
+          name: e['name'] ?? '未知',
+          description: e['description'],
+          coverImage: e['coverImage'],
+          songs: (e['songs'] as List?)?.map((s) {
+            if (s is Map) {
+              return Song.fromLocal(Map<String, dynamic>.from(s));
+            }
+            return null;
+          }).whereType<Song>().toList() ?? <Song>[],
+          createdAt: DateTime.now(),
+          updatedAt: DateTime.now(),
+        );
+      }
+      return null;
+    }).whereType<Playlist>().toList();
+    
+    final userPlaylists = playlists.where((p) => 
+      p.name != '我喜欢的音乐' && p.name != '最近播放'
+    ).toList();
+    
+    setState(() {
+      _playlists = userPlaylists;
+      _isLoading = false;
+    });
+  }
+
+  void _showCreatePlaylistDialog() {
+    final controller = TextEditingController();
+    showDialog(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('新建播放列表'),
+        content: TextField(
+          controller: controller,
+          decoration: const InputDecoration(
+            hintText: '播放列表名称',
+          ),
+          autofocus: true,
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text('取消'),
+          ),
+          TextButton(
+            onPressed: () async {
+              if (controller.text.isNotEmpty) {
+                Navigator.pop(dialogContext);
+                await _createPlaylist(controller.text);
+              }
+            },
+            child: const Text('创建'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _createPlaylist(String name) async {
+    final playlistBox = Hive.box(AppConstants.playlistBox);
+    
+    // Check for duplicate name
+    final exists = playlistBox.values.any((e) {
+      if (e is Map) {
+        return e['name'] == name;
+      }
+      return false;
+    });
+    
+    if (exists) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('播放列表名称已存在')),
+      );
+      return;
+    }
+    
+    final playlistId = DateTime.now().millisecondsSinceEpoch.toString();
+    await playlistBox.put(playlistId, {
+      'id': playlistId,
+      'name': name,
+      'songs': <Map>[],
+    });
+    
+    _loadPlaylists();
+    
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('播放列表 "$name" 创建成功')),
+    );
+  }
+
+  void _addToPlaylist(Playlist playlist) {
+    final playlistBox = Hive.box(AppConstants.playlistBox);
+    final playlistData = playlistBox.get(playlist.id) ?? playlistBox.get(playlist.name);
+    
+    List<Song> songs = [];
+    if (playlistData is Map && playlistData['songs'] is List) {
+      songs = (playlistData['songs'] as List)
+          .map((s) {
+            if (s is Map) {
+              return Song.fromLocal(Map<String, dynamic>.from(s));
+            }
+            return null;
+          })
+          .whereType<Song>()
+          .toList();
+    }
+    
+    final exists = songs.any((s) => s.id == widget.song.id);
+    if (exists) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('歌曲已在播放列表中')),
+      );
+      return;
+    }
+    
+    songs.add(widget.song);
+    playlistBox.put(playlist.id, {
+      'id': playlist.id,
+      'name': playlist.name,
+      'description': playlist.description,
+      'coverImage': playlist.coverImage,
+      'songs': songs.map((s) => s.toJson()).toList(),
+      'createdAt': playlist.createdAt.toIso8601String(),
+      'updatedAt': DateTime.now().toIso8601String(),
+    });
+    
+    Navigator.pop(context);
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('已添加到 ${playlist.name}')),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text(
+                '选择播放列表',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              IconButton(
+                icon: const Icon(Icons.add),
+                onPressed: _showCreatePlaylistDialog,
+                tooltip: '新建播放列表',
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          if (_isLoading)
+            const Padding(
+              padding: EdgeInsets.all(32),
+              child: Center(child: CircularProgressIndicator()),
+            )
+          else if (_playlists.isEmpty)
+            Padding(
+              padding: const EdgeInsets.all(32),
+              child: Center(
+                child: Column(
+                  children: [
+                    Icon(
+                      Icons.queue_music,
+                      size: 48,
+                      color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.3),
+                    ),
+                    const SizedBox(height: 16),
+                    Text(
+                      '暂无播放列表',
+                      style: TextStyle(
+                        color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    TextButton.icon(
+                      onPressed: _showCreatePlaylistDialog,
+                      icon: const Icon(Icons.add),
+                      label: const Text('创建播放列表'),
+                    ),
+                  ],
+                ),
+              ),
+            )
+          else
+            SizedBox(
+              height: 300,
+              child: ListView.builder(
+                itemCount: _playlists.length,
+                itemBuilder: (context, index) {
+                  final playlist = _playlists[index];
+                  return ListTile(
+                    leading: const Icon(Icons.queue_music),
+                    title: Text(playlist.name),
+                    subtitle: Text('${playlist.songs.length} 首歌曲'),
+                    trailing: const Icon(Icons.chevron_right),
+                    onTap: () => _addToPlaylist(playlist),
+                  );
+                },
+              ),
+            ),
+        ],
+      ),
+    );
   }
 }
