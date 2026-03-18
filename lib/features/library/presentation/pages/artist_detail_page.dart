@@ -7,6 +7,7 @@ import 'package:music_app/features/player/domain/entities/song.dart';
 import 'package:music_app/features/player/presentation/pages/player_page.dart';
 import 'package:music_app/services/audio_player_service.dart';
 import 'package:music_app/services/music_api_service.dart';
+import 'package:music_app/core/utils/app_logger.dart';
 
 class ArtistDetailPage extends StatefulWidget {
   final Artist artist;
@@ -21,6 +22,7 @@ class _ArtistDetailPageState extends State<ArtistDetailPage> {
   List<Song> _songs = [];
   bool _isLoading = true;
   String? _error;
+  Artist? _artistDetail;
 
   @override
   void initState() {
@@ -35,22 +37,50 @@ class _ArtistDetailPageState extends State<ArtistDetailPage> {
 
     try {
       List<Song> songs = [];
+      Artist? artistDetail;
       
-      // Try API first if artist has a valid numeric ID
       final artistId = widget.artist.id;
-      if (artistId.isNotEmpty && !artistId.startsWith('artist_')) {
-        try {
-          final artistDetail = await MusicApiService.instance.getArtistDetail(artistId);
-          if (artistDetail != null) {
-            songs = await MusicApiService.instance.searchSongs(widget.artist.name);
-            songs = songs.where((s) => s.artist.contains(widget.artist.name)).toList();
+      final isNumericId = RegExp(r'^\d+$').hasMatch(artistId);
+      
+      if (isNumericId) {
+        // Use optimized API - returns artist + songs in one call
+        AppLogger.log('Loading artist by ID: $artistId');
+        final result = await MusicApiService.instance.getArtistDetailWithSongs(artistId);
+        artistDetail = result.$1;
+        songs = result.$2;
+      }
+      
+      // If no songs from direct ID, search by artist name
+      if (songs.isEmpty) {
+        AppLogger.log('Searching artist by name: ${widget.artist.name}');
+        
+        final artists = await MusicApiService.instance.searchArtists(widget.artist.name);
+        Artist? matchedArtist;
+        
+        for (final a in artists) {
+          if (a.name.toLowerCase() == widget.artist.name.toLowerCase()) {
+            matchedArtist = a;
+            break;
           }
-        } catch (e) {
-          // API failed, fall back to local
+        }
+        
+        matchedArtist ??= artists.isNotEmpty ? artists.first : null;
+        
+        if (matchedArtist != null && RegExp(r'^\d+$').hasMatch(matchedArtist.id)) {
+          final result = await MusicApiService.instance.getArtistDetailWithSongs(matchedArtist.id);
+          artistDetail = result.$1;
+          songs = result.$2;
+        }
+        
+        if (songs.isEmpty) {
+          final searchResults = await MusicApiService.instance.searchSongs(widget.artist.name);
+          songs = searchResults.where((s) => 
+            s.artist.toLowerCase().contains(widget.artist.name.toLowerCase())
+          ).toList();
         }
       }
       
-      // If no songs from API, try local songs
+      // Fallback to local songs
       if (songs.isEmpty) {
         final recentBox = Hive.box(AppConstants.recentPlaysBox);
         final recentSongs = recentBox.values.map((e) {
@@ -60,20 +90,18 @@ class _ArtistDetailPageState extends State<ArtistDetailPage> {
           return null;
         }).whereType<Song>().toList();
         
-        songs = recentSongs.where((s) => s.artist == widget.artist.name).toList();
-        
-        // Also search API for this artist name
-        if (songs.isEmpty) {
-          final apiSongs = await MusicApiService.instance.searchSongs(widget.artist.name);
-          songs = apiSongs.where((s) => s.artist.contains(widget.artist.name)).toList();
-        }
+        songs = recentSongs.where((s) => 
+          s.artist.toLowerCase() == widget.artist.name.toLowerCase()
+        ).toList();
       }
       
       setState(() {
         _songs = songs;
+        _artistDetail = artistDetail ?? widget.artist;
         _isLoading = false;
       });
     } catch (e) {
+      AppLogger.log('Error loading artist: $e');
       setState(() {
         _error = '加载失败';
         _isLoading = false;
@@ -83,9 +111,11 @@ class _ArtistDetailPageState extends State<ArtistDetailPage> {
 
   @override
   Widget build(BuildContext context) {
+    final artist = _artistDetail ?? widget.artist;
+    
     return Scaffold(
       appBar: AppBar(
-        title: Text(widget.artist.name),
+        title: Text(artist.name),
         backgroundColor: Theme.of(context).appBarTheme.backgroundColor,
       ),
       body: _isLoading
@@ -95,22 +125,21 @@ class _ArtistDetailPageState extends State<ArtistDetailPage> {
               : SafeArea(
                   child: CustomScrollView(
                     slivers: [
-                      // Artist header
                       SliverToBoxAdapter(
                         child: Padding(
                           padding: const EdgeInsets.all(16),
                           child: Row(
                             children: [
                               CircleAvatar(
-                                radius: 40,
+                                radius: 50,
                                 backgroundColor: Theme.of(context).colorScheme.surface,
-                                backgroundImage: widget.artist.avatar != null
-                                    ? NetworkImage(widget.artist.avatar!)
+                                backgroundImage: artist.avatar != null
+                                    ? NetworkImage(artist.avatar!)
                                     : null,
-                                child: widget.artist.avatar == null
+                                child: artist.avatar == null
                                     ? Text(
-                                        widget.artist.name.isNotEmpty ? widget.artist.name[0].toUpperCase() : '?',
-                                        style: const TextStyle(fontSize: 32),
+                                        artist.name.isNotEmpty ? artist.name[0].toUpperCase() : '?',
+                                        style: const TextStyle(fontSize: 36),
                                       )
                                     : null,
                               ),
@@ -120,20 +149,30 @@ class _ArtistDetailPageState extends State<ArtistDetailPage> {
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
                                     Text(
-                                      widget.artist.name,
+                                      artist.name,
                                       style: const TextStyle(
                                         fontSize: 24,
                                         fontWeight: FontWeight.bold,
                                       ),
                                     ),
-                                    if (widget.artist.musicNum != null)
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      '${_songs.length} 首歌曲',
+                                      style: TextStyle(
+                                        fontSize: 14,
+                                        color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
+                                      ),
+                                    ),
+                                    if (artist.musicNum != null) ...[
+                                      const SizedBox(height: 4),
                                       Text(
-                                        '${widget.artist.musicNum} 首歌曲',
+                                        '共 ${artist.musicNum} 首作品',
                                         style: TextStyle(
-                                          fontSize: 14,
-                                          color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
+                                          fontSize: 12,
+                                          color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5),
                                         ),
                                       ),
+                                    ],
                                   ],
                                 ),
                               ),
@@ -141,10 +180,30 @@ class _ArtistDetailPageState extends State<ArtistDetailPage> {
                           ),
                         ),
                       ),
+                      if (_songs.isNotEmpty) ...[
+                        SliverToBoxAdapter(
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 16),
+                            child: Row(
+                              children: [
+                                Expanded(
+                                  child: ElevatedButton.icon(
+                                    onPressed: () => _playAll(),
+                                    icon: const Icon(Icons.play_arrow),
+                                    label: const Text('播放全部'),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                        const SliverToBoxAdapter(
+                          child: SizedBox(height: 8),
+                        ),
+                      ],
                       const SliverToBoxAdapter(
                         child: Divider(height: 1),
                       ),
-                      // Song list
                       SliverPadding(
                         padding: const EdgeInsets.all(16),
                         sliver: _songs.isEmpty
@@ -202,7 +261,7 @@ class _ArtistDetailPageState extends State<ArtistDetailPage> {
                                         overflow: TextOverflow.ellipsis,
                                       ),
                                       subtitle: Text(
-                                        song.artist,
+                                        song.album,
                                         maxLines: 1,
                                         overflow: TextOverflow.ellipsis,
                                       ),
@@ -221,6 +280,17 @@ class _ArtistDetailPageState extends State<ArtistDetailPage> {
                     ],
                   ),
                 ),
+    );
+  }
+
+  void _playAll() {
+    if (_songs.isEmpty) return;
+    AudioPlayerService.instance.setPlaylist(_songs, 0);
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => PlayerPage(playlist: _songs, initialIndex: 0),
+      ),
     );
   }
 

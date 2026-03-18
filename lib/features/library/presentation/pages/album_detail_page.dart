@@ -7,6 +7,7 @@ import 'package:music_app/features/player/domain/entities/song.dart';
 import 'package:music_app/features/player/presentation/pages/player_page.dart';
 import 'package:music_app/services/audio_player_service.dart';
 import 'package:music_app/services/music_api_service.dart';
+import 'package:music_app/core/utils/app_logger.dart';
 
 class AlbumDetailPage extends StatefulWidget {
   final Album album;
@@ -21,6 +22,7 @@ class _AlbumDetailPageState extends State<AlbumDetailPage> {
   List<Song> _songs = [];
   bool _isLoading = true;
   String? _error;
+  Album? _albumDetail;
 
   @override
   void initState() {
@@ -35,18 +37,50 @@ class _AlbumDetailPageState extends State<AlbumDetailPage> {
 
     try {
       List<Song> songs = [];
+      Album? albumDetail;
       
-      // Try API first if album has a valid numeric ID
       final albumId = widget.album.id;
-      if (albumId.isNotEmpty && !albumId.startsWith('album_')) {
-        try {
-          songs = await MusicApiService.instance.getAlbumTracks(albumId);
-        } catch (e) {
-          // API failed, fall back to local
+      final isNumericId = RegExp(r'^\d+$').hasMatch(albumId);
+      
+      if (isNumericId) {
+        // Use optimized API - returns album + songs in one call
+        AppLogger.log('Loading album by ID: $albumId');
+        final result = await MusicApiService.instance.getAlbumDetailWithTracks(albumId);
+        albumDetail = result.$1;
+        songs = result.$2;
+      }
+      
+      // If no songs from direct ID, search by album name
+      if (songs.isEmpty) {
+        AppLogger.log('Searching album by name: ${widget.album.name}');
+        
+        final albums = await MusicApiService.instance.searchAlbums(widget.album.name);
+        Album? matchedAlbum;
+        
+        for (final a in albums) {
+          if (a.name.toLowerCase() == widget.album.name.toLowerCase()) {
+            matchedAlbum = a;
+            break;
+          }
+        }
+        
+        matchedAlbum ??= albums.isNotEmpty ? albums.first : null;
+        
+        if (matchedAlbum != null && RegExp(r'^\d+$').hasMatch(matchedAlbum.id)) {
+          final result = await MusicApiService.instance.getAlbumDetailWithTracks(matchedAlbum.id);
+          albumDetail = result.$1;
+          songs = result.$2;
+        }
+        
+        if (songs.isEmpty) {
+          final searchResults = await MusicApiService.instance.searchSongs(widget.album.name);
+          songs = searchResults.where((s) => 
+            s.album.toLowerCase().contains(widget.album.name.toLowerCase())
+          ).toList();
         }
       }
       
-      // If no songs from API, try local songs
+      // Fallback to local songs
       if (songs.isEmpty) {
         final recentBox = Hive.box(AppConstants.recentPlaysBox);
         final recentSongs = recentBox.values.map((e) {
@@ -56,20 +90,18 @@ class _AlbumDetailPageState extends State<AlbumDetailPage> {
           return null;
         }).whereType<Song>().toList();
         
-        songs = recentSongs.where((s) => s.album == widget.album.name).toList();
-        
-        // Also search API for this album name
-        if (songs.isEmpty) {
-          final apiSongs = await MusicApiService.instance.searchSongs(widget.album.name);
-          songs = apiSongs.where((s) => s.album.contains(widget.album.name)).toList();
-        }
+        songs = recentSongs.where((s) => 
+          s.album.toLowerCase() == widget.album.name.toLowerCase()
+        ).toList();
       }
       
       setState(() {
         _songs = songs;
+        _albumDetail = albumDetail ?? widget.album;
         _isLoading = false;
       });
     } catch (e) {
+      AppLogger.log('Error loading album: $e');
       setState(() {
         _error = '加载失败';
         _isLoading = false;
@@ -79,9 +111,11 @@ class _AlbumDetailPageState extends State<AlbumDetailPage> {
 
   @override
   Widget build(BuildContext context) {
+    final album = _albumDetail ?? widget.album;
+    
     return Scaffold(
       appBar: AppBar(
-        title: Text(widget.album.name),
+        title: Text(album.name),
         backgroundColor: Theme.of(context).appBarTheme.backgroundColor,
       ),
       body: _isLoading
@@ -91,30 +125,29 @@ class _AlbumDetailPageState extends State<AlbumDetailPage> {
               : SafeArea(
                   child: CustomScrollView(
                     slivers: [
-                      // Album header
                       SliverToBoxAdapter(
                         child: Padding(
                           padding: const EdgeInsets.all(16),
                           child: Row(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Container(
-                                width: 120,
-                                height: 120,
-                                decoration: BoxDecoration(
-                                  color: Theme.of(context).colorScheme.surface,
-                                  borderRadius: BorderRadius.circular(8),
-                                ),
-                                child: widget.album.cover != null
-                                    ? ClipRRect(
-                                        borderRadius: BorderRadius.circular(8),
-                                        child: Image.network(
-                                          widget.album.cover!,
+                              ClipRRect(
+                                borderRadius: BorderRadius.circular(12),
+                                child: Container(
+                                  width: 120,
+                                  height: 120,
+                                  decoration: BoxDecoration(
+                                    color: Theme.of(context).colorScheme.surface,
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  child: album.cover != null
+                                      ? Image.network(
+                                          album.cover!,
                                           fit: BoxFit.cover,
-                                          errorBuilder: (_, __, ___) => const Icon(Icons.album, size: 64),
-                                        ),
-                                      )
-                                    : const Icon(Icons.album, size: 64),
+                                          errorBuilder: (_, __, ___) => const Icon(Icons.album, size: 48),
+                                        )
+                                      : const Icon(Icons.album, size: 48),
+                                ),
                               ),
                               const SizedBox(width: 16),
                               Expanded(
@@ -122,7 +155,7 @@ class _AlbumDetailPageState extends State<AlbumDetailPage> {
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
                                     Text(
-                                      widget.album.name,
+                                      album.name,
                                       style: const TextStyle(
                                         fontSize: 20,
                                         fontWeight: FontWeight.bold,
@@ -131,14 +164,22 @@ class _AlbumDetailPageState extends State<AlbumDetailPage> {
                                       overflow: TextOverflow.ellipsis,
                                     ),
                                     const SizedBox(height: 8),
-                                    if (widget.album.artist != null)
+                                    if (album.artist != null)
                                       Text(
-                                        '歌手：${widget.album.artist}',
+                                        album.artist!,
                                         style: TextStyle(
                                           fontSize: 14,
-                                          color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
+                                          color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
                                         ),
                                       ),
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      '${_songs.length} 首歌曲',
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5),
+                                      ),
+                                    ),
                                   ],
                                 ),
                               ),
@@ -146,10 +187,30 @@ class _AlbumDetailPageState extends State<AlbumDetailPage> {
                           ),
                         ),
                       ),
+                      if (_songs.isNotEmpty) ...[
+                        SliverToBoxAdapter(
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 16),
+                            child: Row(
+                              children: [
+                                Expanded(
+                                  child: ElevatedButton.icon(
+                                    onPressed: () => _playAll(),
+                                    icon: const Icon(Icons.play_arrow),
+                                    label: const Text('播放全部'),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                        const SliverToBoxAdapter(
+                          child: SizedBox(height: 8),
+                        ),
+                      ],
                       const SliverToBoxAdapter(
                         child: Divider(height: 1),
                       ),
-                      // Song list
                       SliverPadding(
                         padding: const EdgeInsets.all(16),
                         sliver: _songs.isEmpty
@@ -226,6 +287,17 @@ class _AlbumDetailPageState extends State<AlbumDetailPage> {
                     ],
                   ),
                 ),
+    );
+  }
+
+  void _playAll() {
+    if (_songs.isEmpty) return;
+    AudioPlayerService.instance.setPlaylist(_songs, 0);
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => PlayerPage(playlist: _songs, initialIndex: 0),
+      ),
     );
   }
 

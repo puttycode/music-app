@@ -133,6 +133,25 @@ class CustomApi implements MusicApi {
       return null;
     } catch (e) { return null; }
   }
+  
+  Future<(Artist?, List<Song>)> getArtistDetailWithSongs(String id) async {
+    try {
+      final response = await _dio.get('/api/v1/artist/$id');
+      if (response.statusCode == 200 && response.data['code'] == 200) {
+        final data = response.data['data'];
+        final artist = Artist(
+          id: data['artist']?['id']?.toString() ?? id,
+          name: data['artist']?['name']?.toString() ?? 'Unknown',
+          avatar: data['artist']?['avatar'] ?? data['artist']?['pic'],
+          musicNum: data['artist']?['musicNum'],
+        );
+        final songsList = data['songs'] as List? ?? [];
+        final songs = songsList.map((track) => _parseSong(track)).toList();
+        return (artist, songs);
+      }
+      return (null, []);
+    } catch (e) { return (null, []); }
+  }
 
   @override
   Future<Album?> getAlbumDetail(String id) async {
@@ -149,6 +168,25 @@ class CustomApi implements MusicApi {
       }
       return null;
     } catch (e) { return null; }
+  }
+  
+  Future<(Album?, List<Song>)> getAlbumDetailWithTracks(String id) async {
+    try {
+      final response = await _dio.get('/api/v1/album/$id');
+      if (response.statusCode == 200 && response.data['code'] == 200) {
+        final data = response.data['data'];
+        final album = Album(
+          id: data['album']?['id']?.toString() ?? id,
+          name: data['album']?['name']?.toString() ?? 'Unknown',
+          artist: data['album']?['artist']?.toString(),
+          cover: data['album']?['pic'] ?? data['album']?['cover'],
+        );
+        final songsList = data['songs'] as List? ?? [];
+        final songs = songsList.map((track) => _parseSong(track)).toList();
+        return (album, songs);
+      }
+      return (null, []);
+    } catch (e) { return (null, []); }
   }
 
   @override
@@ -376,6 +414,15 @@ class MusicApiService {
       return null;
     }
   }
+  
+  Future<(Artist?, List<Song>)> getArtistDetailWithSongs(String id) async {
+    try {
+      return await (_currentApi as CustomApi).getArtistDetailWithSongs(id);
+    } catch (e) {
+      _emitError('getArtistDetailWithSongs', '获取歌手详情失败', e);
+      return (null, []);
+    }
+  }
 
   Future<Album?> getAlbumDetail(String id) async {
     try {
@@ -383,6 +430,15 @@ class MusicApiService {
     } catch (e) {
       _emitError('getAlbumDetail', '获取专辑详情失败', e);
       return null;
+    }
+  }
+  
+  Future<(Album?, List<Song>)> getAlbumDetailWithTracks(String id) async {
+    try {
+      return await (_currentApi as CustomApi).getAlbumDetailWithTracks(id);
+    } catch (e) {
+      _emitError('getAlbumDetailWithTracks', '获取专辑详情失败', e);
+      return (null, []);
     }
   }
 
