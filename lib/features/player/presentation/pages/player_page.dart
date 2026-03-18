@@ -93,7 +93,9 @@ class _PlayerViewState extends State<_PlayerView> {
   StreamSubscription? _downloadSubscription;
   StreamSubscription? _songChangeSubscription;
   StreamSubscription? _durationSubscription;
+  StreamSubscription? _playerStateSubscription;
   Duration _actualDuration = Duration.zero;
+  bool _isPlaying = false;
 
   @override
   void initState() {
@@ -101,6 +103,7 @@ class _PlayerViewState extends State<_PlayerView> {
     _initDownloadListener();
     _initSongChangeListener();
     _initDurationListener();
+    _initPlayerStateListener();
   }
 
   @override
@@ -108,6 +111,7 @@ class _PlayerViewState extends State<_PlayerView> {
     _downloadSubscription?.cancel();
     _songChangeSubscription?.cancel();
     _durationSubscription?.cancel();
+    _playerStateSubscription?.cancel();
     super.dispose();
   }
 
@@ -147,6 +151,16 @@ class _PlayerViewState extends State<_PlayerView> {
     });
   }
 
+  void _initPlayerStateListener() {
+    _playerStateSubscription = AudioPlayerService.instance.playerStateStream.listen((state) {
+      if (mounted) {
+        setState(() {
+          _isPlaying = state.playing;
+        });
+      }
+    });
+  }
+
   void _handleMenuAction(BuildContext context, String action) {
     final audioService = AudioPlayerService.instance;
     final song = audioService.currentSong;
@@ -173,7 +187,6 @@ class _PlayerViewState extends State<_PlayerView> {
     final displayDuration = (_actualDuration > Duration.zero) ? _actualDuration : song.duration;
     final isDownloaded = song.isLocal || DownloadService.instance.isDownloaded(song.id.toString());
     final isFavorite = FavoriteService.instance.isFavorite(song);
-    final isPlaying = AudioPlayerService.instance.playerStateStream.value?.playing ?? false;
 
     showDialog(
       context: context,
@@ -190,7 +203,7 @@ class _PlayerViewState extends State<_PlayerView> {
               _buildDetailRow('时长', DurationFormatter.format(displayDuration)),
               if (_actualDuration > Duration.zero && song.duration != _actualDuration)
                 _buildDetailRow('元数据时长', DurationFormatter.format(song.duration), isSecondary: true),
-              _buildDetailRow('播放状态', isPlaying ? '正在播放' : '已暂停'),
+              _buildDetailRow('播放状态', _isPlaying ? '正在播放' : '已暂停'),
               _buildDetailRow('音乐类型', song.isLocal ? '本地音乐' : '在线音乐'),
               _buildDetailRow('收藏状态', isFavorite ? '已收藏' : '未收藏'),
               _buildDetailRow('下载状态', isDownloaded ? '已下载' : '未下载'),
