@@ -454,22 +454,31 @@ class _PlayerViewState extends State<_PlayerView> {
     );
   }
 
-  @override
+@override
   Widget build(BuildContext context) {
     final audioService = AudioPlayerService.instance;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final iconColor = isDark ? null : Theme.of(context).colorScheme.onSurface;
 
     return Scaffold(
       appBar: AppBar(
         backgroundColor: Colors.transparent,
+        elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.keyboard_arrow_down, size: 32),
+          icon: Icon(Icons.keyboard_arrow_down, size: 32, color: iconColor),
           onPressed: () => Navigator.pop(context),
         ),
-        title: const Text('正在播放', style: TextStyle(fontSize: 14)),
+        title: Text(
+          '正在播放', 
+          style: TextStyle(
+            fontSize: 14, 
+            color: isDark ? null : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
+          ),
+        ),
         centerTitle: true,
-actions: [
+        actions: [
            PopupMenuButton<String>(
-             icon: const Icon(Icons.more_vert),
+             icon: Icon(Icons.more_vert, color: iconColor),
              onSelected: (value) => _handleMenuAction(context, value),
              itemBuilder: (context) {
                final audioService = AudioPlayerService.instance;
@@ -504,11 +513,19 @@ actions: [
         builder: (context, state) {
           final song = state.currentSong;
           final isDark = Theme.of(context).brightness == Brightness.dark;
-          final primaryColor = Theme.of(context).colorScheme.primary;
+          final colorScheme = Theme.of(context).colorScheme;
           
           final gradientColors = isDark 
-              ? [const Color(0xFF1a1a2e), const Color(0xFF16213e), Theme.of(context).scaffoldBackgroundColor]
-              : [const Color(0xFFE8F5E9), const Color(0xFFC8E6C9), Theme.of(context).scaffoldBackgroundColor];
+              ? [
+                  const Color(0xFF1a1a2e), 
+                  const Color(0xFF16213e), 
+                  colorScheme.scaffoldBackgroundColor
+                ]
+              : [
+                  const Color(0xFFFAFAFA), 
+                  const Color(0xFFF5F5F5), 
+                  colorScheme.scaffoldBackgroundColor
+                ];
 
           return Container(
             decoration: BoxDecoration(
@@ -653,12 +670,16 @@ class _LyricsViewState extends State<_LyricsView> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    
     return AspectRatio(
       aspectRatio: 1,
       child: Container(
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(16),
-          color: Theme.of(context).colorScheme.surface.withValues(alpha: 0.5),
+          color: isDark 
+              ? Theme.of(context).colorScheme.surface.withValues(alpha: 0.5)
+              : Theme.of(context).colorScheme.primaryContainer.withValues(alpha: 0.3),
         ),
         child: _buildContent(context),
       ),
@@ -666,9 +687,16 @@ class _LyricsViewState extends State<_LyricsView> {
   }
 
   Widget _buildContent(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final textColor = isDark 
+        ? Theme.of(context).colorScheme.onSurface
+        : Theme.of(context).colorScheme.onSurface;
+    
     if (_isLoading) {
-      return const Center(
-        child: CircularProgressIndicator(),
+      return Center(
+        child: CircularProgressIndicator(
+          color: Theme.of(context).colorScheme.primary,
+        ),
       );
     }
 
@@ -687,7 +715,6 @@ class _LyricsViewState extends State<_LyricsView> {
       itemBuilder: (context, index) {
         final line = _lyrics[index];
         final isCurrentLine = index == _currentLineIndex;
-        final onSurface = Theme.of(context).colorScheme.onSurface;
         final primary = Theme.of(context).colorScheme.primary;
 
         return GestureDetector(
@@ -700,7 +727,7 @@ class _LyricsViewState extends State<_LyricsView> {
             child: Text(
               line.text,
               style: TextStyle(
-                color: isCurrentLine ? primary : onSurface.withValues(alpha: 0.6),
+                color: isCurrentLine ? primary : textColor.withValues(alpha: 0.6),
                 fontSize: isCurrentLine ? 18 : 16,
                 fontWeight: isCurrentLine ? FontWeight.w600 : FontWeight.normal,
               ),
@@ -713,6 +740,11 @@ class _LyricsViewState extends State<_LyricsView> {
   }
 
   Widget _buildPlaceholder(BuildContext context, String message) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final textColor = isDark 
+        ? Theme.of(context).colorScheme.onSurface
+        : Theme.of(context).colorScheme.onSurface;
+    
     return Center(
       child: SingleChildScrollView(
         padding: const EdgeInsets.all(24),
@@ -721,19 +753,19 @@ class _LyricsViewState extends State<_LyricsView> {
           children: [
             Text(
               widget.song?.title ?? '未知歌曲',
-              style: AppTextStyles.headlineMedium.copyWith(color: Theme.of(context).colorScheme.onSurface),
+              style: AppTextStyles.headlineMedium.copyWith(color: textColor),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 16),
             Text(
               widget.song?.artist ?? '未知艺术家',
-              style: AppTextStyles.bodyMedium.copyWith(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7)),
+              style: AppTextStyles.bodyMedium.copyWith(color: textColor.withValues(alpha: 0.7)),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 32),
             Text(
               message,
-              style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5)),
+              style: TextStyle(color: textColor.withValues(alpha: 0.5)),
             ),
           ],
         ),
@@ -749,6 +781,7 @@ class _AlbumArt extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final primaryColor = Theme.of(context).colorScheme.primary;
     final surfaceColor = Theme.of(context).colorScheme.surface;
 
@@ -759,8 +792,10 @@ class _AlbumArt extends StatelessWidget {
           borderRadius: BorderRadius.circular(16),
           boxShadow: [
             BoxShadow(
-              color: primaryColor.withValues(alpha: 0.3),
-              blurRadius: 32,
+              color: isDark 
+                  ? primaryColor.withValues(alpha: 0.3)
+                  : Colors.black.withValues(alpha: 0.15),
+              blurRadius: isDark ? 32 : 24,
               offset: const Offset(0, 16),
             ),
           ],
@@ -773,12 +808,20 @@ class _AlbumArt extends StatelessWidget {
                   fit: BoxFit.cover,
                   errorBuilder: (_, __, ___) => Container(
                     color: surfaceColor,
-                    child: const Icon(Icons.music_note, size: 64),
+                    child: Icon(
+                      Icons.music_note, 
+                      size: 64,
+                      color: isDark ? null : primaryColor.withValues(alpha: 0.5),
+                    ),
                   ),
                 )
               : Container(
                   color: surfaceColor,
-                  child: const Icon(Icons.music_note, size: 64),
+                  child: Icon(
+                    Icons.music_note, 
+                    size: 64,
+                    color: isDark ? null : primaryColor.withValues(alpha: 0.5),
+                  ),
                 ),
         ),
       ),
@@ -829,6 +872,12 @@ class _SongInfoState extends State<_SongInfo> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final textColor = isDark 
+        ? Theme.of(context).colorScheme.onSurface
+        : Theme.of(context).colorScheme.onSurface;
+    final subtextColor = textColor.withValues(alpha: 0.7);
+    
     final isDownloading = _downloadTask != null && 
         _downloadTask!.status != DownloadStatus.completed;
     final isDownloaded = _downloadTask?.status == DownloadStatus.completed;
@@ -841,7 +890,10 @@ class _SongInfoState extends State<_SongInfo> {
             Expanded(
               child: Text(
                 widget.song?.title ?? '未知歌曲',
-                style: AppTextStyles.headlineMedium,
+                style: AppTextStyles.headlineMedium.copyWith(
+                  color: textColor,
+                  fontWeight: FontWeight.bold,
+                ),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
               ),
@@ -882,7 +934,7 @@ class _SongInfoState extends State<_SongInfo> {
             else if (isDownloaded)
               Container(
                 padding: const EdgeInsets.all(4),
-                decoration: BoxDecoration(
+                decoration: const BoxDecoration(
                   color: Colors.green,
                   shape: BoxShape.circle,
                 ),
@@ -903,7 +955,7 @@ class _SongInfoState extends State<_SongInfo> {
             Expanded(
               child: Text(
                 widget.song?.artist ?? '未知艺术家',
-                style: AppTextStyles.bodyMedium,
+                style: AppTextStyles.bodyMedium.copyWith(color: subtextColor),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
               ),
@@ -920,7 +972,9 @@ class _SongInfoState extends State<_SongInfo> {
                     return IconButton(
                       icon: Icon(
                         isFavorite ? Icons.favorite : Icons.favorite_border,
-                        color: isFavorite ? Colors.red : Theme.of(context).colorScheme.onSurfaceVariant,
+                        color: isFavorite 
+                            ? Colors.red 
+                            : subtextColor,
                         size: 24,
                       ),
                       onPressed: () {
@@ -946,6 +1000,11 @@ class _ProgressBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final textColor = isDark 
+        ? Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7)
+        : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6);
+    
     return StreamBuilder(
       stream: audioService.positionStream,
       builder: (context, positionSnapshot) {
@@ -981,11 +1040,11 @@ class _ProgressBar extends StatelessWidget {
                     children: [
                       Text(
                         DurationFormatter.format(position),
-                        style: AppTextStyles.bodySmall,
+                        style: AppTextStyles.bodySmall.copyWith(color: textColor),
                       ),
                       Text(
                         DurationFormatter.format(duration),
-                        style: AppTextStyles.bodySmall,
+                        style: AppTextStyles.bodySmall.copyWith(color: textColor),
                       ),
                     ],
                   ),
@@ -1008,8 +1067,12 @@ class _Controls extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final primaryColor = Theme.of(context).colorScheme.primary;
-    final onSurfaceVariant = Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6);
+    final iconColor = isDark 
+        ? Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6)
+        : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7);
+    final activeIconColor = primaryColor;
 
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
@@ -1022,7 +1085,8 @@ class _Controls extends StatelessWidget {
             return IconButton(
               icon: Icon(
                 Icons.shuffle,
-                color: isShuffle ? primaryColor : onSurfaceVariant,
+                color: isShuffle ? activeIconColor : iconColor,
+                size: 24,
               ),
               onPressed: () {
                 audioService.toggleShuffle();
@@ -1031,7 +1095,11 @@ class _Controls extends StatelessWidget {
           },
         ),
         IconButton(
-          icon: const Icon(Icons.skip_previous, size: 36),
+          icon: Icon(
+            Icons.skip_previous, 
+            size: 36,
+            color: iconColor,
+          ),
           onPressed: () => bloc.add(PlayPrevious()),
         ),
         StreamBuilder(
@@ -1042,11 +1110,18 @@ class _Controls extends StatelessWidget {
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 color: primaryColor,
+                boxShadow: isDark ? null : [
+                  BoxShadow(
+                    color: primaryColor.withValues(alpha: 0.3),
+                    blurRadius: 8,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
               ),
               child: IconButton(
                 icon: Icon(
                   isPlaying ? Icons.pause : Icons.play_arrow,
-                  size: 40,
+                  size: 36,
                   color: Theme.of(context).colorScheme.onPrimary,
                 ),
                 onPressed: () {
@@ -1061,7 +1136,11 @@ class _Controls extends StatelessWidget {
           },
         ),
         IconButton(
-          icon: const Icon(Icons.skip_next, size: 36),
+          icon: Icon(
+            Icons.skip_next, 
+            size: 36,
+            color: iconColor,
+          ),
           onPressed: () => bloc.add(PlayNext()),
         ),
         StreamBuilder(
@@ -1073,8 +1152,9 @@ class _Controls extends StatelessWidget {
               icon: Icon(
                 _getRepeatIcon(repeatMode),
                 color: repeatMode != RepeatMode.off
-                    ? primaryColor
-                    : onSurfaceVariant,
+                    ? activeIconColor
+                    : iconColor,
+                size: 24,
               ),
               onPressed: () {
                 audioService.toggleRepeat();
