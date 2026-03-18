@@ -39,61 +39,24 @@ class _AlbumDetailPageState extends State<AlbumDetailPage> {
       List<Song> songs = [];
       Album? albumDetail;
       
-      final albumId = widget.album.id;
-      final isNumericId = RegExp(r'^\d+$').hasMatch(albumId);
+      AppLogger.log('Loading album: ${widget.album.name}');
       
-      if (isNumericId) {
-        // Use optimized API - returns album + songs in one call
-        AppLogger.log('Loading album by ID: $albumId');
-        final result = await MusicApiService.instance.getAlbumDetailWithTracks(albumId);
-        albumDetail = result.$1;
-        songs = result.$2;
+      // Directly search by album name for better performance
+      // The new albums API returns song data, not real album IDs
+      final searchResults = await MusicApiService.instance.searchSongs(widget.album.name);
+      songs = searchResults.where((s) => 
+        s.album.toLowerCase().contains(widget.album.name.toLowerCase())
+      ).take(20).toList();
+      
+      // Also search by artist if available
+      if (songs.isEmpty && widget.album.artist != null) {
+        final artistResults = await MusicApiService.instance.searchSongs(widget.album.artist!);
+        songs = artistResults.where((s) => 
+          s.artist.toLowerCase().contains(widget.album.artist!.toLowerCase())
+        ).take(20).toList();
       }
       
-      // If no songs from direct ID, search by album name
-      if (songs.isEmpty) {
-        AppLogger.log('Searching album by name: ${widget.album.name}');
-        
-        final albums = await MusicApiService.instance.searchAlbums(widget.album.name);
-        Album? matchedAlbum;
-        
-        for (final a in albums) {
-          if (a.name.toLowerCase() == widget.album.name.toLowerCase()) {
-            matchedAlbum = a;
-            break;
-          }
-        }
-        
-        matchedAlbum ??= albums.isNotEmpty ? albums.first : null;
-        
-        if (matchedAlbum != null && RegExp(r'^\d+$').hasMatch(matchedAlbum.id)) {
-          final result = await MusicApiService.instance.getAlbumDetailWithTracks(matchedAlbum.id);
-          albumDetail = result.$1;
-          songs = result.$2;
-        }
-        
-        if (songs.isEmpty) {
-          final searchResults = await MusicApiService.instance.searchSongs(widget.album.name);
-          songs = searchResults.where((s) => 
-            s.album.toLowerCase().contains(widget.album.name.toLowerCase())
-          ).toList();
-        }
-      }
-      
-      // Fallback to local songs
-      if (songs.isEmpty) {
-        final recentBox = Hive.box(AppConstants.recentPlaysBox);
-        final recentSongs = recentBox.values.map((e) {
-          if (e is Map) {
-            return Song.fromLocal(Map<String, dynamic>.from(e));
-          }
-          return null;
-        }).whereType<Song>().toList();
-        
-        songs = recentSongs.where((s) => 
-          s.album.toLowerCase() == widget.album.name.toLowerCase()
-        ).toList();
-      }
+      AppLogger.log('Found ${songs.length} songs for album: ${widget.album.name}');
       
       setState(() {
         _songs = songs;

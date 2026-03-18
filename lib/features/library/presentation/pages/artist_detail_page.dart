@@ -39,61 +39,16 @@ class _ArtistDetailPageState extends State<ArtistDetailPage> {
       List<Song> songs = [];
       Artist? artistDetail;
       
-      final artistId = widget.artist.id;
-      final isNumericId = RegExp(r'^\d+$').hasMatch(artistId);
+      AppLogger.log('Loading artist: ${widget.artist.name}');
       
-      if (isNumericId) {
-        // Use optimized API - returns artist + songs in one call
-        AppLogger.log('Loading artist by ID: $artistId');
-        final result = await MusicApiService.instance.getArtistDetailWithSongs(artistId);
-        artistDetail = result.$1;
-        songs = result.$2;
-      }
+      // Directly search by artist name for better performance
+      // The hot artists API returns song data, not real artist IDs
+      final searchResults = await MusicApiService.instance.searchSongs(widget.artist.name);
+      songs = searchResults.where((s) => 
+        s.artist.toLowerCase().contains(widget.artist.name.toLowerCase())
+      ).take(20).toList();
       
-      // If no songs from direct ID, search by artist name
-      if (songs.isEmpty) {
-        AppLogger.log('Searching artist by name: ${widget.artist.name}');
-        
-        final artists = await MusicApiService.instance.searchArtists(widget.artist.name);
-        Artist? matchedArtist;
-        
-        for (final a in artists) {
-          if (a.name.toLowerCase() == widget.artist.name.toLowerCase()) {
-            matchedArtist = a;
-            break;
-          }
-        }
-        
-        matchedArtist ??= artists.isNotEmpty ? artists.first : null;
-        
-        if (matchedArtist != null && RegExp(r'^\d+$').hasMatch(matchedArtist.id)) {
-          final result = await MusicApiService.instance.getArtistDetailWithSongs(matchedArtist.id);
-          artistDetail = result.$1;
-          songs = result.$2;
-        }
-        
-        if (songs.isEmpty) {
-          final searchResults = await MusicApiService.instance.searchSongs(widget.artist.name);
-          songs = searchResults.where((s) => 
-            s.artist.toLowerCase().contains(widget.artist.name.toLowerCase())
-          ).toList();
-        }
-      }
-      
-      // Fallback to local songs
-      if (songs.isEmpty) {
-        final recentBox = Hive.box(AppConstants.recentPlaysBox);
-        final recentSongs = recentBox.values.map((e) {
-          if (e is Map) {
-            return Song.fromLocal(Map<String, dynamic>.from(e));
-          }
-          return null;
-        }).whereType<Song>().toList();
-        
-        songs = recentSongs.where((s) => 
-          s.artist.toLowerCase() == widget.artist.name.toLowerCase()
-        ).toList();
-      }
+      AppLogger.log('Found ${songs.length} songs for artist: ${widget.artist.name}');
       
       setState(() {
         _songs = songs;
