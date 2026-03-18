@@ -106,6 +106,9 @@ class DownloadService {
           task.status = DownloadStatus.paused;
           await _updateTask(task);
         }
+        if (task.status == DownloadStatus.paused) {
+          await resumeDownload(task.id);
+        }
       }
     }
   }
