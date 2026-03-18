@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:hive_flutter/hive_flutter.dart';
+import 'package:just_audio/just_audio.dart';
 import 'package:music_app/features/player/domain/entities/song.dart';
 import 'package:music_app/core/constants/app_constants.dart';
 import 'package:music_app/services/music_api_service.dart';
@@ -217,11 +218,18 @@ class DownloadService {
       task.status = DownloadStatus.completed;
       task.progress = 100;
       task.completedAt = DateTime.now();
+      
+      // Get actual duration from downloaded file
+      final actualDuration = await _getAudioDuration(task.savePath);
+      if (actualDuration != null && actualDuration.inSeconds > 0) {
+        task.song = task.song.copyWith(duration: actualDuration);
+        debugPrint('Got duration for downloaded file: ${actualDuration.inSeconds}s');
+      }
+      
       await _updateTask(task);
       _downloadProgressSubject.add(task);
       _cancelTokens.remove(task.id);
       
-      // Notify listeners that download completed
       onDownloadCompleted?.call(task);
       
       debugPrint('Download completed: ${task.song.title}');
@@ -345,6 +353,18 @@ class DownloadService {
 
   Future<void> _updateTask(DownloadTask task) async {
     await _saveTask(task);
+  }
+  
+  Future<Duration?> _getAudioDuration(String filePath) async {
+    try {
+      final player = AudioPlayer();
+      final duration = await player.setFilePath(filePath);
+      await player.dispose();
+      return duration;
+    } catch (e) {
+      debugPrint('Error getting audio duration: $e');
+      return null;
+    }
   }
 
   void dispose() {
