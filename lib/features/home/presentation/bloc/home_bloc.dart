@@ -2,6 +2,8 @@ import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:music_app/features/player/domain/entities/song.dart';
+import 'package:music_app/features/player/domain/entities/artist.dart';
+import 'package:music_app/features/player/domain/entities/album.dart';
 import 'package:music_app/services/music_api_service.dart';
 import 'package:music_app/core/constants/app_constants.dart';
 import 'package:music_app/core/utils/app_logger.dart';
@@ -29,6 +31,8 @@ class HomeState extends Equatable {
   final List<Song> recentPlays;
   final List<Song> topCharts;
   final List<Song> recommendations;
+  final List<Artist> hotArtists;
+  final List<Album> newAlbums;
 
   const HomeState({
     this.isLoading = false,
@@ -36,6 +40,8 @@ class HomeState extends Equatable {
     this.recentPlays = const [],
     this.topCharts = const [],
     this.recommendations = const [],
+    this.hotArtists = const [],
+    this.newAlbums = const [],
   });
 
   HomeState copyWith({
@@ -44,6 +50,8 @@ class HomeState extends Equatable {
     List<Song>? recentPlays,
     List<Song>? topCharts,
     List<Song>? recommendations,
+    List<Artist>? hotArtists,
+    List<Album>? newAlbums,
   }) {
     return HomeState(
       isLoading: isLoading ?? this.isLoading,
@@ -51,11 +59,13 @@ class HomeState extends Equatable {
       recentPlays: recentPlays ?? this.recentPlays,
       topCharts: topCharts ?? this.topCharts,
       recommendations: recommendations ?? this.recommendations,
+      hotArtists: hotArtists ?? this.hotArtists,
+      newAlbums: newAlbums ?? this.newAlbums,
     );
   }
 
   @override
-  List<Object?> get props => [isLoading, error, recentPlays, topCharts, recommendations];
+  List<Object?> get props => [isLoading, error, recentPlays, topCharts, recommendations, hotArtists, newAlbums];
 }
 
 class HomeBloc extends Bloc<HomeEvent, HomeState> {
@@ -82,34 +92,51 @@ class HomeBloc extends Bloc<HomeEvent, HomeState> {
       }).whereType<Song>());
     } catch (e) {
       AppLogger.log('Load recent plays failed: $e');
-      errors.add('最近播放加载失败');
     }
 
-    List<Song> topCharts = const [];
-    List<Song> recommendations = const [];
+    List<Song> topCharts = [];
+    List<Song> recommendations = [];
+    List<Artist> hotArtists = [];
+    List<Album> newAlbums = [];
 
     try {
       topCharts = await _apiService.getTopCharts();
     } catch (e) {
       AppLogger.log('Load top charts failed: $e');
-      errors.add('热门榜单加载失败');
     }
 
     try {
       recommendations = await _apiService.searchSongs('pop');
     } catch (e) {
       AppLogger.log('Load recommendations failed: $e');
-      errors.add('推荐歌曲加载失败');
     }
 
-    final hasAnyData = recentSongs.isNotEmpty || topCharts.isNotEmpty || recommendations.isNotEmpty;
+    try {
+      hotArtists = await _apiService.getHotArtists();
+    } catch (e) {
+      AppLogger.log('Load hot artists failed: $e');
+    }
+
+    try {
+      newAlbums = await _apiService.getNewAlbums();
+    } catch (e) {
+      AppLogger.log('Load new albums failed: $e');
+    }
+
+    final hasAnyData = recentSongs.isNotEmpty || 
+                       topCharts.isNotEmpty || 
+                       recommendations.isNotEmpty ||
+                       hotArtists.isNotEmpty ||
+                       newAlbums.isNotEmpty;
 
     emit(state.copyWith(
       isLoading: false,
-      error: hasAnyData ? null : (errors.isEmpty ? '暂无数据' : errors.join('，')),
+      error: hasAnyData ? null : '暂无数据',
       recentPlays: recentSongs,
       topCharts: topCharts,
       recommendations: recommendations,
+      hotArtists: hotArtists,
+      newAlbums: newAlbums,
     ));
   }
 
