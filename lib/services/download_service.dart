@@ -38,6 +38,30 @@ class DownloadTask {
     required this.createdAt,
     this.completedAt,
   });
+  
+  DownloadTask copyWith({
+    String? id,
+    Song? song,
+    String? url,
+    String? savePath,
+    DownloadStatus? status,
+    int? progress,
+    String? errorMessage,
+    DateTime? createdAt,
+    DateTime? completedAt,
+  }) {
+    return DownloadTask(
+      id: id ?? this.id,
+      song: song ?? this.song,
+      url: url ?? this.url,
+      savePath: savePath ?? this.savePath,
+      status: status ?? this.status,
+      progress: progress ?? this.progress,
+      errorMessage: errorMessage ?? this.errorMessage,
+      createdAt: createdAt ?? this.createdAt,
+      completedAt: completedAt ?? this.completedAt,
+    );
+  }
 
   Song toLocalSong() {
     return song.copyWith(
@@ -222,7 +246,7 @@ class DownloadService {
       // Get actual duration from downloaded file
       final actualDuration = await _getAudioDuration(task.savePath);
       if (actualDuration != null && actualDuration.inSeconds > 0) {
-        task.song = task.song.copyWith(duration: actualDuration);
+        task = task.copyWith(song: task.song.copyWith(duration: actualDuration));
         debugPrint('Got duration for downloaded file: ${actualDuration.inSeconds}s');
       }
       
