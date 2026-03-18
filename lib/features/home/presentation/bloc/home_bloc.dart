@@ -93,35 +93,57 @@ class HomeBloc extends Bloc<HomeEvent, HomeState> {
       AppLogger.log('Load recent plays failed: $e');
     }
 
+    // Load data with better error handling
     List<Song> topCharts = [];
     List<Song> recommendations = [];
     List<Artist> hotArtists = [];
     List<Album> newAlbums = [];
 
-    // Load in parallel for faster loading
-    final results = await Future.wait([
-      _apiService.getTopCharts(),
-      _apiService.searchSongs('周杰伦'),
-      _apiService.searchArtists('周杰伦'),
-      _apiService.searchAlbums('周杰伦'),
-    ]);
+    // Load top charts
+    try {
+      topCharts = await _apiService.getTopCharts();
+      AppLogger.log('Loaded ${topCharts.length} top charts');
+    } catch (e) {
+      AppLogger.log('Load top charts failed: $e');
+    }
 
-    topCharts = (results[0] as List<Song>).take(20).toList();
-    recommendations = (results[1] as List<Song>).take(10).toList();
-    
-    // Get hot artists from search results
-    var artists = results[2] as List<Artist>;
-    if (artists.isEmpty) {
-      artists = await _apiService.searchArtists('Taylor Swift');
+    // Load recommendations
+    try {
+      recommendations = await _apiService.searchSongs('周杰伦');
+      if (recommendations.isEmpty) {
+        recommendations = await _apiService.searchSongs('Taylor Swift');
+      }
+      recommendations = recommendations.take(10).toList();
+      AppLogger.log('Loaded ${recommendations.length} recommendations');
+    } catch (e) {
+      AppLogger.log('Load recommendations failed: $e');
     }
-    hotArtists = artists.take(10).toList();
-    
-    // Get new albums from search results  
-    var albums = results[3] as List<Album>;
-    if (albums.isEmpty) {
-      albums = await _apiService.searchAlbums('Taylor Swift');
+
+    // Load hot artists using the dedicated API
+    try {
+      hotArtists = await _apiService.getHotArtists();
+      if (hotArtists.isEmpty) {
+        // Fallback to search
+        hotArtists = await _apiService.searchArtists('周杰伦');
+      }
+      hotArtists = hotArtists.take(10).toList();
+      AppLogger.log('Loaded ${hotArtists.length} hot artists');
+    } catch (e) {
+      AppLogger.log('Load hot artists failed: $e');
     }
-    newAlbums = albums.take(10).toList();
+
+    // Load new albums using the dedicated API
+    try {
+      newAlbums = await _apiService.getNewAlbums();
+      if (newAlbums.isEmpty) {
+        // Fallback to search
+        newAlbums = await _apiService.searchAlbums('周杰伦');
+      }
+      newAlbums = newAlbums.take(10).toList();
+      AppLogger.log('Loaded ${newAlbums.length} new albums');
+    } catch (e) {
+      AppLogger.log('Load new albums failed: $e');
+    }
 
     final hasAnyData = recentSongs.isNotEmpty || 
                        topCharts.isNotEmpty || 

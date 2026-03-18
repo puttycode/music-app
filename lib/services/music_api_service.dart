@@ -73,10 +73,15 @@ class CustomApi implements MusicApi {
   @override
   Future<List<Artist>> searchArtists(String query) async {
     try {
+      AppLogger.log('Searching artists for: $query');
       final response = await _dio.get('/api/v1/search', queryParameters: {'q': query, 'type': 'artist'});
+      AppLogger.log('Search artists response: code=${response.statusCode}, data=${response.data}');
+      
       if (response.statusCode == 200 && response.data['code'] == 200) {
         final data = response.data['data'];
         final results = (data is Map) ? (data['list'] as List? ?? []) : (data as List? ?? []);
+        AppLogger.log('Found ${results.length} artists for query: $query');
+        
         return results.map((artist) => Artist(
           id: artist['id']?.toString() ?? '',
           name: artist['name']?.toString() ?? 'Unknown',
@@ -84,17 +89,26 @@ class CustomApi implements MusicApi {
           musicNum: artist['musicNum'],
         )).toList();
       }
+      AppLogger.log('Search artists failed: code=${response.data['code']}');
       return [];
-    } catch (e) { return []; }
+    } catch (e) { 
+      AppLogger.log('Search artists error: $e');
+      return []; 
+    }
   }
 
   @override
   Future<List<Album>> searchAlbums(String query) async {
     try {
+      AppLogger.log('Searching albums for: $query');
       final response = await _dio.get('/api/v1/search', queryParameters: {'q': query, 'type': 'album'});
+      AppLogger.log('Search albums response: code=${response.statusCode}, data=${response.data}');
+      
       if (response.statusCode == 200 && response.data['code'] == 200) {
         final data = response.data['data'];
         final results = (data is Map) ? (data['list'] as List? ?? []) : (data as List? ?? []);
+        AppLogger.log('Found ${results.length} albums for query: $query');
+        
         return results.map((album) => Album(
           id: album['id']?.toString() ?? '',
           name: album['name']?.toString() ?? 'Unknown',
@@ -102,8 +116,12 @@ class CustomApi implements MusicApi {
           cover: album['cover'] ?? album['pic'],
         )).toList();
       }
+      AppLogger.log('Search albums failed: code=${response.data['code']}');
       return [];
-    } catch (e) { return []; }
+    } catch (e) { 
+      AppLogger.log('Search albums error: $e');
+      return []; 
+    }
   }
 
   @override
@@ -251,10 +269,20 @@ class CustomApi implements MusicApi {
   @override
   Future<List<Artist>> getHotArtists() async {
     try {
+      AppLogger.log('Fetching hot artists from /api/v1/hot/artists');
       final response = await _dio.get('/api/v1/hot/artists');
+      AppLogger.log('Hot artists response status: ${response.statusCode}');
+      AppLogger.log('Hot artists response data: ${response.data}');
+      
       if (response.statusCode == 200 && response.data['code'] == 200) {
         final data = response.data['data'];
         final results = (data is Map) ? (data['list'] as List? ?? []) : (data as List? ?? []);
+        AppLogger.log('Hot artists results count: ${results.length}');
+        
+        if (results.isNotEmpty) {
+          AppLogger.log('First artist data: ${results.first}');
+        }
+        
         return results.map((artist) => Artist(
           id: artist['id']?.toString() ?? '',
           name: artist['name']?.toString() ?? 'Unknown',
@@ -262,17 +290,31 @@ class CustomApi implements MusicApi {
           musicNum: artist['musicNum'],
         )).toList();
       }
+      AppLogger.log('Hot artists API returned non-200 code: ${response.data['code']}');
       return [];
-    } catch (e) { return []; }
+    } catch (e) { 
+      AppLogger.log('Hot artists fetch error: $e');
+      return []; 
+    }
   }
 
   @override
   Future<List<Album>> getNewAlbums() async {
     try {
+      AppLogger.log('Fetching new albums from /api/v1/new/albums');
       final response = await _dio.get('/api/v1/new/albums');
+      AppLogger.log('New albums response status: ${response.statusCode}');
+      AppLogger.log('New albums response data: ${response.data}');
+      
       if (response.statusCode == 200 && response.data['code'] == 200) {
         final data = response.data['data'];
         final results = (data is Map) ? (data['list'] as List? ?? []) : (data as List? ?? []);
+        AppLogger.log('New albums results count: ${results.length}');
+        
+        if (results.isNotEmpty) {
+          AppLogger.log('First album data: ${results.first}');
+        }
+        
         return results.map((album) => Album(
           id: album['id']?.toString() ?? '',
           name: album['name']?.toString() ?? 'Unknown',
@@ -280,8 +322,12 @@ class CustomApi implements MusicApi {
           cover: album['cover'] ?? album['pic'],
         )).toList();
       }
+      AppLogger.log('New albums API returned non-200 code: ${response.data['code']}');
       return [];
-    } catch (e) { return []; }
+    } catch (e) { 
+      AppLogger.log('New albums fetch error: $e');
+      return []; 
+    }
   }
 
   @override
