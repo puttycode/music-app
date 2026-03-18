@@ -663,6 +663,36 @@ class _PlaylistsTab extends StatelessWidget {
   final List<Playlist> playlists;
 
   const _PlaylistsTab({required this.playlists});
+  
+  static const _playlistIcons = [
+    Icons.music_note,
+    Icons.headphones,
+    Icons.audiotrack,
+    Icons.library_music,
+    Icons.album,
+    Icons.radio,
+    Icons.equalizer,
+    Icons.piano,
+    Icons.guitar,
+    Icons.queue_music,
+  ];
+  
+  static const _playlistColors = [
+    Color(0xFFE91E63),
+    Color(0xFF9C27B0),
+    Color(0xFF673AB7),
+    Color(0xFF3F51B5),
+    Color(0xFF2196F3),
+    Color(0xFF00BCD4),
+    Color(0xFF009688),
+    Color(0xFF4CAF50),
+    Color(0xFFFF9800),
+    Color(0xFFFF5722),
+  ];
+  
+  int _getIconIndex(String id) {
+    return id.hashCode.abs() % _playlistIcons.length;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -677,26 +707,69 @@ class _PlaylistsTab extends StatelessWidget {
       itemCount: playlists.length,
       itemBuilder: (context, index) {
         final playlist = playlists[index];
+        final iconIndex = _getIconIndex(playlist.id);
+        final iconColor = _playlistColors[iconIndex];
+        final icon = _playlistIcons[iconIndex];
         
-        // Don't allow deleting default playlists
-        if (playlist.name == '我喜欢的音乐' || playlist.name == '最近播放') {
-          return ListTile(
-            leading: Container(
-              width: 56,
-              height: 56,
-              decoration: BoxDecoration(
-                color: Theme.of(context).colorScheme.surface,
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Icon(
-                playlist.name == '我喜欢的音乐' ? Icons.favorite : Icons.history,
-              ),
+        final isDefault = playlist.name == '我喜欢的音乐' || playlist.name == '最近播放';
+        final hasSongs = playlist.songs.isNotEmpty;
+        
+        Widget listTile = ListTile(
+          leading: Container(
+            width: 56,
+            height: 56,
+            decoration: BoxDecoration(
+              gradient: isDefault 
+                  ? null 
+                  : LinearGradient(
+                      colors: [
+                        iconColor.withValues(alpha: 0.8),
+                        iconColor.withValues(alpha: 0.6),
+                      ],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+              color: isDefault ? Theme.of(context).colorScheme.surface : null,
+              borderRadius: BorderRadius.circular(12),
             ),
-            title: Text(playlist.name),
-            subtitle: Text('${playlist.songs.length} 首歌曲'),
-            trailing: const Icon(Icons.chevron_right),
-            onTap: () => _openPlaylist(context, playlist),
-          );
+            child: Icon(
+              isDefault 
+                  ? (playlist.name == '我喜欢的音乐' ? Icons.favorite : Icons.history)
+                  : icon,
+              color: isDefault ? null : Colors.white,
+            ),
+          ),
+          title: Text(
+            playlist.name,
+            style: const TextStyle(fontWeight: FontWeight.w500),
+          ),
+          subtitle: Text(
+            '${playlist.songs.length} 首歌曲${hasSongs ? '' : ' · 长按重命名'}',
+            style: TextStyle(
+              color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
+            ),
+          ),
+          trailing: hasSongs && !isDefault
+              ? Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      Icons.lock_outline,
+                      size: 16,
+                      color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.4),
+                    ),
+                    const SizedBox(width: 4),
+                    const Icon(Icons.chevron_right),
+                  ],
+                )
+              : const Icon(Icons.chevron_right),
+          onTap: () => _openPlaylist(context, playlist),
+          onLongPress: isDefault ? null : () => _showRenameDialog(context, playlist),
+        );
+        
+        // Default playlists or playlists with songs cannot be deleted by swipe
+        if (isDefault || hasSongs) {
+          return listTile;
         }
         
         return Dismissible(
@@ -705,30 +778,45 @@ class _PlaylistsTab extends StatelessWidget {
           background: Container(
             color: Colors.red,
             alignment: Alignment.centerRight,
-            padding: const EdgeInsets.only(right: 16),
-            child: const Icon(Icons.delete, color: Colors.white),
+            padding: const EdgeInsets.only(right: 20),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Icon(Icons.delete, color: Colors.white),
+                const SizedBox(height: 4),
+                const Text(
+                  '删除',
+                  style: TextStyle(color: Colors.white, fontSize: 12),
+                ),
+              ],
+            ),
           ),
+          confirmDismiss: (_) async {
+            return await showDialog(
+              context: context,
+              builder: (context) => AlertDialog(
+                title: const Text('确认删除'),
+                content: Text('确定要删除播放列表"${playlist.name}"吗？'),
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.pop(context, false),
+                    child: const Text('取消'),
+                  ),
+                  TextButton(
+                    onPressed: () => Navigator.pop(context, true),
+                    style: TextButton.styleFrom(foregroundColor: Colors.red),
+                    child: const Text('删除'),
+                  ),
+                ],
+              ),
+            );
+          },
           onDismissed: (_) {
             context.read<LibraryBloc>().add(
               DeletePlaylist(playlistId: playlist.id, legacyName: playlist.name),
             );
           },
-          child: ListTile(
-            leading: Container(
-              width: 56,
-              height: 56,
-              decoration: BoxDecoration(
-                color: Theme.of(context).colorScheme.surface,
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: const Icon(Icons.queue_music),
-            ),
-            title: Text(playlist.name),
-            subtitle: Text('${playlist.songs.length} 首歌曲'),
-            trailing: const Icon(Icons.chevron_right),
-            onTap: () => _openPlaylist(context, playlist),
-            onLongPress: () => _showRenameDialog(context, playlist),
-          ),
+          child: listTile,
         );
       },
     );
