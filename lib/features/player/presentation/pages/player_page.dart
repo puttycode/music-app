@@ -92,18 +92,22 @@ class _PlayerViewState extends State<_PlayerView> {
   DownloadTask? _downloadTask;
   StreamSubscription? _downloadSubscription;
   StreamSubscription? _songChangeSubscription;
+  StreamSubscription? _durationSubscription;
+  Duration _actualDuration = Duration.zero;
 
   @override
   void initState() {
     super.initState();
     _initDownloadListener();
     _initSongChangeListener();
+    _initDurationListener();
   }
 
   @override
   void dispose() {
     _downloadSubscription?.cancel();
     _songChangeSubscription?.cancel();
+    _durationSubscription?.cancel();
     super.dispose();
   }
 
@@ -121,13 +125,23 @@ class _PlayerViewState extends State<_PlayerView> {
     _songChangeSubscription = AudioPlayerService.instance.currentSongStream.listen((song) {
       if (mounted) {
         setState(() {
-          // Reset download task when song changes
           if (song != null) {
             _downloadTask = DownloadService.instance.getDownload(song.id.toString());
           } else {
             _downloadTask = null;
           }
           _showLyrics = false;
+          _actualDuration = Duration.zero;
+        });
+      }
+    });
+  }
+
+  void _initDurationListener() {
+    _durationSubscription = AudioPlayerService.instance.durationStream.listen((duration) {
+      if (mounted && duration != null && duration > Duration.zero) {
+        setState(() {
+          _actualDuration = duration;
         });
       }
     });
@@ -156,6 +170,11 @@ class _PlayerViewState extends State<_PlayerView> {
   }
 
   void _showSongDetails(BuildContext context, Song song) {
+    final displayDuration = (_actualDuration > Duration.zero) ? _actualDuration : song.duration;
+    final isDownloaded = song.isLocal || DownloadService.instance.isDownloaded(song.id.toString());
+    final isFavorite = FavoriteService.instance.isFavorite(song);
+    final isPlaying = AudioPlayerService.instance.playerStateStream.value?.playing ?? false;
+
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -168,11 +187,19 @@ class _PlayerViewState extends State<_PlayerView> {
               _buildDetailRow('歌曲名', song.title),
               _buildDetailRow('艺术家', song.artist),
               _buildDetailRow('专辑', song.album),
-              _buildDetailRow('时长', DurationFormatter.format(song.duration)),
+              _buildDetailRow('时长', DurationFormatter.format(displayDuration)),
+              if (_actualDuration > Duration.zero && song.duration != _actualDuration)
+                _buildDetailRow('元数据时长', DurationFormatter.format(song.duration), isSecondary: true),
+              _buildDetailRow('播放状态', isPlaying ? '正在播放' : '已暂停'),
+              _buildDetailRow('音乐类型', song.isLocal ? '本地音乐' : '在线音乐'),
+              _buildDetailRow('收藏状态', isFavorite ? '已收藏' : '未收藏'),
+              _buildDetailRow('下载状态', isDownloaded ? '已下载' : '未下载'),
+              if (song.playedAt != null)
+                _buildDetailRow('播放时间', _formatDateTime(song.playedAt!)),
               if (song.releaseDate != null && song.releaseDate!.isNotEmpty)
                 _buildDetailRow('发行日期', song.releaseDate!),
               if (song.format != null && song.format!.isNotEmpty)
-                _buildDetailRow('格式', song.format!.toUpperCase()),
+                _buildDetailRow('音频格式', song.format!.toUpperCase()),
               if (song.bitrate != null && song.bitrate!.isNotEmpty)
                 _buildDetailRow('比特率', song.bitrate!),
               if (song.sampleRate != null && song.sampleRate!.isNotEmpty)
@@ -181,11 +208,10 @@ class _PlayerViewState extends State<_PlayerView> {
                 _buildDetailRow('文件大小', _formatFileSize(song.fileSize!)),
               if (song.publisher != null && song.publisher!.isNotEmpty)
                 _buildDetailRow('发行公司', song.publisher!),
-              if (song.localPath != null)
+              if (song.localPath != null && song.localPath!.isNotEmpty)
                 _buildDetailRow('本地路径', song.localPath!),
-              if (song.audioUrl != null)
+              if (song.audioUrl != null && song.audioUrl!.isNotEmpty)
                 _buildDetailRow('在线地址', song.audioUrl!),
-              _buildDetailRow('音乐类型', song.isLocal ? '本地音乐' : '在线音乐'),
               _buildDetailRow('歌曲 ID', song.id.toString()),
             ],
           ),
@@ -200,6 +226,11 @@ class _PlayerViewState extends State<_PlayerView> {
     );
   }
 
+  String _formatDateTime(DateTime dt) {
+    return '${dt.year}-${dt.month.toString().padLeft(2, '0')}-${dt.day.toString().padLeft(2, '0')} '
+           '${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
+  }
+
   String _formatFileSize(int bytes) {
     if (bytes < 1024) return '$bytes B';
     if (bytes < 1024 * 1024) return '${(bytes / 1024).toStringAsFixed(1)} KB';
@@ -207,14 +238,14 @@ class _PlayerViewState extends State<_PlayerView> {
     return '${(bytes / (1024 * 1024 * 1024)).toStringAsFixed(2)} GB';
   }
 
-  Widget _buildDetailRow(String label, String value) {
+  Widget _buildDetailRow(String label, String value, {bool isSecondary = false}) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           SizedBox(
-            width: 60,
+            width: 75,
             child: Text(
               '$label:',
               style: const TextStyle(fontWeight: FontWeight.bold),
@@ -223,7 +254,10 @@ class _PlayerViewState extends State<_PlayerView> {
           Expanded(
             child: Text(
               value,
-              style: const TextStyle(color: Colors.grey),
+              style: TextStyle(
+                color: isSecondary ? Colors.grey.withValues(alpha: 0.6) : Colors.grey,
+                fontStyle: isSecondary ? FontStyle.italic : FontStyle.normal,
+              ),
             ),
           ),
         ],
