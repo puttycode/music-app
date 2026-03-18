@@ -25,6 +25,7 @@ class AudioPlayerService {
   final _recentPlaysChangedSubject = BehaviorSubject<void>.seeded(null);
   
   bool _isTransitioning = false;
+  StreamSubscription<Duration?>? _durationSubscription;
 
   Stream<Song?> get currentSongStream => _currentSongSubject.stream;
   Stream<List<Song>> get playlistStream => _playlistSubject.stream;
@@ -41,7 +42,6 @@ class AudioPlayerService {
   bool get isShuffle => _isShuffleSubject.value;
   bool get isPreviewMode => _isPreviewModeSubject.value;
 
-  // Callback for library to refresh recent plays
   VoidCallback? onRecentPlaysChanged;
 
   void setPreviewMode(bool value) {
@@ -61,6 +61,57 @@ class AudioPlayerService {
         _onSongComplete();
       }
     });
+    
+    // Listen for duration updates and save to recent plays
+    _durationSubscription = _audioPlayer.durationStream.listen((duration) {
+      if (duration != null && duration.inSeconds > 0) {
+        _updateSongDuration(duration);
+      }
+    });
+  }
+  
+  void _updateSongDuration(Duration duration) {
+    final song = currentSong;
+    if (song == null) return;
+    
+    // Only update if duration was previously unknown or zero
+    if (song.duration.inSeconds > 0 && song.duration.inSeconds < 3600) return;
+    
+    AppLogger.log('Updating song duration: ${song.title} -> ${duration.inSeconds}s');
+    
+    // Update current song
+    final updatedSong = song.copyWith(duration: duration);
+    _currentSongSubject.add(updatedSong);
+    
+    // Update in recent plays
+    _updateDurationInRecentPlays(song.id, duration);
+    
+    // Update in playlist if present
+    final currentPlaylist = playlist;
+    final playlistIndex = currentPlaylist.indexWhere((s) => s.id == song.id);
+    if (playlistIndex >= 0) {
+      currentPlaylist[playlistIndex] = updatedSong;
+      _playlistSubject.add(List.from(currentPlaylist));
+    }
+  }
+  
+  Future<void> _updateDurationInRecentPlays(int songId, Duration duration) async {
+    try {
+      final recentBox = Hive.box(AppConstants.recentPlaysBox);
+      
+      for (final key in recentBox.keys) {
+        final item = recentBox.get(key);
+        if (item is Map && item['id'] == songId) {
+          final updatedData = Map<String, dynamic>.from(item);
+          updatedData['duration'] = duration.inMilliseconds;
+          await recentBox.put(key, updatedData);
+          AppLogger.log('Updated duration in recent plays for song $songId');
+          break;
+        }
+      }
+    } catch (e) {
+      AppLogger.log('Error updating duration in recent plays: $e');
+    }
   }
 
   void _onSongComplete() {
