@@ -80,7 +80,6 @@ class HomeBloc extends Bloc<HomeEvent, HomeState> {
     emit(state.copyWith(isLoading: true, error: null));
 
     final recentSongs = <Song>[];
-    final errors = <String>[];
 
     try {
       final recentBox = Hive.box(AppConstants.recentPlaysBox);
@@ -99,29 +98,30 @@ class HomeBloc extends Bloc<HomeEvent, HomeState> {
     List<Artist> hotArtists = [];
     List<Album> newAlbums = [];
 
-    try {
-      topCharts = await _apiService.getTopCharts();
-    } catch (e) {
-      AppLogger.log('Load top charts failed: $e');
-    }
+    // Load in parallel for faster loading
+    final results = await Future.wait([
+      _apiService.getTopCharts(),
+      _apiService.searchSongs('周杰伦'),
+      _apiService.searchArtists('周杰伦'),
+      _apiService.searchAlbums('周杰伦'),
+    ]);
 
-    try {
-      recommendations = await _apiService.searchSongs('pop');
-    } catch (e) {
-      AppLogger.log('Load recommendations failed: $e');
+    topCharts = (results[0] as List<Song>).take(20).toList();
+    recommendations = (results[1] as List<Song>).take(10).toList();
+    
+    // Get hot artists from search results
+    var artists = results[2] as List<Artist>;
+    if (artists.isEmpty) {
+      artists = await _apiService.searchArtists('Taylor Swift');
     }
-
-    try {
-      hotArtists = await _apiService.getHotArtists();
-    } catch (e) {
-      AppLogger.log('Load hot artists failed: $e');
+    hotArtists = artists.take(10).toList();
+    
+    // Get new albums from search results  
+    var albums = results[3] as List<Album>;
+    if (albums.isEmpty) {
+      albums = await _apiService.searchAlbums('Taylor Swift');
     }
-
-    try {
-      newAlbums = await _apiService.getNewAlbums();
-    } catch (e) {
-      AppLogger.log('Load new albums failed: $e');
-    }
+    newAlbums = albums.take(10).toList();
 
     final hasAnyData = recentSongs.isNotEmpty || 
                        topCharts.isNotEmpty || 

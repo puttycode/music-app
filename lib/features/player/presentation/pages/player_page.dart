@@ -862,7 +862,25 @@ class _SongInfoState extends State<_SongInfo> {
   }
 
   void _loadDownloadStatus() {
-    final task = DownloadService.instance.getDownload(widget.song?.id.toString() ?? '');
+    if (widget.song == null) return;
+    
+    // Check if song is already local
+    if (widget.song!.isLocal) {
+      setState(() {
+        _downloadTask = DownloadTask(
+          id: widget.song!.id.toString(),
+          song: widget.song!,
+          url: '',
+          savePath: widget.song!.localPath ?? '',
+          status: DownloadStatus.completed,
+          progress: 100,
+          createdAt: DateTime.now(),
+        );
+      });
+      return;
+    }
+    
+    final task = DownloadService.instance.getDownload(widget.song!.id.toString());
     if (task != null) {
       setState(() {
         _downloadTask = task;
@@ -1367,6 +1385,9 @@ class _AddToPlaylistSheetState extends State<_AddToPlaylistSheet> {
     });
     
     _loadPlaylists();
+    
+    // Notify library page to refresh
+    FavoriteService.instance.notifyPlaylistsChanged();
     
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text('播放列表 "$name" 创建成功')),

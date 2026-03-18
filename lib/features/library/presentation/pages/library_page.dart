@@ -29,6 +29,7 @@ class _LibraryPageState extends State<LibraryPage> {
   late LibraryBloc _bloc;
   VoidCallback? _favoriteCallback;
   VoidCallback? _recentPlaysCallback;
+  VoidCallback? _playlistsChangedCallback;
   DownloadCompletedCallback? _downloadCompletedCallback;
 
   @override
@@ -49,6 +50,13 @@ class _LibraryPageState extends State<LibraryPage> {
     };
     AudioPlayerService.instance.onRecentPlaysChanged = _recentPlaysCallback;
     
+    _playlistsChangedCallback = () {
+      if (mounted) {
+        _bloc.add(LoadPlaylists());
+      }
+    };
+    FavoriteService.instance.onPlaylistsChanged = _playlistsChangedCallback;
+    
     _downloadCompletedCallback = (task) {
       if (mounted) {
         _bloc.add(LoadLocalMusic());
@@ -61,6 +69,9 @@ class _LibraryPageState extends State<LibraryPage> {
   void dispose() {
     if (FavoriteService.instance.onFavoriteChanged == _favoriteCallback) {
       FavoriteService.instance.onFavoriteChanged = null;
+    }
+    if (FavoriteService.instance.onPlaylistsChanged == _playlistsChangedCallback) {
+      FavoriteService.instance.onPlaylistsChanged = null;
     }
     if (AudioPlayerService.instance.onRecentPlaysChanged == _recentPlaysCallback) {
       AudioPlayerService.instance.onRecentPlaysChanged = null;

@@ -16,7 +16,16 @@ class FavoriteService {
   final _favoritesChangedSubject = BehaviorSubject<void>.seeded(null);
   Stream<void> get favoritesChanged => _favoritesChangedSubject.asBroadcastStream();
 
+  final _playlistsChangedSubject = BehaviorSubject<void>.seeded(null);
+  Stream<void> get playlistsChanged => _playlistsChangedSubject.asBroadcastStream();
+
   VoidCallback? onFavoriteChanged;
+  VoidCallback? onPlaylistsChanged;
+
+  void notifyPlaylistsChanged() {
+    _playlistsChangedSubject.add(null);
+    onPlaylistsChanged?.call();
+  }
 
   Future<void> toggleFavorite(Song song) async {
     try {
@@ -84,5 +93,6 @@ class FavoriteService {
 
   void dispose() {
     _favoritesChangedSubject.close();
+    _playlistsChangedSubject.close();
   }
 }

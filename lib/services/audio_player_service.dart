@@ -140,7 +140,9 @@ class AudioPlayerService {
           AppLogger.log('Playing next song');
           playNext();
         } else {
-          AppLogger.log('End of playlist, stopping');
+          // End of playlist - reset to beginning of current song
+          AppLogger.log('End of playlist, resetting position');
+          _audioPlayer.seek(Duration.zero);
         }
         break;
     }
