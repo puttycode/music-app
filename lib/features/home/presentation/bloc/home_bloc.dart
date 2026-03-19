@@ -5,6 +5,7 @@ import 'package:music_app/features/player/domain/entities/song.dart';
 import 'package:music_app/features/player/domain/entities/artist.dart';
 import 'package:music_app/features/player/domain/entities/album.dart';
 import 'package:music_app/services/music_api_service.dart';
+import 'package:music_app/services/curated_recommendations.dart';
 import 'package:music_app/core/constants/app_constants.dart';
 import 'package:music_app/core/utils/app_logger.dart';
 
@@ -107,39 +108,34 @@ class HomeBloc extends Bloc<HomeEvent, HomeState> {
       AppLogger.log('Load top charts failed: $e');
     }
 
-    // Load recommendations
+    // Load recommendations with curated quality + daily rotation + artist diversity
     try {
-      recommendations = await _apiService.searchSongs('周杰伦');
+      recommendations = await CuratedRecommendations.getDailyRecommendations(targetCount: 10);
       if (recommendations.isEmpty) {
-        recommendations = await _apiService.searchSongs('Taylor Swift');
+        recommendations = await _buildDiverseFallback();
       }
-      recommendations = recommendations.take(10).toList();
       AppLogger.log('Loaded ${recommendations.length} recommendations');
     } catch (e) {
       AppLogger.log('Load recommendations failed: $e');
     }
 
-    // Load hot artists using the dedicated API
+    // Load hot artists using curated daily rotation
     try {
-      hotArtists = await _apiService.getHotArtists();
+      hotArtists = await CuratedRecommendations.getDailyHotArtists();
       if (hotArtists.isEmpty) {
-        // Fallback to search
-        hotArtists = await _apiService.searchArtists('周杰伦');
+        hotArtists = await _buildDiverseArtistsFallback();
       }
-      hotArtists = hotArtists.take(10).toList();
       AppLogger.log('Loaded ${hotArtists.length} hot artists');
     } catch (e) {
       AppLogger.log('Load hot artists failed: $e');
     }
 
-    // Load new albums using the dedicated API
+    // Load new albums using curated daily rotation
     try {
-      newAlbums = await _apiService.getNewAlbums();
+      newAlbums = await CuratedRecommendations.getDailyNewAlbums();
       if (newAlbums.isEmpty) {
-        // Fallback to search
-        newAlbums = await _apiService.searchAlbums('周杰伦');
+        newAlbums = await _buildDiverseAlbumsFallback();
       }
-      newAlbums = newAlbums.take(10).toList();
       AppLogger.log('Loaded ${newAlbums.length} new albums');
     } catch (e) {
       AppLogger.log('Load new albums failed: $e');
@@ -196,5 +192,111 @@ class HomeBloc extends Bloc<HomeEvent, HomeState> {
     } catch (e) {
       AppLogger.log('Error adding to recent: $e');
     }
+  }
+
+  List<Song> _enforceArtistDiversity(List<Song> songs, {int maxPerArtist = 2}) {
+    final artistCount = <String, int>{};
+    final result = <Song>[];
+    for (final song in songs) {
+      final artist = song.artist.toLowerCase();
+      final count = artistCount.putIfAbsent(artist, () => 0);
+      if (count < maxPerArtist) {
+        result.add(song);
+        artistCount[artist] = count + 1;
+      }
+    }
+    return result;
+  }
+
+  static const List<String> _fallbackArtists = [
+    '周杰伦', 'Taylor Swift', '林俊杰', '陈奕迅', 'Adele',
+    '王菲', 'Ed Sheeran', 'Coldplay', '孙燕姿', '李荣浩',
+    'Ariana Grande', '陶喆', '王力宏', '蔡依林', '张学友',
+    'Billie Eilish', 'Drake', 'G.E.M.', '梁静茹', 'Justin Bieber',
+  ];
+
+  static const List<String> _fallbackAlbums = [
+    '最伟大的作品', '范特西', 'Midnights', 'Folklore', '十年',
+    '寓言', '她说', 'Dawn FM', 'Back to Black', 'UGLY BEAUTY',
+    'Happier Than Ever', '光年之外', '幸存者', '等于', '第二人生',
+    'When We All Fall Asleep', '和自己对话', '坏喔', '好想好想', '我很忙',
+  ];
+
+  Future<List<Song>> _buildDiverseFallback() async {
+    final seed = _getDaySeed();
+    final shuffledArtists = _shuffleList(_fallbackArtists, seed);
+    final selectedArtists = shuffledArtists.take(10).toList();
+
+    final allSongs = <Song>[];
+    for (final artist in selectedArtists) {
+      try {
+        final songs = await _apiService.searchSongs(artist);
+        allSongs.addAll(songs.take(2));
+      } catch (_) {}
+    }
+
+    return _enforceArtistDiversity(allSongs, maxPerArtist: 2).take(10).toList();
+  }
+
+  Future<List<Artist>> _buildDiverseArtistsFallback() async {
+    final seed = _getDaySeed();
+    final shuffled = _shuffleList(_fallbackArtists, seed);
+    final artists = <Artist>[];
+    final seenIds = <String>{};
+
+    for (final name in shuffled) {
+      if (artists.length >= 10) break;
+      try {
+        final results = await _apiService.searchArtists(name);
+        if (results.isNotEmpty) {
+          final artist = results.first;
+          if (!seenIds.contains(artist.id)) {
+            artists.add(artist);
+            seenIds.add(artist.id);
+          }
+        }
+      } catch (_) {}
+    }
+
+    return artists.take(10).toList();
+  }
+
+  Future<List<Album>> _buildDiverseAlbumsFallback() async {
+    final seed = _getDaySeed();
+    final shuffled = _shuffleList(_fallbackAlbums, seed);
+    final albums = <Album>[];
+    final seenIds = <String>{};
+
+    for (final albumName in shuffled) {
+      if (albums.length >= 10) break;
+      try {
+        final results = await _apiService.searchAlbums(albumName);
+        if (results.isNotEmpty) {
+          final album = results.first;
+          if (!seenIds.contains(album.id)) {
+            albums.add(album);
+            seenIds.add(album.id);
+          }
+        }
+      } catch (_) {}
+    }
+
+    return albums.take(10).toList();
+  }
+
+  int _getDaySeed() {
+    final now = DateTime.now();
+    return now.year * 10000 + now.month * 100 + now.day;
+  }
+
+  List<T> _shuffleList<T>(List<T> list, int seed) {
+    final result = List<T>.from(list);
+    for (var i = result.length - 1; i > 0; i--) {
+      final j = (seed * (i + 1) * 31) % (i + 1);
+      final temp = result[i];
+      result[i] = result[j];
+      result[j] = temp;
+    }
+    return result;
   }
 }
