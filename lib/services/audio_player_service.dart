@@ -332,7 +332,7 @@ class AudioPlayerService {
       AppLogger.log('play() called, processingState: $processingState');
       
       // 如果音频源未准备好，先准备
-      if (processingState == ProcessingState.idle || processingState == ProcessingState.uninitialized) {
+      if (processingState == ProcessingState.idle) {
         AppLogger.log('Audio source not ready, preparing...');
         await _prepareAudioSource(song);
       }
