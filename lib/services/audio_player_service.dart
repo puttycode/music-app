@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:just_audio/just_audio.dart';
+import 'package:just_audio_background/just_audio_background.dart';
 import 'package:rxdart/rxdart.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import '../core/utils/app_logger.dart';
@@ -170,9 +171,23 @@ class AudioPlayerService {
 
   Future<void> _prepareAudioSource(Song song) async {
     try {
+      // 创建媒体信息用于通知栏显示
+      final mediaItem = MediaItem(
+        id: song.id.toString(),
+        title: song.title,
+        artist: song.artist,
+        album: song.album,
+        artUri: song.albumArt != null ? Uri.tryParse(song.albumArt!) : null,
+        duration: song.duration > Duration.zero ? song.duration : null,
+      );
+
       if (song.isLocal && song.localPath != null) {
         AppLogger.log('Setting local file: ${song.localPath}');
-        await _audioPlayer.setFilePath(song.localPath!);
+        final audioSource = AudioSource.file(
+          song.localPath!,
+          tag: mediaItem,
+        );
+        await _audioPlayer.setAudioSource(audioSource);
       } else {
         var audioUrl = song.audioUrl;
         if (audioUrl == null || audioUrl.isEmpty) {
@@ -182,7 +197,11 @@ class AudioPlayerService {
         }
         if (audioUrl != null && audioUrl.isNotEmpty) {
           AppLogger.log('Setting audio URL: $audioUrl');
-          await _audioPlayer.setUrl(audioUrl);
+          final audioSource = AudioSource.uri(
+            Uri.parse(audioUrl),
+            tag: mediaItem,
+          );
+          await _audioPlayer.setAudioSource(audioSource);
         } else {
           AppLogger.log('Failed to get audio URL for song: ${song.id}');
         }

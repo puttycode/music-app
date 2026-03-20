@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:hive_flutter/hive_flutter.dart';
+import 'package:just_audio_background/just_audio_background.dart';
 import 'package:music_app/app.dart';
 import 'package:music_app/core/constants/app_constants.dart';
 import 'package:music_app/services/music_api_service.dart';
@@ -8,6 +9,9 @@ import 'package:music_app/services/audio_player_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  
+  // 初始化后台音频播放
+  await JustAudioBackground.init();
   
   await SystemChrome.setPreferredOrientations([
     DeviceOrientation.portraitUp,
