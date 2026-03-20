@@ -163,12 +163,32 @@ class AudioPlayerService {
     if (autoPlay) {
       await _playSong(song);
     } else {
-      AppLogger.log('AutoPlay disabled, setting URL only');
+      AppLogger.log('AutoPlay disabled, preparing audio source');
+      await _prepareAudioSource(song);
+    }
+  }
+
+  Future<void> _prepareAudioSource(Song song) async {
+    try {
       if (song.isLocal && song.localPath != null) {
+        AppLogger.log('Setting local file: ${song.localPath}');
         await _audioPlayer.setFilePath(song.localPath!);
-      } else if (song.audioUrl != null) {
-        await _audioPlayer.setUrl(song.audioUrl!);
+      } else {
+        var audioUrl = song.audioUrl;
+        if (audioUrl == null || audioUrl.isEmpty) {
+          AppLogger.log('Fetching audio URL from API for song: ${song.id}');
+          audioUrl = await MusicApiService.instance.getSongUrl(song.id.toString());
+          AppLogger.log('Resolved audio URL: $audioUrl');
+        }
+        if (audioUrl != null && audioUrl.isNotEmpty) {
+          AppLogger.log('Setting audio URL: $audioUrl');
+          await _audioPlayer.setUrl(audioUrl);
+        } else {
+          AppLogger.log('Failed to get audio URL for song: ${song.id}');
+        }
       }
+    } catch (e) {
+      AppLogger.log('Error preparing audio source: $e');
     }
   }
 
@@ -273,21 +293,8 @@ class AudioPlayerService {
   Future<void> _playSong(Song song) async {
     _isTransitioning = true;
     try {
-      AppLogger.log('_playSong: ${song.title}, url: ${song.audioUrl}');
-      if (song.isLocal && song.localPath != null) {
-        await _audioPlayer.setFilePath(song.localPath!);
-      } else {
-        var audioUrl = song.audioUrl;
-        if (audioUrl == null || audioUrl.isEmpty) {
-          audioUrl = await MusicApiService.instance.getSongUrl(song.id.toString());
-          AppLogger.log('Resolved audio URL from API: $audioUrl');
-        }
-        if (audioUrl == null || audioUrl.isEmpty) {
-          throw Exception('No audio URL available');
-        }
-        AppLogger.log('Setting URL: $audioUrl');
-        await _audioPlayer.setUrl(audioUrl);
-      }
+      AppLogger.log('_playSong: ${song.title}');
+      await _prepareAudioSource(song);
       AppLogger.log('Starting playback');
       await _audioPlayer.play();
       AppLogger.log('Playback started');
@@ -300,6 +307,17 @@ class AudioPlayerService {
   }
 
   Future<void> play() async {
+    final song = currentSong;
+    if (song != null) {
+      final processingState = _audioPlayer.processingState;
+      AppLogger.log('play() called, processingState: $processingState');
+      
+      // 如果音频源未准备好，先准备
+      if (processingState == ProcessingState.idle || processingState == ProcessingState.uninitialized) {
+        AppLogger.log('Audio source not ready, preparing...');
+        await _prepareAudioSource(song);
+      }
+    }
     await _audioPlayer.play();
   }
 

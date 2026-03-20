@@ -98,8 +98,11 @@ class _HomeView extends StatelessWidget {
                     ),
                   ],
                   if (state.recommendations.isNotEmpty) ...[
-                    const SliverToBoxAdapter(
-                      child: SectionHeader(title: '为你推荐'),
+                    SliverToBoxAdapter(
+                      child: SectionHeader(
+                        title: state.dailyThemeName ?? '为你推荐',
+                        subtitle: state.dailyThemeDescription,
+                      ),
                     ),
                     SliverList(
                       delegate: SliverChildBuilderDelegate(

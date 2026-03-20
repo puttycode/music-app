@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:music_app/core/constants/app_constants.dart';
+import 'package:music_app/core/utils/duration_formatter.dart';
 import 'package:music_app/features/player/domain/entities/album.dart';
 import 'package:music_app/features/player/domain/entities/song.dart';
 import 'package:music_app/features/player/presentation/pages/player_page.dart';
@@ -235,10 +236,12 @@ class _AlbumDetailPageState extends State<AlbumDetailPage> {
                                         maxLines: 1,
                                         overflow: TextOverflow.ellipsis,
                                       ),
-                                      trailing: IconButton(
-                                        icon: const Icon(Icons.play_circle_filled),
-                                        color: Theme.of(context).colorScheme.primary,
-                                        onPressed: () => _playSong(index),
+                                      trailing: Text(
+                                        DurationFormatter.format(song.duration),
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5),
+                                        ),
                                       ),
                                       onTap: () => _playSong(index),
                                     );

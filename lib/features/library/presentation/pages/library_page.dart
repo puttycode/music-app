@@ -413,65 +413,11 @@ class _LocalSongsTabState extends State<_LocalSongsTab> {
     // Sort by title
     displaySongs.sort((a, b) => a.title.compareTo(b.title));
     
-    // Only show permission button if there are no local songs AND no downloading songs
+    // Show empty state if there are no local songs AND no downloading songs
     if (localSongs.isEmpty && downloadingSongs.isEmpty) {
       return app_widgets.EmptyWidget(
-        message: '没有找到本地音乐\n请授予存储权限以扫描音乐',
+        message: '暂无离线音乐\n下载的歌曲将显示在这里',
         icon: Icons.music_off,
-        action: ElevatedButton(
-          onPressed: () async {
-            Map<Permission, PermissionStatus> statuses;
-            
-            if (Platform.isAndroid) {
-              final androidInfo = await DeviceInfoPlugin().androidInfo;
-              if (androidInfo.version.sdkInt >= 33) {
-                statuses = await [
-                  Permission.photos,
-                  Permission.videos,
-                  Permission.audio,
-                ].request();
-              } else {
-                statuses = await [Permission.storage].request();
-              }
-            } else {
-              statuses = await [Permission.storage].request();
-            }
-            
-            bool granted = statuses.values.any((s) => s.isGranted);
-            
-            if (granted) {
-              if (context.mounted) {
-                context.read<LibraryBloc>().add(LoadLocalMusic());
-              }
-            } else {
-              // Permission denied, show dialog to open settings
-              if (context.mounted) {
-                final shouldOpenSettings = await showDialog<bool>(
-                  context: context,
-                  builder: (context) => AlertDialog(
-                    title: const Text('需要权限'),
-                    content: const Text('需要存储权限才能扫描本地音乐，请在设置中开启权限'),
-                    actions: [
-                      TextButton(
-                        onPressed: () => Navigator.pop(context, false),
-                        child: const Text('取消'),
-                      ),
-                      TextButton(
-                        onPressed: () => Navigator.pop(context, true),
-                        child: const Text('去设置'),
-                      ),
-                    ],
-                  ),
-                );
-                
-                if (shouldOpenSettings == true) {
-                  await openAppSettings();
-                }
-              }
-            }
-          },
-          child: const Text('授予权限'),
-        ),
       );
     }
 

@@ -1529,16 +1529,12 @@ class _AddToPlaylistSheetState extends State<_AddToPlaylistSheet> {
                         color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5),
                       ),
                     ),
-                    const SizedBox(height: 16),
-                    ElevatedButton.icon(
-                      onPressed: _showCreatePlaylistDialog,
-                      icon: const Icon(Icons.add, size: 18),
-                      label: const Text('创建播放列表'),
-                      style: ElevatedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(20),
-                        ),
+                    const SizedBox(height: 8),
+                    Text(
+                      '请先在音乐库中创建播放列表',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.4),
                       ),
                     ),
                   ],
