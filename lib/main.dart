@@ -7,11 +7,23 @@ import 'package:music_app/core/constants/app_constants.dart';
 import 'package:music_app/services/music_api_service.dart';
 import 'package:music_app/services/audio_player_service.dart';
 
-void main() async {
+Future<void> _initJustAudioBackground() async {
+  try {
+    await JustAudioBackground.init().timeout(
+      const Duration(seconds: 5),
+      onTimeout: () {
+        debugPrint('JustAudioBackground.init() timed out, continuing without it');
+      },
+    );
+  } catch (e) {
+    debugPrint('JustAudioBackground.init() failed: $e, continuing without it');
+  }
+}
+
+Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   
-  // 初始化后台音频播放
-  await JustAudioBackground.init();
+  await _initJustAudioBackground();
   
   await SystemChrome.setPreferredOrientations([
     DeviceOrientation.portraitUp,
@@ -19,11 +31,13 @@ void main() async {
   ]);
 
   await Hive.initFlutter();
-  await Hive.openBox(AppConstants.playlistBox);
-  await Hive.openBox(AppConstants.recentPlaysBox);
-  await Hive.openBox(AppConstants.settingsBox);
-  await Hive.openBox(AppConstants.downloadTasksBox);
-  await Hive.openBox(AppConstants.playbackBox);
+  await Future.wait([
+    Hive.openBox(AppConstants.playlistBox),
+    Hive.openBox(AppConstants.recentPlaysBox),
+    Hive.openBox(AppConstants.settingsBox),
+    Hive.openBox(AppConstants.downloadTasksBox),
+    Hive.openBox(AppConstants.playbackBox),
+  ]);
 
   final settingsBox = Hive.box(AppConstants.settingsBox);
   final savedCustomUrl = settingsBox.get('customApiUrl', defaultValue: '');

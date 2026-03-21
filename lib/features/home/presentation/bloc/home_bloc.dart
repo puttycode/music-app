@@ -317,12 +317,35 @@ class HomeBloc extends Bloc<HomeEvent, HomeState> {
       AppLogger.log('Load recent plays failed: $e');
     }
 
-    // 并行加载所有数据
     final results = await Future.wait([
-      _apiService.getTopCharts().catchError((_) => <Song>[]),
-      _loadDailyRecommendations(),
-      _loadCuratedArtists(),
-      _loadCuratedAlbums(),
+      _apiService.getTopCharts().timeout(
+        const Duration(seconds: 10),
+        onTimeout: () {
+          AppLogger.log('getTopCharts() timed out');
+          return <Song>[];
+        },
+      ).catchError((_) => <Song>[]),
+      _loadDailyRecommendations().timeout(
+        const Duration(seconds: 15),
+        onTimeout: () {
+          AppLogger.log('_loadDailyRecommendations() timed out');
+          return <Song>[];
+        },
+      ).catchError((_) => <Song>[]),
+      _loadCuratedArtists().timeout(
+        const Duration(seconds: 15),
+        onTimeout: () {
+          AppLogger.log('_loadCuratedArtists() timed out');
+          return <Artist>[];
+        },
+      ).catchError((_) => <Artist>[]),
+      _loadCuratedAlbums().timeout(
+        const Duration(seconds: 15),
+        onTimeout: () {
+          AppLogger.log('_loadCuratedAlbums() timed out');
+          return <Album>[];
+        },
+      ).catchError((_) => <Album>[]),
     ]);
 
     final topCharts = results[0] as List<Song>;
