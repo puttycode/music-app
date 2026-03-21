@@ -94,6 +94,7 @@ class _PlayerViewState extends State<_PlayerView> {
   StreamSubscription? _songChangeSubscription;
   StreamSubscription? _durationSubscription;
   StreamSubscription? _playerStateSubscription;
+  StreamSubscription? _errorSubscription;
   Duration _actualDuration = Duration.zero;
   bool _isPlaying = false;
 
@@ -104,6 +105,7 @@ class _PlayerViewState extends State<_PlayerView> {
     _initSongChangeListener();
     _initDurationListener();
     _initPlayerStateListener();
+    _initErrorListener();
   }
 
   @override
@@ -112,6 +114,7 @@ class _PlayerViewState extends State<_PlayerView> {
     _songChangeSubscription?.cancel();
     _durationSubscription?.cancel();
     _playerStateSubscription?.cancel();
+    _errorSubscription?.cancel();
     super.dispose();
   }
 
@@ -157,6 +160,28 @@ class _PlayerViewState extends State<_PlayerView> {
         setState(() {
           _isPlaying = state.playing;
         });
+      }
+    });
+  }
+  
+  void _initErrorListener() {
+    _errorSubscription = AudioPlayerService.instance.errorStream.listen((error) {
+      if (error != null && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(error),
+            backgroundColor: Colors.red,
+            behavior: SnackBarBehavior.floating,
+            duration: const Duration(seconds: 3),
+            action: SnackBarAction(
+              label: '关闭',
+              textColor: Colors.white,
+              onPressed: () {
+                ScaffoldMessenger.of(context).hideCurrentSnackBar();
+              },
+            ),
+          ),
+        );
       }
     });
   }
