@@ -178,8 +178,6 @@ Future<void> _updateDurationInRecentPlays(String songId, Duration duration) asyn
   Future<void> _prepareAudioSource(Song song) async {
     try {
       AppLogger.log('_prepareAudioSource: ${song.title}, id: ${song.id}');
-      
-      Duration? correctDuration = song.duration > Duration.zero ? song.duration : null;
 
       if (song.isLocal && song.localPath != null) {
         AppLogger.log('Setting local file: ${song.localPath}');
@@ -191,56 +189,48 @@ Future<void> _updateDurationInRecentPlays(String songId, Duration duration) asyn
             artist: song.artist,
             album: song.album,
             artUri: song.albumArt != null ? Uri.tryParse(song.albumArt!) : null,
-            duration: correctDuration,
           ),
         );
         await _audioPlayer.setAudioSource(audioSource);
         AppLogger.log('Local file set successfully');
-      } else {
-        var audioUrl = song.audioUrl;
-        var songDetail = song;
-
-        // 总是获取播放URL
-        AppLogger.log('Fetching audio URL for song: ${song.id}');
-        audioUrl = await MusicApiService.instance.getSongUrl(song.id);
-        AppLogger.log('Got audio URL: $audioUrl');
-
-        // 获取歌曲详情
-        final detail = await MusicApiService.instance.getSongDetail(song.id);
-        if (detail != null) {
-          songDetail = detail;
-          if (detail.duration > Duration.zero) {
-            correctDuration = detail.duration;
-            AppLogger.log('Got duration from API: ${detail.duration.inSeconds}s');
-          }
-        }
-
-        if (audioUrl != null && audioUrl.isNotEmpty) {
-          AppLogger.log('Setting audio source with URL: $audioUrl');
-          final audioSource = AudioSource.uri(
-            Uri.parse(audioUrl),
-            tag: MediaItem(
-              id: song.id,
-              title: song.title,
-              artist: song.artist,
-              album: song.album,
-              artUri: song.albumArt != null ? Uri.tryParse(song.albumArt!) : null,
-              duration: correctDuration,
-            ),
-          );
-          await _audioPlayer.setAudioSource(audioSource);
-          AppLogger.log('Audio source set successfully');
-          
-          // 检查duration
-          final playerDuration = _audioPlayer.duration;
-          AppLogger.log('Player duration after load: ${playerDuration?.inSeconds ?? 0}s');
-        } else {
-          AppLogger.log('ERROR: Failed to get audio URL for song: ${song.id}');
-        }
+        return;
       }
+
+      // 获取播放URL
+      AppLogger.log('Fetching audio URL for song: ${song.id}');
+      final audioUrl = await MusicApiService.instance.getSongUrl(song.id);
+      
+      if (audioUrl == null || audioUrl.isEmpty) {
+        AppLogger.log('ERROR: Failed to get audio URL');
+        return;
+      }
+      
+      AppLogger.log('Got audio URL: $audioUrl');
+
+      // 设置音频源
+      final uri = Uri.parse(audioUrl);
+      AppLogger.log('Parsed URI: $uri');
+      
+      final audioSource = AudioSource.uri(
+        uri,
+        tag: MediaItem(
+          id: song.id,
+          title: song.title,
+          artist: song.artist,
+          album: song.album,
+          artUri: song.albumArt != null ? Uri.tryParse(song.albumArt!) : null,
+        ),
+      );
+      
+      await _audioPlayer.setAudioSource(audioSource);
+      AppLogger.log('Audio source set successfully');
+      
+      final duration = _audioPlayer.duration;
+      AppLogger.log('Duration after load: ${duration?.inSeconds ?? 0}s');
+      
     } catch (e, stack) {
       AppLogger.log('Error preparing audio source: $e');
-      AppLogger.log('Stack: $stack');
+      AppLogger.log('Stack trace: $stack');
     }
   }
 
@@ -366,31 +356,22 @@ Future<void> _updateDurationInRecentPlays(String songId, Duration duration) asyn
     }
 
     final processingState = _audioPlayer.processingState;
-    AppLogger.log('play() called, processingState: $processingState');
+    AppLogger.log('play() called, processingState: $processingState, hasAudioSource: ${_audioPlayer.audioSource != null}');
 
-    if (_audioPlayer.audioSource != null) {
-      try {
-        if (processingState == ProcessingState.completed) {
-          await _audioPlayer.seek(Duration.zero);
-        }
-        await _audioPlayer.play();
-        AppLogger.log('play() resumed existing source');
-        return;
-      } catch (e) {
-        AppLogger.log('Resume existing source failed: $e');
+    try {
+      if (processingState == ProcessingState.idle || _audioPlayer.audioSource == null) {
+        AppLogger.log('Preparing audio source first...');
+        await _prepareAudioSource(song);
       }
-    }
-
-    if (processingState == ProcessingState.idle) {
-      AppLogger.log('Audio source not ready, preparing...');
-      await _prepareAudioSource(song);
-    }
-
-    AppLogger.log('play() calling _playSong for: ${song.title}');
-    await _playSong(song);
-
-    if (_audioPlayer.audioSource == null) {
-      AppLogger.log('play() failed: audioSource is still null after _playSong');
+      
+      if (processingState == ProcessingState.completed) {
+        await _audioPlayer.seek(Duration.zero);
+      }
+      
+      await _audioPlayer.play();
+      AppLogger.log('play() success');
+    } catch (e) {
+      AppLogger.log('play() error: $e');
     }
   }
 
