@@ -176,43 +176,12 @@ Future<void> _updateDurationInRecentPlays(String songId, Duration duration) asyn
   }
 
   Future<void> _prepareAudioSource(Song song) async {
-    try {
-      AppLogger.log('_prepareAudioSource: ${song.title}, id: ${song.id}');
+    AppLogger.log('_prepareAudioSource: ${song.title}, id: ${song.id}');
 
-      if (song.isLocal && song.localPath != null) {
-        AppLogger.log('Setting local file: ${song.localPath}');
-        final audioSource = AudioSource.file(
-          song.localPath!,
-          tag: MediaItem(
-            id: song.id,
-            title: song.title,
-            artist: song.artist,
-            album: song.album,
-            artUri: song.albumArt != null ? Uri.tryParse(song.albumArt!) : null,
-          ),
-        );
-        await _audioPlayer.setAudioSource(audioSource);
-        AppLogger.log('Local file set successfully');
-        return;
-      }
-
-      // 获取播放URL
-      AppLogger.log('Fetching audio URL for song: ${song.id}');
-      final audioUrl = await MusicApiService.instance.getSongUrl(song.id);
-      
-      if (audioUrl == null || audioUrl.isEmpty) {
-        AppLogger.log('ERROR: Failed to get audio URL');
-        return;
-      }
-      
-      AppLogger.log('Got audio URL: $audioUrl');
-
-      // 设置音频源
-      final uri = Uri.parse(audioUrl);
-      AppLogger.log('Parsed URI: $uri');
-      
-      final audioSource = AudioSource.uri(
-        uri,
+    if (song.isLocal && song.localPath != null) {
+      AppLogger.log('Setting local file: ${song.localPath}');
+      final audioSource = AudioSource.file(
+        song.localPath!,
         tag: MediaItem(
           id: song.id,
           title: song.title,
@@ -221,17 +190,44 @@ Future<void> _updateDurationInRecentPlays(String songId, Duration duration) asyn
           artUri: song.albumArt != null ? Uri.tryParse(song.albumArt!) : null,
         ),
       );
-      
       await _audioPlayer.setAudioSource(audioSource);
-      AppLogger.log('Audio source set successfully');
-      
-      final duration = _audioPlayer.duration;
-      AppLogger.log('Duration after load: ${duration?.inSeconds ?? 0}s');
-      
-    } catch (e, stack) {
-      AppLogger.log('Error preparing audio source: $e');
-      AppLogger.log('Stack trace: $stack');
+      AppLogger.log('Local file set successfully');
+      return;
     }
+
+    // 获取播放URL
+    AppLogger.log('Fetching audio URL for song: ${song.id}');
+    final audioUrl = await MusicApiService.instance.getSongUrl(song.id);
+    AppLogger.log('getSongUrl returned: $audioUrl');
+    
+    if (audioUrl == null || audioUrl.isEmpty) {
+      AppLogger.log('ERROR: Failed to get audio URL - URL is null or empty');
+      throw Exception('Failed to get audio URL');
+    }
+    
+    AppLogger.log('Got audio URL: $audioUrl');
+
+    // 设置音频源
+    final uri = Uri.parse(audioUrl);
+    AppLogger.log('Parsed URI: $uri');
+    
+    final audioSource = AudioSource.uri(
+      uri,
+      tag: MediaItem(
+        id: song.id,
+        title: song.title,
+        artist: song.artist,
+        album: song.album,
+        artUri: song.albumArt != null ? Uri.tryParse(song.albumArt!) : null,
+      ),
+    );
+    
+    AppLogger.log('Calling setAudioSource...');
+    await _audioPlayer.setAudioSource(audioSource);
+    AppLogger.log('Audio source set successfully');
+    
+    final duration = _audioPlayer.duration;
+    AppLogger.log('Duration after load: ${duration?.inSeconds ?? 0}s');
   }
 
   Future<void> _saveCurrentSong(Song song) async {
@@ -359,19 +355,28 @@ Future<void> _updateDurationInRecentPlays(String songId, Duration duration) asyn
     AppLogger.log('play() called, processingState: $processingState, hasAudioSource: ${_audioPlayer.audioSource != null}');
 
     try {
-      if (processingState == ProcessingState.idle || _audioPlayer.audioSource == null) {
-        AppLogger.log('Preparing audio source first...');
+      // 如果音频源未准备好，先准备
+      if (_audioPlayer.audioSource == null) {
+        AppLogger.log('Preparing audio source...');
         await _prepareAudioSource(song);
+        
+        // 检查是否成功设置
+        if (_audioPlayer.audioSource == null) {
+          AppLogger.log('ERROR: Failed to set audio source');
+          return;
+        }
       }
       
       if (processingState == ProcessingState.completed) {
         await _audioPlayer.seek(Duration.zero);
       }
       
+      AppLogger.log('Calling _audioPlayer.play()');
       await _audioPlayer.play();
-      AppLogger.log('play() success');
-    } catch (e) {
+      AppLogger.log('play() success, playing: ${_audioPlayer.playing}');
+    } catch (e, stack) {
       AppLogger.log('play() error: $e');
+      AppLogger.log('Stack: $stack');
     }
   }
 
