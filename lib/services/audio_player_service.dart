@@ -113,11 +113,6 @@ Future<void> _updateDurationInRecentPlays(String songId, Duration duration) asyn
       AppLogger.log('Error updating duration in recent plays: $e');
     }
   }
-      }
-    } catch (e) {
-      AppLogger.log('Error updating duration in recent plays: $e');
-    }
-  }
 
   void _onSongComplete() {
     if (_isTransitioning) {
