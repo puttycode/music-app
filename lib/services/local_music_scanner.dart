@@ -88,7 +88,7 @@ class LocalMusicScanner {
             }
 
             songs.add(Song(
-              id: entity.path.hashCode,
+              id: entity.path.hashCode.toString(),
               title: title,
               artist: artist,
               album: album,
