@@ -114,7 +114,7 @@ class LibraryBloc extends Bloc<LibraryEvent, LibraryState> {
       final downloadedSongs = DownloadService.instance.getDownloadedSongs();
       
       // Combine and deduplicate (prefer downloaded versions with correct metadata)
-      final songsMap = <int, Song>{};
+      final songsMap = <String, Song>{};
       for (final song in scannedSongs) {
         songsMap[song.id] = song;
       }

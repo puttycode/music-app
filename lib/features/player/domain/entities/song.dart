@@ -1,7 +1,7 @@
 import 'package:equatable/equatable.dart';
 
 class Song extends Equatable {
-  final int id;
+  final String id;
   final String title;
   final String artist;
   final String album;
@@ -54,14 +54,15 @@ class Song extends Equatable {
     }
     
     return Song(
-      id: json['id'] ?? 0,
-      title: json['title'] ?? 'Unknown',
-      artist: json['artist']?['name'] ?? json['artist_name'] ?? 'Unknown Artist',
-      album: json['album']?['title'] ?? json['album_title'] ?? 'Unknown Album',
+      id: json['id']?.toString() ?? json['rid']?.toString() ?? '0',
+      title: json['title'] ?? json['name'] ?? 'Unknown',
+      artist: json['artist']?['name'] ?? json['artist_name'] ?? json['artist'] ?? 'Unknown Artist',
+      album: json['album']?['title'] ?? json['album_title'] ?? json['album'] ?? 'Unknown Album',
       albumArt: json['album']?['cover_medium'] ?? 
                 json['album']?['cover'] ?? 
                 json['cover_medium'] ??
-                json['cover'],
+                json['cover'] ??
+                json['albumArt'],
       audioUrl: json['preview'] ?? json['audio_url'],
       duration: duration,
       isLocal: false,
@@ -94,7 +95,7 @@ class Song extends Equatable {
     }
     
     return Song(
-      id: json['id'] ?? 0,
+      id: json['id']?.toString() ?? '0',
       title: json['title'] ?? 'Unknown',
       artist: json['artist'] ?? 'Unknown Artist',
       album: json['album'] ?? 'Unknown Album',
@@ -125,7 +126,7 @@ class Song extends Equatable {
   }
 
   Song copyWith({
-    int? id,
+    String? id,
     String? title,
     String? artist,
     String? album,

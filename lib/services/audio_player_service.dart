@@ -96,19 +96,23 @@ class AudioPlayerService {
     }
   }
   
-  Future<void> _updateDurationInRecentPlays(int songId, Duration duration) async {
+Future<void> _updateDurationInRecentPlays(String songId, Duration duration) async {
     try {
       final recentBox = Hive.box(AppConstants.recentPlaysBox);
       
-      for (final key in recentBox.keys) {
+      for (var key in recentBox.keys.toList()) {
         final item = recentBox.get(key);
-        if (item is Map && item['id'] == songId) {
-          final updatedData = Map<String, dynamic>.from(item);
-          updatedData['duration'] = duration.inMilliseconds;
-          await recentBox.put(key, updatedData);
+        if (item is Map && item['id']?.toString() == songId) {
+          item['duration'] = duration.inMilliseconds;
+          await recentBox.put(key, item);
           AppLogger.log('Updated duration in recent plays for song $songId');
           break;
         }
+      }
+    } catch (e) {
+      AppLogger.log('Error updating duration in recent plays: $e');
+    }
+  }
       }
     } catch (e) {
       AppLogger.log('Error updating duration in recent plays: $e');
@@ -292,7 +296,7 @@ class AudioPlayerService {
       final existingKeys = recentBox.keys.where((key) {
         final item = recentBox.get(key);
         if (item is Map) {
-          return item['id'] == song.id;
+          return item['id']?.toString() == song.id;
         }
         return false;
       }).toList();

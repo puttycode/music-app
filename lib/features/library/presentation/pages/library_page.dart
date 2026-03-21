@@ -401,7 +401,7 @@ class _LocalSongsTabState extends State<_LocalSongsTab> {
         .toList();
     
     // Deduplicate by song id, preferring local versions (which include downloaded)
-    final songsMap = <int, Song>{};
+    final songsMap = <String, Song>{};
     for (final song in localSongs) {
       songsMap[song.id] = song;
     }

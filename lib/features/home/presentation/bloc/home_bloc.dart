@@ -452,7 +452,7 @@ class HomeBloc extends Bloc<HomeEvent, HomeState> {
     
     // 按目标配比合并结果: 华语8, 欧美3, 日语2, 韩语2
     final recommendations = <Song>[];
-    final usedIds = <int>{};
+    final usedIds = <String>{};
     final languageCounts = <String, int>{'chinese': 0, 'western': 0, 'japanese': 0, 'korean': 0};
     
     void addSongs(List<Song> songs, String langKey, int maxCount) {
@@ -554,7 +554,7 @@ class HomeBloc extends Bloc<HomeEvent, HomeState> {
       final existingKeys = recentBox.keys.where((key) {
         final item = recentBox.get(key);
         if (item is Map) {
-          return item['id'] == event.song.id;
+          return item['id']?.toString() == event.song.id;
         }
         return false;
       }).toList();

@@ -372,7 +372,7 @@ class CustomApi implements MusicApi {
     }
     
     return Song(
-      id: int.tryParse((track['rid'] ?? track['id']).toString()) ?? DateTime.now().millisecondsSinceEpoch,
+      id: (track['rid'] ?? track['id'])?.toString() ?? DateTime.now().millisecondsSinceEpoch.toString(),
       title: track['name']?.toString() ?? track['title']?.toString() ?? 'Unknown',
       artist: track['artist']?.toString() ?? 'Unknown Artist',
       album: track['album']?.toString() ?? 'Unknown Album',
