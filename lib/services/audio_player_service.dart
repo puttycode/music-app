@@ -178,44 +178,59 @@ class AudioPlayerService {
 
   Future<void> _prepareAudioSource(Song song) async {
     try {
-      // 创建媒体信息用于通知栏显示
-      final mediaItem = MediaItem(
-        id: song.id.toString(),
-        title: song.title,
-        artist: song.artist,
-        album: song.album,
-        artUri: song.albumArt != null ? Uri.tryParse(song.albumArt!) : null,
-        duration: song.duration > Duration.zero ? song.duration : null,
-      );
+      Duration? correctDuration = song.duration > Duration.zero ? song.duration : null;
 
       if (song.isLocal && song.localPath != null) {
         AppLogger.log('Setting local file: ${song.localPath}');
         final audioSource = AudioSource.file(
           song.localPath!,
-          tag: mediaItem,
+          tag: MediaItem(
+            id: song.id.toString(),
+            title: song.title,
+            artist: song.artist,
+            album: song.album,
+            artUri: song.albumArt != null ? Uri.tryParse(song.albumArt!) : null,
+            duration: correctDuration,
+          ),
         );
         await _audioPlayer.setAudioSource(audioSource);
       } else {
         var audioUrl = song.audioUrl;
-        if (audioUrl == null || audioUrl.isEmpty) {
-          AppLogger.log('Fetching audio URL from API for song: ${song.id}');
-          audioUrl = await MusicApiService.instance.getSongUrl(song.id.toString());
-          AppLogger.log('Resolved audio URL: $audioUrl');
-          
-          if (audioUrl == null || audioUrl.isEmpty) {
-            AppLogger.log('getSongUrl failed, trying getSongDetail as fallback for song: ${song.id}');
-            final songDetail = await MusicApiService.instance.getSongDetail(song.id.toString());
-            if (songDetail != null) {
-              audioUrl = songDetail.audioUrl;
-              AppLogger.log('Fallback getSongDetail returned audio URL: $audioUrl');
+        var songDetail = song;
+
+        if (audioUrl == null || audioUrl.isEmpty || song.duration == Duration.zero) {
+          AppLogger.log('Fetching audio URL and detail from API for song: ${song.id}');
+          final results = await Future.wait([
+            MusicApiService.instance.getSongUrl(song.id.toString()),
+            MusicApiService.instance.getSongDetail(song.id.toString()),
+          ]);
+
+          audioUrl = results[0] as String?;
+          final detail = results[1] as Song?;
+
+          if (detail != null) {
+            songDetail = detail;
+            if (detail.duration > Duration.zero) {
+              correctDuration = detail.duration;
+              AppLogger.log('Got correct duration from API: ${detail.duration.inSeconds}s');
             }
           }
+
+          AppLogger.log('Resolved audio URL: $audioUrl');
         }
+
         if (audioUrl != null && audioUrl.isNotEmpty) {
           AppLogger.log('Setting audio URL: $audioUrl');
           final audioSource = AudioSource.uri(
             Uri.parse(audioUrl),
-            tag: mediaItem,
+            tag: MediaItem(
+              id: song.id.toString(),
+              title: song.title,
+              artist: song.artist,
+              album: song.album,
+              artUri: song.albumArt != null ? Uri.tryParse(song.albumArt!) : null,
+              duration: correctDuration,
+            ),
           );
           await _audioPlayer.setAudioSource(audioSource);
         } else {

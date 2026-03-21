@@ -399,7 +399,7 @@ class HomeBloc extends Bloc<HomeEvent, HomeState> {
     final japaneseShuffled = _shuffleList(japaneseArtists.toList(), seed + 2);
     final koreanShuffled = _shuffleList(koreanArtists.toList(), seed + 3);
 
-    final selectedChinese = chineseShuffled.take(5).toList();
+    final selectedChinese = chineseShuffled.take(8).toList();
     final selectedWestern = westernShuffled.take(3).toList();
     final selectedJapanese = japaneseShuffled.take(2).toList();
     final selectedKorean = koreanShuffled.take(2).toList();
@@ -423,50 +423,53 @@ class HomeBloc extends Bloc<HomeEvent, HomeState> {
       final songs = results[i];
       final artist = shuffledAll[i];
       
-      List<Song> targetList;
       if (selectedChinese.contains(artist)) {
-        targetList = chineseSongs;
+        for (final song in songs.take(2)) {
+          if (!chineseSongs.any((s) => s.id == song.id)) {
+            chineseSongs.add(song);
+          }
+        }
       } else if (selectedWestern.contains(artist)) {
-        targetList = westernSongs;
+        for (final song in songs.take(2)) {
+          if (!westernSongs.any((s) => s.id == song.id)) {
+            westernSongs.add(song);
+          }
+        }
       } else if (selectedJapanese.contains(artist)) {
-        targetList = japaneseSongs;
-      } else {
-        targetList = koreanSongs;
-      }
-      
-      for (final song in songs.take(3)) {
-        if (!targetList.any((s) => s.id == song.id)) {
-          targetList.add(song);
+        for (final song in songs.take(2)) {
+          if (!japaneseSongs.any((s) => s.id == song.id)) {
+            japaneseSongs.add(song);
+          }
+        }
+      } else if (selectedKorean.contains(artist)) {
+        for (final song in songs.take(2)) {
+          if (!koreanSongs.any((s) => s.id == song.id)) {
+            koreanSongs.add(song);
+          }
         }
       }
     }
     
-    // 按目标配比合并结果
+    // 按目标配比合并结果: 华语8, 欧美3, 日语2, 韩语2
     final recommendations = <Song>[];
     final usedIds = <int>{};
     
-    void addWithDedupe(List<Song> songs, int count) {
+    void addSongs(List<Song> songs, int maxCount) {
       for (final song in songs) {
         if (recommendations.length >= 15) break;
         if (!usedIds.contains(song.id)) {
           usedIds.add(song.id);
           recommendations.add(song);
-        }
-      }
-      // 如果还不够，从该区域补充
-      for (final song in songs) {
-        if (recommendations.length >= 15) break;
-        if (!usedIds.contains(song.id)) {
-          usedIds.add(song.id);
-          recommendations.add(song);
+          if (recommendations.length >= maxCount) break;
         }
       }
     }
     
-    addWithDedupe(chineseSongs, 8);
-    addWithDedupe(westernSongs, 3);
-    addWithDedupe(japaneseSongs, 2);
-    addWithDedupe(koreanSongs, 2);
+    // 按配比顺序添加
+    addSongs(chineseSongs, 8);
+    addSongs(westernSongs, 11);
+    addSongs(japaneseSongs, 13);
+    addSongs(koreanSongs, 15);
     
     return recommendations.take(15).toList();
   }
@@ -477,22 +480,43 @@ class HomeBloc extends Bloc<HomeEvent, HomeState> {
     final shuffledArtists = List<Map<String, String>>.from(curatedHotArtists)..shuffle();
     final selectedArtists = shuffledArtists.take(10).toList();
     
-    // 并行搜索所有艺人
+    // 第一轮：并行搜索所有艺人获取ID
     final searchFutures = selectedArtists.map(
       (artistInfo) => _apiService.searchArtists(artistInfo['name']!).catchError((_) => <Artist>[]),
     );
-    final results = await Future.wait(searchFutures);
+    final searchResults = await Future.wait(searchFutures);
     
-    // 提取结果
-    final artists = <Artist>[];
-    for (int i = 0; i < results.length; i++) {
-      final resultsList = results[i];
+    // 提取有ID的艺人
+    final artistsWithId = <Artist>[];
+    final artistIdMap = <String, String>{};
+    for (int i = 0; i < searchResults.length; i++) {
+      final resultsList = searchResults[i];
       if (resultsList.isNotEmpty) {
-        artists.add(resultsList.first);
+        final artist = resultsList.first;
+        if (artist.id.isNotEmpty) {
+          artistsWithId.add(artist);
+          artistIdMap[artist.name] = artist.id;
+        }
       }
     }
     
-    return artists;
+    // 第二轮：获取艺人详情（包括musicNum）
+    final artistsWithDetail = <Artist>[];
+    final detailFutures = artistsWithId.map(
+      (artist) => _apiService.getArtistDetailWithSongs(artist.id).catchError((_) => (null, <Song>[])),
+    );
+    final detailResults = await Future.wait(detailFutures);
+    
+    for (int i = 0; i < detailResults.length; i++) {
+      final (detailArtist, _) = detailResults[i];
+      if (detailArtist != null) {
+        artistsWithDetail.add(detailArtist);
+      } else {
+        artistsWithDetail.add(artistsWithId[i]);
+      }
+    }
+    
+    return artistsWithDetail.take(10).toList();
   }
 
   // 加载精选新专辑 - 并行请求优化
