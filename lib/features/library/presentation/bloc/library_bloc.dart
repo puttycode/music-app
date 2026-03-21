@@ -277,9 +277,15 @@ class LibraryBloc extends Bloc<LibraryEvent, LibraryState> {
   }
 
   Future<void> _onCreatePlaylist(CreatePlaylist event, Emitter<LibraryState> emit) async {
-    // Check for duplicate name
+    final trimmedName = event.name.trim();
+    if (trimmedName.isEmpty) {
+      emit(state.copyWith(error: '播放列表名称不能为空'));
+      return;
+    }
+    
+    final normalizedName = trimmedName.toLowerCase();
     final existingPlaylist = state.playlists.firstWhere(
-      (p) => p.name == event.name,
+      (p) => p.name.trim().toLowerCase() == normalizedName,
       orElse: () => Playlist(id: '', name: '', songs: []),
     );
     
@@ -291,14 +297,14 @@ class LibraryBloc extends Bloc<LibraryEvent, LibraryState> {
     final playlistId = DateTime.now().millisecondsSinceEpoch.toString();
     final newPlaylist = Playlist(
       id: playlistId,
-      name: event.name,
+      name: trimmedName,
       songs: const [],
     );
     
     final playlistBox = Hive.box(AppConstants.playlistBox);
     await playlistBox.put(playlistId, {
       'id': playlistId,
-      'name': event.name,
+      'name': trimmedName,
       'songs': <Map>[],
     });
     
@@ -322,9 +328,15 @@ class LibraryBloc extends Bloc<LibraryEvent, LibraryState> {
   }
 
   Future<void> _onRenamePlaylist(RenamePlaylist event, Emitter<LibraryState> emit) async {
-    // Check for duplicate name (excluding current playlist)
+    final trimmedNewName = event.newName.trim();
+    if (trimmedNewName.isEmpty) {
+      emit(state.copyWith(error: '播放列表名称不能为空'));
+      return;
+    }
+    
+    final normalizedName = trimmedNewName.toLowerCase();
     final existingPlaylist = state.playlists.firstWhere(
-      (p) => p.name == event.newName && p.id != event.playlistId,
+      (p) => p.id != event.playlistId && p.name.trim().toLowerCase() == normalizedName,
       orElse: () => Playlist(id: '', name: '', songs: []),
     );
     
@@ -337,13 +349,13 @@ class LibraryBloc extends Bloc<LibraryEvent, LibraryState> {
     final playlistData = playlistBox.get(event.playlistId);
     
     if (playlistData is Map) {
-      playlistData['name'] = event.newName;
+      playlistData['name'] = trimmedNewName;
       await playlistBox.put(event.playlistId, playlistData);
     }
     
     final updatedPlaylists = state.playlists.map((p) {
       if (p.id == event.playlistId) {
-        return p.copyWith(name: event.newName);
+        return p.copyWith(name: trimmedNewName);
       }
       return p;
     }).toList();

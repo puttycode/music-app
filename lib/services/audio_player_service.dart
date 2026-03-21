@@ -155,15 +155,22 @@ class AudioPlayerService {
     
     _playlistSubject.add(songs);
     _currentIndexSubject.add(startIndex);
-    final song = songs[startIndex];
+    var song = songs[startIndex];
     AppLogger.log('Current song: ${song.title} - ${song.artist}, url: ${song.audioUrl}');
     _currentSongSubject.add(song);
-    await _saveToRecentPlays(song);
-    await _saveCurrentSong(song);
     
     if (autoPlay) {
       await _playSong(song);
+      final actualDuration = _audioPlayer.duration;
+      if (actualDuration != null && song.duration != actualDuration) {
+        song = song.copyWith(duration: actualDuration);
+        _currentSongSubject.add(song);
+      }
+      await _saveToRecentPlays(song);
+      await _saveCurrentSong(song);
     } else {
+      await _saveToRecentPlays(song);
+      await _saveCurrentSong(song);
       AppLogger.log('AutoPlay disabled, preparing audio source');
       await _prepareAudioSource(song);
     }
@@ -327,17 +334,38 @@ class AudioPlayerService {
 
   Future<void> play() async {
     final song = currentSong;
-    if (song != null) {
-      final processingState = _audioPlayer.processingState;
-      AppLogger.log('play() called, processingState: $processingState');
-      
-      // 如果音频源未准备好，先准备
-      if (processingState == ProcessingState.idle) {
-        AppLogger.log('Audio source not ready, preparing...');
-        await _prepareAudioSource(song);
+    if (song == null) {
+      AppLogger.log('play() called but no current song');
+      return;
+    }
+
+    final processingState = _audioPlayer.processingState;
+    AppLogger.log('play() called, processingState: $processingState');
+
+    if (_audioPlayer.audioSource != null) {
+      try {
+        if (processingState == ProcessingState.completed) {
+          await _audioPlayer.seek(Duration.zero);
+        }
+        await _audioPlayer.play();
+        AppLogger.log('play() resumed existing source');
+        return;
+      } catch (e) {
+        AppLogger.log('Resume existing source failed: $e');
       }
     }
-    await _audioPlayer.play();
+
+    if (processingState == ProcessingState.idle) {
+      AppLogger.log('Audio source not ready, preparing...');
+      await _prepareAudioSource(song);
+    }
+
+    AppLogger.log('play() calling _playSong for: ${song.title}');
+    await _playSong(song);
+
+    if (_audioPlayer.audioSource == null) {
+      AppLogger.log('play() failed: audioSource is still null after _playSong');
+    }
   }
 
   Future<void> pause() async {
@@ -357,10 +385,16 @@ class AudioPlayerService {
     }
     
     _currentIndexSubject.add(nextIndex);
-    _currentSongSubject.add(playlist[nextIndex]);
-    await _playSong(playlist[nextIndex]);
-    await _saveToRecentPlays(playlist[nextIndex]);
-    await _saveCurrentSong(playlist[nextIndex]);
+    var song = playlist[nextIndex];
+    _currentSongSubject.add(song);
+    await _playSong(song);
+    final actualDuration = _audioPlayer.duration;
+    if (actualDuration != null && song.duration != actualDuration) {
+      song = song.copyWith(duration: actualDuration);
+      _currentSongSubject.add(song);
+    }
+    await _saveToRecentPlays(song);
+    await _saveCurrentSong(song);
   }
 
   Future<void> playPrevious() async {
@@ -375,10 +409,16 @@ class AudioPlayerService {
     if (prevIndex < 0) prevIndex = playlist.length - 1;
     
     _currentIndexSubject.add(prevIndex);
-    _currentSongSubject.add(playlist[prevIndex]);
-    await _playSong(playlist[prevIndex]);
-    await _saveToRecentPlays(playlist[prevIndex]);
-    await _saveCurrentSong(playlist[prevIndex]);
+    var song = playlist[prevIndex];
+    _currentSongSubject.add(song);
+    await _playSong(song);
+    final actualDuration = _audioPlayer.duration;
+    if (actualDuration != null && song.duration != actualDuration) {
+      song = song.copyWith(duration: actualDuration);
+      _currentSongSubject.add(song);
+    }
+    await _saveToRecentPlays(song);
+    await _saveCurrentSong(song);
   }
 
   Future<void> seek(Duration position) async {
