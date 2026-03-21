@@ -201,27 +201,53 @@ final List<Map<String, String>> curatedHotArtists = [
 
 // 高质量新专辑推荐关键词
 final List<String> curatedAlbumKeywords = [
-  // 年度热门
-  '2024 年度专辑',
-  '格莱美',
-  '金曲奖',
-  '最佳专辑',
-  // 音乐风格
-  '爵士精选',
-  '古典名曲',
-  '独立音乐',
-  '民谣精选',
-  '电子音乐',
-  // 华语精选
-  '华语经典',
-  '港台金曲',
-  '独立民谣',
-  '摇滚精选',
-  // 欧美精选
-  'Billboard',
-  'UK Charts',
-  'Indie Rock',
-  'Alternative',
+  // 华语经典专辑
+  '范特西',
+  '叶惠美',
+  '我很忙',
+  '七里香',
+  '十一月的萧邦',
+  '依然范特西',
+  '魔杰座',
+  '跨时代',
+  '惊叹号',
+  '十二新作',
+  '哎呦不错哦',
+  '周杰伦的床边故事',
+  // 华语独立/摇滚
+  '万能青年旅店',
+  '丑奴儿',
+  '自传',
+  '声音玩具',
+  // 华语流行
+  '光年之外',
+  '像我这样的人',
+  '消愁',
+  '成都',
+  '理想三旬',
+  // 欧美经典
+  'Thriller',
+  'Back in Black',
+  'The Dark Side of the Moon',
+  'Abbey Road',
+  'Sgt. Pepper',
+  'Rumours',
+  '21',
+  '25',
+  // 欧美流行/独立
+  '1989',
+  'Reputation',
+  'Lover',
+  'Folklore',
+  'Evermore',
+  'Midnights',
+  'When We All Fall Asleep',
+  'Happier Than Ever',
+  // 爵士/蓝调
+  'Kind of Blue',
+  'Blue Train',
+  'A Love Supreme',
+  'Getz Gilberto',
 ];
 
 abstract class HomeEvent extends Equatable {
@@ -481,43 +507,36 @@ class HomeBloc extends Bloc<HomeEvent, HomeState> {
     final shuffledArtists = List<Map<String, String>>.from(curatedHotArtists)..shuffle();
     final selectedArtists = shuffledArtists.take(10).toList();
     
-    // 第一轮：并行搜索所有艺人获取ID
+    // 并行搜索所有艺人
     final searchFutures = selectedArtists.map(
       (artistInfo) => _apiService.searchArtists(artistInfo['name']!).catchError((_) => <Artist>[]),
     );
     final searchResults = await Future.wait(searchFutures);
     
-    // 提取有ID的艺人
-    final artistsWithId = <Artist>[];
-    final artistIdMap = <String, String>{};
+    // 提取艺人信息（不调用详情接口，因为API有bug返回错误的艺人名称）
+    final artists = <Artist>[];
     for (int i = 0; i < searchResults.length; i++) {
       final resultsList = searchResults[i];
       if (resultsList.isNotEmpty) {
-        final artist = resultsList.first;
-        if (artist.id.isNotEmpty) {
-          artistsWithId.add(artist);
-          artistIdMap[artist.name] = artist.id;
+        // 使用搜索结果中的第一个匹配的艺人
+        final searchName = selectedArtists[i]['name']!.toLowerCase();
+        Artist? matchedArtist;
+        
+        // 尝试找到名称匹配的艺人
+        for (final artist in resultsList) {
+          if (artist.name.toLowerCase().contains(searchName) || 
+              searchName.contains(artist.name.toLowerCase())) {
+            matchedArtist = artist;
+            break;
+          }
         }
+        
+        // 如果没找到匹配的，就用第一个
+        artists.add(matchedArtist ?? resultsList.first);
       }
     }
     
-    // 第二轮：获取艺人详情（包括musicNum）
-    final artistsWithDetail = <Artist>[];
-    final detailFutures = artistsWithId.map(
-      (artist) => _apiService.getArtistDetailWithSongs(artist.id).catchError((_) => (null, <Song>[])),
-    );
-    final detailResults = await Future.wait(detailFutures);
-    
-    for (int i = 0; i < detailResults.length; i++) {
-      final (detailArtist, _) = detailResults[i];
-      if (detailArtist != null) {
-        artistsWithDetail.add(detailArtist);
-      } else {
-        artistsWithDetail.add(artistsWithId[i]);
-      }
-    }
-    
-    return artistsWithDetail.take(10).toList();
+    return artists;
   }
 
   // 加载精选新专辑 - 并行请求优化
