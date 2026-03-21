@@ -177,6 +177,8 @@ Future<void> _updateDurationInRecentPlays(String songId, Duration duration) asyn
 
   Future<void> _prepareAudioSource(Song song) async {
     try {
+      AppLogger.log('_prepareAudioSource: ${song.title}, id: ${song.id}');
+      
       Duration? correctDuration = song.duration > Duration.zero ? song.duration : null;
 
       if (song.isLocal && song.localPath != null) {
@@ -184,7 +186,7 @@ Future<void> _updateDurationInRecentPlays(String songId, Duration duration) asyn
         final audioSource = AudioSource.file(
           song.localPath!,
           tag: MediaItem(
-            id: song.id.toString(),
+            id: song.id,
             title: song.title,
             artist: song.artist,
             album: song.album,
@@ -193,37 +195,32 @@ Future<void> _updateDurationInRecentPlays(String songId, Duration duration) asyn
           ),
         );
         await _audioPlayer.setAudioSource(audioSource);
+        AppLogger.log('Local file set successfully');
       } else {
         var audioUrl = song.audioUrl;
         var songDetail = song;
 
-        if (audioUrl == null || audioUrl.isEmpty || song.duration == Duration.zero) {
-          AppLogger.log('Fetching audio URL and detail from API for song: ${song.id}');
-          final results = await Future.wait([
-            MusicApiService.instance.getSongUrl(song.id.toString()),
-            MusicApiService.instance.getSongDetail(song.id.toString()),
-          ]);
+        // 总是获取播放URL
+        AppLogger.log('Fetching audio URL for song: ${song.id}');
+        audioUrl = await MusicApiService.instance.getSongUrl(song.id);
+        AppLogger.log('Got audio URL: $audioUrl');
 
-          audioUrl = results[0] as String?;
-          final detail = results[1] as Song?;
-
-          if (detail != null) {
-            songDetail = detail;
-            if (detail.duration > Duration.zero) {
-              correctDuration = detail.duration;
-              AppLogger.log('Got correct duration from API: ${detail.duration.inSeconds}s');
-            }
+        // 获取歌曲详情
+        final detail = await MusicApiService.instance.getSongDetail(song.id);
+        if (detail != null) {
+          songDetail = detail;
+          if (detail.duration > Duration.zero) {
+            correctDuration = detail.duration;
+            AppLogger.log('Got duration from API: ${detail.duration.inSeconds}s');
           }
-
-          AppLogger.log('Resolved audio URL: $audioUrl');
         }
 
         if (audioUrl != null && audioUrl.isNotEmpty) {
-          AppLogger.log('Setting audio URL: $audioUrl');
+          AppLogger.log('Setting audio source with URL: $audioUrl');
           final audioSource = AudioSource.uri(
             Uri.parse(audioUrl),
             tag: MediaItem(
-              id: song.id.toString(),
+              id: song.id,
               title: song.title,
               artist: song.artist,
               album: song.album,
@@ -232,12 +229,18 @@ Future<void> _updateDurationInRecentPlays(String songId, Duration duration) asyn
             ),
           );
           await _audioPlayer.setAudioSource(audioSource);
+          AppLogger.log('Audio source set successfully');
+          
+          // 检查duration
+          final playerDuration = _audioPlayer.duration;
+          AppLogger.log('Player duration after load: ${playerDuration?.inSeconds ?? 0}s');
         } else {
-          AppLogger.log('Failed to get audio URL for song: ${song.id}');
+          AppLogger.log('ERROR: Failed to get audio URL for song: ${song.id}');
         }
       }
-    } catch (e) {
+    } catch (e, stack) {
       AppLogger.log('Error preparing audio source: $e');
+      AppLogger.log('Stack: $stack');
     }
   }
 
