@@ -201,6 +201,15 @@ class AudioPlayerService {
           AppLogger.log('Fetching audio URL from API for song: ${song.id}');
           audioUrl = await MusicApiService.instance.getSongUrl(song.id.toString());
           AppLogger.log('Resolved audio URL: $audioUrl');
+          
+          if (audioUrl == null || audioUrl.isEmpty) {
+            AppLogger.log('getSongUrl failed, trying getSongDetail as fallback for song: ${song.id}');
+            final songDetail = await MusicApiService.instance.getSongDetail(song.id.toString());
+            if (songDetail != null) {
+              audioUrl = songDetail.audioUrl;
+              AppLogger.log('Fallback getSongDetail returned audio URL: $audioUrl');
+            }
+          }
         }
         if (audioUrl != null && audioUrl.isNotEmpty) {
           AppLogger.log('Setting audio URL: $audioUrl');

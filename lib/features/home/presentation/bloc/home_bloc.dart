@@ -383,37 +383,92 @@ class HomeBloc extends Bloc<HomeEvent, HomeState> {
     return weeklyThemes[dayOfWeek - 1];
   }
 
-  // 加载每日推荐 - 并行请求优化
+  // 加载每日推荐 - 并行请求优化 (15首: 华语8, 欧美3, 日韩各2)
   Future<List<Song>> _loadDailyRecommendations() async {
-    final theme = _getTodayTheme();
-    
-    // 并行搜索所有艺人
-    final shuffledArtists = List<String>.from(theme.artists)..shuffle();
-    final selectedArtists = shuffledArtists.take(4).toList();
+    // 按配比选择艺人: 华语8, 欧美3, 日语2, 韩语2
+    const chineseArtists = ['周杰伦', '林俊杰', '王力宏', '陶喆', '陈奕迅', '张学友', '王菲', '孙燕姿', 
+                           '蔡依林', '林忆莲', '张惠妹', '邓紫棋', '李荣浩', '五月天', '告五人', '草东没有派对'];
+    const westernArtists = ['Taylor Swift', 'Ed Sheeran', 'Adele', 'Billie Eilish', 'The Weeknd', 
+                           'Bruno Mars', 'Coldplay', 'Post Malone', 'Dua Lipa', 'Ariana Grande'];
+    const japaneseArtists = ['宇多田ヒカル', '椎名林檎', '坂本龍一', '久石譲', 'YOASOBI', '米津玄師'];
+    const koreanArtists = ['BTS', 'BLACKPINK', 'IU', 'NewJeans', 'SEVENTEEN', 'Red Velvet'];
+
+    final seed = _getDaySeed();
+    final chineseShuffled = _shuffleList(chineseArtists.toList(), seed);
+    final westernShuffled = _shuffleList(westernArtists.toList(), seed + 1);
+    final japaneseShuffled = _shuffleList(japaneseArtists.toList(), seed + 2);
+    final koreanShuffled = _shuffleList(koreanArtists.toList(), seed + 3);
+
+    final selectedChinese = chineseShuffled.take(5).toList();
+    final selectedWestern = westernShuffled.take(3).toList();
+    final selectedJapanese = japaneseShuffled.take(2).toList();
+    final selectedKorean = koreanShuffled.take(2).toList();
+
+    final allArtists = [...selectedChinese, ...selectedWestern, ...selectedJapanese, ...selectedKorean];
+    final shuffledAll = _shuffleList(allArtists, seed);
     
     // 并行发起所有请求
-    final searchFutures = selectedArtists.map(
+    final searchFutures = shuffledAll.map(
       (artist) => _apiService.searchSongs(artist).catchError((_) => <Song>[]),
     );
     final results = await Future.wait(searchFutures);
     
-    // 合并结果
-    final recommendations = <Song>[];
-    for (final songs in results) {
-      recommendations.addAll(songs.take(3));
-    }
+    // 分别收集各区域歌曲用于配比
+    final chineseSongs = <Song>[];
+    final westernSongs = <Song>[];
+    final japaneseSongs = <Song>[];
+    final koreanSongs = <Song>[];
     
-    // 去重并限制数量
-    final uniqueSongs = <Song>[];
-    final seenIds = <int>{};
-    for (final song in recommendations) {
-      if (!seenIds.contains(song.id)) {
-        seenIds.add(song.id);
-        uniqueSongs.add(song);
+    for (int i = 0; i < results.length; i++) {
+      final songs = results[i];
+      final artist = shuffledAll[i];
+      
+      List<Song> targetList;
+      if (selectedChinese.contains(artist)) {
+        targetList = chineseSongs;
+      } else if (selectedWestern.contains(artist)) {
+        targetList = westernSongs;
+      } else if (selectedJapanese.contains(artist)) {
+        targetList = japaneseSongs;
+      } else {
+        targetList = koreanSongs;
+      }
+      
+      for (final song in songs.take(3)) {
+        if (!targetList.any((s) => s.id == song.id)) {
+          targetList.add(song);
+        }
       }
     }
     
-    return uniqueSongs.take(10).toList();
+    // 按目标配比合并结果
+    final recommendations = <Song>[];
+    final usedIds = <int>{};
+    
+    void addWithDedupe(List<Song> songs, int count) {
+      for (final song in songs) {
+        if (recommendations.length >= 15) break;
+        if (!usedIds.contains(song.id)) {
+          usedIds.add(song.id);
+          recommendations.add(song);
+        }
+      }
+      // 如果还不够，从该区域补充
+      for (final song in songs) {
+        if (recommendations.length >= 15) break;
+        if (!usedIds.contains(song.id)) {
+          usedIds.add(song.id);
+          recommendations.add(song);
+        }
+      }
+    }
+    
+    addWithDedupe(chineseSongs, 8);
+    addWithDedupe(westernSongs, 3);
+    addWithDedupe(japaneseSongs, 2);
+    addWithDedupe(koreanSongs, 2);
+    
+    return recommendations.take(15).toList();
   }
 
   // 加载精选热门歌手 - 并行请求优化
