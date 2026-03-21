@@ -50,14 +50,29 @@ Future<void> main() async {
   );
   
   // 恢复上次播放的歌曲（暂停状态）和播放位置
-  final audioService = AudioPlayerService.instance;
-  final lastSong = await audioService.restoreCurrentSong();
-  if (lastSong != null) {
-    await audioService.setPlaylist([lastSong], 0, autoPlay: false);
-    final savedPosition = await audioService.restorePosition();
-    if (savedPosition != null && savedPosition > Duration.zero) {
-      await audioService.seek(savedPosition);
+  // 添加超时保护，避免启动卡住
+  try {
+    final audioService = AudioPlayerService.instance;
+    final lastSong = await audioService.restoreCurrentSong();
+    if (lastSong != null) {
+      await audioService.setPlaylist([lastSong], 0, autoPlay: false).timeout(
+        const Duration(seconds: 10),
+        onTimeout: () {
+          debugPrint('setPlaylist timed out, skipping restore');
+        },
+      );
+      final savedPosition = await audioService.restorePosition();
+      if (savedPosition != null && savedPosition > Duration.zero) {
+        await audioService.seek(savedPosition).timeout(
+          const Duration(seconds: 5),
+          onTimeout: () {
+            debugPrint('seek timed out, skipping');
+          },
+        );
+      }
     }
+  } catch (e) {
+    debugPrint('Error restoring playback state: $e');
   }
   
   runApp(const MusicApp());
