@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:just_audio/just_audio.dart';
-import 'package:just_audio_background/just_audio_background.dart';
 import 'package:rxdart/rxdart.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import '../core/utils/app_logger.dart';
@@ -193,17 +192,7 @@ Future<void> _updateDurationInRecentPlays(String songId, Duration duration) asyn
     if (song.isLocal && song.localPath != null) {
       AppLogger.log('Setting local file: ${song.localPath}');
       try {
-        final audioSource = AudioSource.file(
-          song.localPath!,
-          tag: MediaItem(
-            id: song.id,
-            title: song.title,
-            artist: song.artist,
-            album: song.album,
-            artUri: song.albumArt != null ? Uri.tryParse(song.albumArt!) : null,
-          ),
-        );
-        await _audioPlayer.setAudioSource(audioSource);
+        await _audioPlayer.setFilePath(song.localPath!);
         AppLogger.log('Local file set successfully');
       } catch (e) {
         _emitError('无法播放本地文件: $e');
@@ -234,20 +223,9 @@ Future<void> _updateDurationInRecentPlays(String songId, Duration duration) asyn
     final uri = Uri.parse(audioUrl);
     AppLogger.log('Parsed URI: $uri');
     
-    final audioSource = AudioSource.uri(
-      uri,
-      tag: MediaItem(
-        id: song.id,
-        title: song.title,
-        artist: song.artist,
-        album: song.album,
-        artUri: song.albumArt != null ? Uri.tryParse(song.albumArt!) : null,
-      ),
-    );
-    
-    AppLogger.log('Calling setAudioSource...');
+    AppLogger.log('Calling setUrl...');
     try {
-      await _audioPlayer.setAudioSource(audioSource);
+      await _audioPlayer.setUrl(uri.toString());
       AppLogger.log('Audio source set successfully');
     } catch (e) {
       _emitError('无法加载音频: $e');

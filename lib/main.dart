@@ -1,29 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:hive_flutter/hive_flutter.dart';
-import 'package:just_audio_background/just_audio_background.dart';
 import 'package:music_app/app.dart';
 import 'package:music_app/core/constants/app_constants.dart';
 import 'package:music_app/services/music_api_service.dart';
 import 'package:music_app/services/audio_player_service.dart';
 
-Future<void> _initJustAudioBackground() async {
-  try {
-    await JustAudioBackground.init().timeout(
-      const Duration(seconds: 5),
-      onTimeout: () {
-        debugPrint('JustAudioBackground.init() timed out, continuing without it');
-      },
-    );
-  } catch (e) {
-    debugPrint('JustAudioBackground.init() failed: $e, continuing without it');
-  }
-}
-
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  
-  await _initJustAudioBackground();
   
   await SystemChrome.setPreferredOrientations([
     DeviceOrientation.portraitUp,
@@ -50,7 +34,6 @@ Future<void> main() async {
   );
   
   // 恢复上次播放的歌曲（暂停状态）和播放位置
-  // 添加超时保护，避免启动卡住
   try {
     final audioService = AudioPlayerService.instance;
     final lastSong = await audioService.restoreCurrentSong();
