@@ -453,23 +453,24 @@ class HomeBloc extends Bloc<HomeEvent, HomeState> {
     // 按目标配比合并结果: 华语8, 欧美3, 日语2, 韩语2
     final recommendations = <Song>[];
     final usedIds = <int>{};
+    final languageCounts = <String, int>{'chinese': 0, 'western': 0, 'japanese': 0, 'korean': 0};
     
-    void addSongs(List<Song> songs, int maxCount) {
+    void addSongs(List<Song> songs, String langKey, int maxCount) {
       for (final song in songs) {
         if (recommendations.length >= 15) break;
-        if (!usedIds.contains(song.id)) {
+        if (!usedIds.contains(song.id) && languageCounts[langKey]! < maxCount) {
           usedIds.add(song.id);
           recommendations.add(song);
-          if (recommendations.length >= maxCount) break;
+          languageCounts[langKey] = languageCounts[langKey]! + 1;
         }
       }
     }
     
-    // 按配比顺序添加
-    addSongs(chineseSongs, 8);
-    addSongs(westernSongs, 11);
-    addSongs(japaneseSongs, 13);
-    addSongs(koreanSongs, 15);
+    // 按配比顺序添加，确保每种语言都达到目标数量
+    addSongs(chineseSongs, 'chinese', 8);
+    addSongs(westernSongs, 'western', 3);
+    addSongs(japaneseSongs, 'japanese', 2);
+    addSongs(koreanSongs, 'korean', 2);
     
     return recommendations.take(15).toList();
   }
