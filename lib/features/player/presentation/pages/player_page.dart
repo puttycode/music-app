@@ -200,7 +200,7 @@ class _PlayerViewState extends State<_PlayerView> {
     // 如果队列为空且有当前歌曲，异步加载相似歌曲（不等待）
     if (audioService.queue.isEmpty && currentSong != null) {
       AppLogger.log('Queue is empty, loading similar songs for: ${currentSong.id}');
-      audioService.loadSimilarToQueue(currentSong.id);
+      audioService.loadSimilarToQueue(currentSong);
     }
     
     showModalBottomSheet(
