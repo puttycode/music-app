@@ -64,7 +64,7 @@ class _QueuePanelState extends State<QueuePanel> {
     AppLogger.log('Loading similar songs for: ${currentSong.id}');
     
     try {
-      await _audioService.loadSimilarToQueue(currentSong, limit: 14);
+      await _audioService.loadSimilarToQueue(currentSong, limit: 24);
       
       setState(() {
         _queue = List.from(_audioService.queue);
