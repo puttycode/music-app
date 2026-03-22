@@ -27,6 +27,10 @@ class PlayerBloc extends Bloc<PlayerEvent, PlayerState> {
     on<ToggleRepeat>(_onToggleRepeat);
     on<ToggleShuffle>(_onToggleShuffle);
     on<InitializeWithCurrentSong>(_onInitializeWithCurrentSong);
+    on<_UpdatePlayerState>(_onUpdatePlayerState);
+    on<_UpdatePosition>(_onUpdatePosition);
+    on<_UpdateDuration>(_onUpdateDuration);
+    on<_UpdateCurrentSong>(_onUpdateCurrentSong);
 
     _initStreams();
   }

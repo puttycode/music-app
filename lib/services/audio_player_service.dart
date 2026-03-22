@@ -704,6 +704,8 @@ void _onSongComplete() {
     // 立即更新索引和当前歌曲（用于高亮显示）
     _currentQueueIndex = index;
     _queueIndexChangedSubject.add(null);
+    _playlistSubject.add(List.from(currentQueue));
+    _currentIndexSubject.add(index);
     
     var song = currentQueue[index];
     _currentSongSubject.add(song);
