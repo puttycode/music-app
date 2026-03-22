@@ -701,16 +701,22 @@ void _onSongComplete() {
     final currentQueue = queue;
     if (index < 0 || index >= currentQueue.length) return;
     
+    // 立即更新索引和当前歌曲（用于高亮显示）
     _currentQueueIndex = index;
     _queueIndexChangedSubject.add(null);
     
     var song = currentQueue[index];
+    _currentSongSubject.add(song);
+    
+    // 异步匹配和播放
     song = await _matchSongIfNeeded(song);
     
+    // 更新队列中的歌曲信息
     currentQueue[index] = song;
     _queueSubject.add(List.from(currentQueue));
     _saveQueue();
     
+    // 更新当前歌曲并播放
     _currentSongSubject.add(song);
     await _playSong(song);
     await _saveToRecentPlays(song);

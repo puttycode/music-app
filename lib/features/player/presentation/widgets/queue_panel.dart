@@ -1,9 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:music_app/core/utils/duration_formatter.dart';
 import 'package:music_app/features/player/domain/entities/song.dart';
 import 'package:music_app/services/audio_player_service.dart';
 import 'package:music_app/core/utils/app_logger.dart';
-import 'package:music_app/services/music_api_service.dart';
 
 class QueuePanel extends StatefulWidget {
   final VoidCallback? onClose;
@@ -347,15 +345,6 @@ class _QueuePanelState extends State<QueuePanel> {
                             ),
                           ),
                         ],
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    // 时长
-                    Text(
-                      DurationFormatter.format(song.duration),
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: Colors.grey.withValues(alpha: 0.7),
                       ),
                     ),
                     const SizedBox(width: 8),
