@@ -187,14 +187,18 @@ class _PlayerViewState extends State<_PlayerView> {
     });
   }
 
-  void _showQueuePanel() {
+  void _showQueuePanel() async {
     final audioService = AudioPlayerService.instance;
     final currentSong = audioService.currentSong;
     
     // 如果队列为空且有当前歌曲，加载相似歌曲
     if (audioService.queue.isEmpty && currentSong != null) {
-      audioService.loadSimilarToQueue(currentSong.id);
+      AppLogger.log('Queue is empty, loading similar songs for: ${currentSong.id}');
+      await audioService.loadSimilarToQueue(currentSong.id);
+      AppLogger.log('After loadSimilarToQueue, queue length: ${audioService.queue.length}');
     }
+    
+    if (!mounted) return;
     
     showModalBottomSheet(
       context: context,
@@ -586,30 +590,37 @@ class _PlayerViewState extends State<_PlayerView> {
               ),
             ),
             child: SafeArea(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 32),
-                child: Column(
-                  children: [
-                    const Spacer(),
-                    GestureDetector(
-                      onTap: () => setState(() => _showLyrics = !_showLyrics),
-                      child: _showLyrics 
-                          ? _LyricsView(song: song)
-                          : _AlbumArt(song: song),
-                    ),
-                    const SizedBox(height: 32),
-                    _SongInfo(song: song),
-                    const SizedBox(height: 24),
-                    _ProgressBar(audioService: audioService, state: state),
-                    const SizedBox(height: 24),
-                    _Controls(
-                      audioService: audioService, 
-                      state: state, 
-                      bloc: context.read<PlayerBloc>(),
-                      onShowQueue: _showQueuePanel,
-                    ),
-                    const Spacer(),
-                    const SizedBox(height: 32),
+              child: GestureDetector(
+                onVerticalDragEnd: (details) {
+                  // 上滑检测
+                  if (details.primaryVelocity != null && details.primaryVelocity! < -500) {
+                    _showQueuePanel();
+                  }
+                },
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 32),
+                  child: Column(
+                    children: [
+                      const Spacer(),
+                      GestureDetector(
+                        onTap: () => setState(() => _showLyrics = !_showLyrics),
+                        child: _showLyrics 
+                            ? _LyricsView(song: song)
+                            : _AlbumArt(song: song),
+                      ),
+                      const SizedBox(height: 32),
+                      _SongInfo(song: song),
+                      const SizedBox(height: 24),
+                      _ProgressBar(audioService: audioService, state: state),
+                      const SizedBox(height: 24),
+                      _Controls(
+                        audioService: audioService, 
+                        state: state, 
+                        bloc: context.read<PlayerBloc>(),
+                        onShowQueue: _showQueuePanel,
+                      ),
+                      const Spacer(),
+                      const SizedBox(height: 32),
                   ],
                 ),
               ),
@@ -1241,21 +1252,15 @@ class _Controls extends StatelessWidget {
             ),
           ],
         ),
-        // 队列按钮
-        StreamBuilder<List<Song>>(
-          stream: audioService.queueStream,
-          initialData: audioService.queue,
-          builder: (context, snapshot) {
-            final queue = snapshot.data ?? [];
-            return TextButton.icon(
-              onPressed: onShowQueue,
-              icon: const Icon(Icons.keyboard_arrow_up, size: 20),
-              label: Text(
-                queue.isEmpty ? '播放队列' : '播放队列 · ${queue.length}首',
-                style: const TextStyle(fontSize: 13),
-              ),
-            );
-          },
+        const SizedBox(height: 8),
+        // 队列按钮 - 大图标按钮
+        IconButton(
+          icon: Icon(
+            Icons.keyboard_arrow_up,
+            size: 36,
+            color: iconColor,
+          ),
+          onPressed: onShowQueue,
         ),
       ],
     );

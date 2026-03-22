@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:music_app/core/utils/duration_formatter.dart';
 import 'package:music_app/features/player/domain/entities/song.dart';
 import 'package:music_app/services/audio_player_service.dart';
+import 'package:music_app/core/utils/app_logger.dart';
 
 class QueuePanel extends StatefulWidget {
   final VoidCallback? onClose;
@@ -15,17 +16,32 @@ class QueuePanel extends StatefulWidget {
 class _QueuePanelState extends State<QueuePanel> {
   final AudioPlayerService _audioService = AudioPlayerService.instance;
   List<Song> _queue = [];
+  bool _isLoading = false;
+  String? _error;
 
   @override
   void initState() {
     super.initState();
     _queue = List.from(_audioService.queue);
+    AppLogger.log('QueuePanel init: queue length = ${_queue.length}');
+    
+    // 监听队列变化
+    _audioService.queueStream.listen((newQueue) {
+      if (mounted) {
+        setState(() {
+          _queue = List.from(newQueue);
+          _isLoading = false;
+        });
+        AppLogger.log('QueuePanel updated: queue length = ${_queue.length}');
+      }
+    });
   }
 
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final backgroundColor = isDark ? const Color(0xFF1E1E1E) : Colors.white;
+    final currentSong = _audioService.currentSong;
     
     return Container(
       decoration: BoxDecoration(
@@ -58,14 +74,23 @@ class _QueuePanelState extends State<QueuePanel> {
               children: [
                 const Icon(Icons.queue_music, size: 24),
                 const SizedBox(width: 8),
-                const Expanded(
+                Expanded(
                   child: Text(
-                    '播放队列',
-                    style: TextStyle(
+                    '播放队列${_queue.isNotEmpty ? ' · ${_queue.length}首' : ''}',
+                    style: const TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.refresh),
+                  onPressed: () async {
+                    if (currentSong != null) {
+                      setState(() => _isLoading = true);
+                      await _audioService.loadSimilarToQueue(currentSong.id);
+                    }
+                  },
                 ),
                 IconButton(
                   icon: const Icon(Icons.close),
@@ -75,9 +100,50 @@ class _QueuePanelState extends State<QueuePanel> {
             ),
           ),
           const Divider(height: 1),
+          // 调试信息
+          if (_queue.isEmpty && currentSong != null)
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                children: [
+                  Text(
+                    '调试信息:',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Colors.grey.withValues(alpha: 0.7),
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    '当前歌曲: ${currentSong.title} (ID: ${currentSong.id})',
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: Colors.grey.withValues(alpha: 0.5),
+                    ),
+                  ),
+                  Text(
+                    '队列长度: ${_queue.length}',
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: Colors.grey.withValues(alpha: 0.5),
+                    ),
+                  ),
+                  if (_error != null)
+                    Text(
+                      '错误: $_error',
+                      style: const TextStyle(
+                        fontSize: 11,
+                        color: Colors.red,
+                      ),
+                    ),
+                ],
+              ),
+            ),
           // 歌曲列表
           Expanded(
-            child: _queue.isEmpty
+            child: _isLoading
+                ? const Center(child: CircularProgressIndicator())
+                : _queue.isEmpty
                 ? _buildEmptyState()
                 : _buildQueueList(),
           ),
