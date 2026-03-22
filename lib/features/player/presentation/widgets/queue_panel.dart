@@ -368,51 +368,6 @@ class _QueuePanelState extends State<QueuePanel> {
     );
   }
 
-  Widget _buildDefaultCover() {
-    return Container(
-      width: 48,
-      height: 48,
-      color: Colors.grey.withValues(alpha: 0.2),
-      child: const Icon(Icons.music_note, size: 24),
-    );
-  }
-
-  Widget _buildAlbumArt(String? albumArt, double size) {
-    if (albumArt == null || albumArt.isEmpty) {
-      return Container(
-        width: size,
-        height: size,
-        color: Colors.grey.withValues(alpha: 0.2),
-        child: Icon(Icons.music_note, size: size / 2),
-      );
-    }
-    
-    // 判断是 URL 还是 base64
-    if (albumArt.startsWith('http')) {
-      return Image.network(
-        albumArt,
-        width: size,
-        height: size,
-        fit: BoxFit.cover,
-        errorBuilder: (_, __, ___) => _buildDefaultCover(),
-      );
-    } else {
-      // base64 格式
-      try {
-        final bytes = base64Decode(albumArt);
-        return Image.memory(
-          bytes,
-          width: size,
-          height: size,
-          fit: BoxFit.cover,
-          errorBuilder: (_, __, ___) => _buildDefaultCover(),
-        );
-      } catch (e) {
-        return _buildDefaultCover();
-      }
-}
-  }
-
   Widget _buildBottomBar() {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
