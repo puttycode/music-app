@@ -42,6 +42,13 @@ class _QueuePanelState extends State<QueuePanel> {
       }
     });
     
+    // 监听队列索引变化（高亮更新）
+    _audioService.queueIndexChangedStream.listen((_) {
+      if (mounted) {
+        setState(() {});
+      }
+    });
+    
     // 如果队列为空且有当前歌曲，自动加载相似歌曲
     if (_queue.isEmpty) {
       final currentSong = _audioService.currentSong;
@@ -255,8 +262,7 @@ class _QueuePanelState extends State<QueuePanel> {
       itemCount: _queue.length,
       itemBuilder: (context, index) {
         final song = _queue[index];
-        final isPlaying = index == currentQueueIndex && 
-                         currentSong?.id == song.id;
+        final isPlaying = index == currentQueueIndex;
         
         return Dismissible(
           key: Key('queue_${song.id}_$index'),
