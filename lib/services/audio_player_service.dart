@@ -678,7 +678,7 @@ void _onSongComplete() {
   }
 
   /// 匹配歌曲获取完整信息（包含有效ID用于播放）
-  Future<Song?> _matchSongIfNeeded(Song song, {bool forceMatch = false}) async {
+  Future<Song> _matchSongIfNeeded(Song song, {bool forceMatch = false}) async {
     final hasValidId = song.id.isNotEmpty && song.id.contains('-');
     if (!forceMatch && hasValidId) {
       return song;
