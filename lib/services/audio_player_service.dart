@@ -677,18 +677,21 @@ void _onSongComplete() {
     _saveQueue();
   }
 
-  /// 匹配歌曲获取完整信息（包含ID）
-  Future<Song?> _matchSongIfNeeded(Song song) async {
-    if (song.id.length > 10 && int.tryParse(song.id) != null) {
-      final matched = await MusicApiService.instance.matchSong(song.title, artist: song.artist);
-      if (matched != null) {
-        return matched.copyWith(
-          title: song.title,
-          artist: song.artist,
-          album: song.album,
-          albumArt: song.albumArt ?? matched.albumArt,
-        );
-      }
+  /// 匹配歌曲获取完整信息（包含有效ID用于播放）
+  Future<Song?> _matchSongIfNeeded(Song song, {bool forceMatch = false}) async {
+    final hasValidId = song.id.isNotEmpty && song.id.contains('-');
+    if (!forceMatch && hasValidId) {
+      return song;
+    }
+    
+    final matched = await MusicApiService.instance.matchSong(song.title, artist: song.artist);
+    if (matched != null) {
+      return matched.copyWith(
+        title: song.title,
+        artist: song.artist,
+        album: song.album.isNotEmpty ? song.album : matched.album,
+        albumArt: song.albumArt ?? matched.albumArt,
+      );
     }
     return song;
   }
