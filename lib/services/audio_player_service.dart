@@ -505,23 +505,45 @@ Future<void> _updateDurationInRecentPlays(String songId, Duration duration) asyn
 
   // ========== 队列管理方法 ==========
 
-  /// 加载相似歌曲到队列
-  Future<void> loadSimilarToQueue(String songId, {int limit = 15}) async {
+  final _isQueueLoadingSubject = BehaviorSubject<bool>.seeded(false);
+  Stream<bool> get isQueueLoadingStream => _isQueueLoadingSubject.stream;
+  bool get isQueueLoading => _isQueueLoadingSubject.value;
+
+  /// 加载相似歌曲到队列（包含当前歌曲在第一位）
+  Future<void> loadSimilarToQueue(Song currentSong, {int limit = 14}) async {
     try {
-      AppLogger.log('Loading similar songs for: $songId');
-      final similarSongs = await MusicApiService.instance.getSimilarSongs(songId, limit: limit);
+      _isQueueLoadingSubject.add(true);
+      AppLogger.log('Loading similar songs for: ${currentSong.id}');
+      
+      final similarSongs = await MusicApiService.instance.getSimilarSongs(
+        currentSong.id,
+        limit: limit,
+      );
       
       // 过滤掉当前歌曲
-      final filteredSongs = similarSongs.where((s) => s.id != songId).toList();
+      final filteredSongs = similarSongs.where((s) => s.id != currentSong.id).toList();
       
-      _queueSubject.add(filteredSongs);
+      // 构建队列：当前歌曲 + 相似歌曲
+      final newQueue = [currentSong, ...filteredSongs];
+      
+      _queueSubject.add(newQueue);
       _currentQueueIndex = 0;
       _queueIndexChangedSubject.add(null);
-      AppLogger.log('Loaded ${filteredSongs.length} similar songs to queue');
+      _isQueueLoadingSubject.add(false);
+      
+      AppLogger.log('Queue loaded: ${newQueue.length} songs, current at index 0');
     } catch (e) {
       AppLogger.log('Failed to load similar songs: $e');
+      _isQueueLoadingSubject.add(false);
       _emitError('加载相似歌曲失败');
     }
+  }
+
+  /// 设置队列
+  void setQueue(List<Song> songs, int currentIndex) {
+    _queueSubject.add(songs);
+    _currentQueueIndex = currentIndex;
+    _queueIndexChangedSubject.add(null);
   }
 
   /// 清空队列
@@ -602,15 +624,7 @@ Future<void> _updateDurationInRecentPlays(String songId, Duration duration) asyn
       if (isQueueLoop) {
         _currentQueueIndex = 0;
       } else {
-        // 尝试加载更多相似歌曲
-        final currentSongId = currentSong?.id;
-        if (currentSongId != null) {
-          await loadSimilarToQueue(currentSongId);
-          if (queue.isEmpty) return null;
-          _currentQueueIndex = 0;
-        } else {
-          return null;
-        }
+        return null;
       }
     } else {
       _currentQueueIndex++;
@@ -650,5 +664,6 @@ Future<void> _updateDurationInRecentPlays(String songId, Duration duration) asyn
     _queueSubject.close();
     _isQueueLoopSubject.close();
     _queueIndexChangedSubject.close();
+    _isQueueLoadingSubject.close();
   }
 }
