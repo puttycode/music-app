@@ -38,6 +38,16 @@ class _QueuePanelState extends State<QueuePanel> {
         _addLog('Queue updated: length = ${_queue.length}');
       }
     });
+    
+    // 如果队列为空且有当前歌曲，自动加载相似歌曲
+    if (_queue.isEmpty) {
+      final currentSong = _audioService.currentSong;
+      if (currentSong != null) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          _loadSimilarWithDebug(currentSong.id);
+        });
+      }
+    }
   }
   
   void _addLog(String message) {

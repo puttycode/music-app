@@ -187,32 +187,40 @@ class _PlayerViewState extends State<_PlayerView> {
     });
   }
 
-  void _showQueuePanel() async {
+  bool _isQueuePanelOpen = false;
+
+  void _showQueuePanel() {
+    // 防止重复点击
+    if (_isQueuePanelOpen) return;
+    _isQueuePanelOpen = true;
+    
     final audioService = AudioPlayerService.instance;
     final currentSong = audioService.currentSong;
     
-    // 如果队列为空且有当前歌曲，加载相似歌曲
+    // 如果队列为空且有当前歌曲，异步加载相似歌曲（不等待）
     if (audioService.queue.isEmpty && currentSong != null) {
       AppLogger.log('Queue is empty, loading similar songs for: ${currentSong.id}');
-      await audioService.loadSimilarToQueue(currentSong.id);
-      AppLogger.log('After loadSimilarToQueue, queue length: ${audioService.queue.length}');
+      audioService.loadSimilarToQueue(currentSong.id);
     }
-    
-    if (!mounted) return;
     
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (context) => DraggableScrollableSheet(
-        initialChildSize: 0.6,
-        minChildSize: 0.4,
-        maxChildSize: 0.9,
+        initialChildSize: 0.75,
+        minChildSize: 0.5,
+        maxChildSize: 0.95,
         builder: (context, scrollController) => QueuePanel(
-          onClose: () => Navigator.pop(context),
+          onClose: () {
+            Navigator.pop(context);
+            _isQueuePanelOpen = false;
+          },
         ),
       ),
-    );
+    ).whenComplete(() {
+      _isQueuePanelOpen = false;
+    });
   }
 
   void _handleMenuAction(BuildContext context, String action) {
