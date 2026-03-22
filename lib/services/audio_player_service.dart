@@ -665,7 +665,9 @@ void _onSongComplete() {
     _saveQueue();
     
     final song = currentQueue[index];
+    _currentSongSubject.add(song);
     await _playSong(song);
+    await _saveToRecentPlays(song);
     await _saveCurrentSong(song);
   }
 
