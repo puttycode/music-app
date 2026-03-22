@@ -54,6 +54,7 @@ Future<void> main() async {
         );
       }
     }
+    await audioService.restoreQueue();
   } catch (e) {
     debugPrint('Error restoring playback state: $e');
   }

@@ -134,7 +134,7 @@ Future<void> _updateDurationInRecentPlays(String songId, Duration duration) asyn
     }
   }
 
-  void _onSongComplete() {
+void _onSongComplete() {
     if (_isTransitioning) {
       AppLogger.log('Skipping _onSongComplete: already transitioning');
       return;
@@ -144,7 +144,16 @@ Future<void> _updateDurationInRecentPlays(String songId, Duration duration) asyn
       return;
     }
 
-    AppLogger.log('Processing repeat mode: $repeatMode');
+    AppLogger.log('Song completed, checking queue first...');
+    
+    // 优先从队列播放下一首
+    if (queue.isNotEmpty) {
+      AppLogger.log('Playing next from queue');
+      playNext();
+      return;
+    }
+
+    AppLogger.log('Queue empty, processing repeat mode: $repeatMode');
     switch (repeatMode) {
       case RepeatMode.one:
         AppLogger.log('Repeating current song');
@@ -275,6 +284,44 @@ Future<void> _updateDurationInRecentPlays(String songId, Duration duration) asyn
     } catch (e) {
       AppLogger.log('Error restoring current song: $e');
       return null;
+    }
+  }
+
+  Future<void> _saveQueue() async {
+    try {
+      final playbackBox = Hive.box(AppConstants.playbackBox);
+      final queueData = {
+        'songs': queue.map((s) => s.toJson()).toList(),
+        'currentIndex': _currentQueueIndex,
+        'isQueueLoop': isQueueLoop,
+      };
+      await playbackBox.put('queue', queueData);
+      AppLogger.log('Saved queue: ${queue.length} songs, index: $_currentQueueIndex');
+    } catch (e) {
+      AppLogger.log('Error saving queue: $e');
+    }
+  }
+
+  Future<void> restoreQueue() async {
+    try {
+      final playbackBox = Hive.box(AppConstants.playbackBox);
+      final queueData = playbackBox.get('queue');
+      if (queueData is Map) {
+        final songs = (queueData['songs'] as List)
+            .map((s) => Song.fromLocal(Map<String, dynamic>.from(s)))
+            .toList();
+        final savedIndex = queueData['currentIndex'] as int? ?? 0;
+        final savedLoop = queueData['isQueueLoop'] as bool? ?? false;
+        
+        _queueSubject.add(songs);
+        _currentQueueIndex = savedIndex;
+        _isQueueLoopSubject.add(savedLoop);
+        _queueIndexChangedSubject.add(null);
+        
+        AppLogger.log('Restored queue: ${songs.length} songs, index: $savedIndex, loop: $savedLoop');
+      }
+    } catch (e) {
+      AppLogger.log('Error restoring queue: $e');
     }
   }
 
@@ -530,6 +577,7 @@ Future<void> _updateDurationInRecentPlays(String songId, Duration duration) asyn
       _currentQueueIndex = 0;
       _queueIndexChangedSubject.add(null);
       _isQueueLoadingSubject.add(false);
+      await _saveQueue();
       
       AppLogger.log('Queue loaded: ${newQueue.length} songs, current at index 0');
     } catch (e) {
@@ -544,6 +592,7 @@ Future<void> _updateDurationInRecentPlays(String songId, Duration duration) asyn
     _queueSubject.add(songs);
     _currentQueueIndex = currentIndex;
     _queueIndexChangedSubject.add(null);
+    _saveQueue();
   }
 
   /// 清空队列
@@ -551,6 +600,7 @@ Future<void> _updateDurationInRecentPlays(String songId, Duration duration) asyn
     _queueSubject.add([]);
     _currentQueueIndex = 0;
     _queueIndexChangedSubject.add(null);
+    _saveQueue();
   }
 
   /// 添加歌曲到队列末尾
@@ -558,6 +608,7 @@ Future<void> _updateDurationInRecentPlays(String songId, Duration duration) asyn
     final currentQueue = List<Song>.from(queue);
     currentQueue.add(song);
     _queueSubject.add(currentQueue);
+    _saveQueue();
   }
 
   /// 从队列移除歌曲
@@ -572,6 +623,7 @@ Future<void> _updateDurationInRecentPlays(String songId, Duration duration) asyn
         _currentQueueIndex = currentQueue.length - 1;
       }
       _queueIndexChangedSubject.add(null);
+      _saveQueue();
     }
   }
 
@@ -594,11 +646,13 @@ Future<void> _updateDurationInRecentPlays(String songId, Duration duration) asyn
       _currentQueueIndex++;
     }
     _queueIndexChangedSubject.add(null);
+    _saveQueue();
   }
 
   /// 切换队列循环
   void toggleQueueLoop() {
     _isQueueLoopSubject.add(!isQueueLoop);
+    _saveQueue();
   }
 
   /// 从队列播放下一首
@@ -608,6 +662,7 @@ Future<void> _updateDurationInRecentPlays(String songId, Duration duration) asyn
     
     _currentQueueIndex = index;
     _queueIndexChangedSubject.add(null);
+    _saveQueue();
     
     final song = currentQueue[index];
     await _playSong(song);
@@ -631,6 +686,7 @@ Future<void> _updateDurationInRecentPlays(String songId, Duration duration) asyn
     }
     
     _queueIndexChangedSubject.add(null);
+    _saveQueue();
     return queue[_currentQueueIndex];
   }
 
@@ -650,6 +706,7 @@ Future<void> _updateDurationInRecentPlays(String songId, Duration duration) asyn
     }
     
     _queueIndexChangedSubject.add(null);
+    _saveQueue();
     return currentQueue[_currentQueueIndex];
   }
 
