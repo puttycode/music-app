@@ -3,6 +3,8 @@ import 'package:music_app/core/utils/duration_formatter.dart';
 import 'package:music_app/features/player/domain/entities/song.dart';
 import 'package:music_app/services/audio_player_service.dart';
 import 'package:music_app/core/utils/app_logger.dart';
+import 'package:music_app/services/music_api_service.dart';
+import 'package:dio/dio.dart';
 
 class QueuePanel extends StatefulWidget {
   final VoidCallback? onClose;
@@ -18,12 +20,13 @@ class _QueuePanelState extends State<QueuePanel> {
   List<Song> _queue = [];
   bool _isLoading = false;
   String? _error;
+  List<String> _debugLogs = [];
 
   @override
   void initState() {
     super.initState();
     _queue = List.from(_audioService.queue);
-    AppLogger.log('QueuePanel init: queue length = ${_queue.length}');
+    _addLog('QueuePanel init: queue length = ${_queue.length}');
     
     // 监听队列变化
     _audioService.queueStream.listen((newQueue) {
@@ -32,9 +35,94 @@ class _QueuePanelState extends State<QueuePanel> {
           _queue = List.from(newQueue);
           _isLoading = false;
         });
-        AppLogger.log('QueuePanel updated: queue length = ${_queue.length}');
+        _addLog('Queue updated: length = ${_queue.length}');
       }
     });
+  }
+  
+  void _addLog(String message) {
+    _debugLogs.add('[${DateTime.now().toString().substring(11, 19)}] $message');
+    AppLogger.log(message);
+  }
+  
+  Future<void> _loadSimilarWithDebug(String songId) async {
+    setState(() {
+      _isLoading = true;
+      _error = null;
+    });
+    
+    _addLog('开始加载相似歌曲...');
+    _addLog('歌曲ID: $songId');
+    
+    try {
+      // 直接调用API并记录详细信息
+      final dio = Dio();
+      final apiKey = 'your-secret-api-key';
+      final url = 'https://music-api.codeseek.me:37280/api/v1/song/$songId/similar?limit=15';
+      
+      _addLog('请求URL: $url');
+      
+      final response = await dio.get(
+        url,
+        options: Options(headers: {'Authorization': 'Bearer $apiKey'}),
+      );
+      
+      _addLog('响应状态: ${response.statusCode}');
+      _addLog('响应code: ${response.data['code']}');
+      
+      if (response.data['code'] == 200) {
+        final list = response.data['data']?['list'] as List? ?? [];
+        _addLog('返回歌曲数: ${list.length}');
+        
+        if (list.isNotEmpty) {
+          final songs = list.map((item) {
+            _addLog('歌曲: ${item['name']} - ${item['artist']}');
+            return Song(
+              id: item['rid']?.toString() ?? '',
+              title: item['name']?.toString() ?? 'Unknown',
+              artist: item['artist']?.toString() ?? 'Unknown Artist',
+              album: item['album']?.toString() ?? 'Unknown Album',
+              albumArt: item['albumArt'],
+              duration: Duration(seconds: item['duration'] ?? 0),
+              isLocal: false,
+            );
+          }).toList();
+          
+          // 过滤掉当前歌曲
+          final filteredSongs = songs.where((s) => s.id != songId).toList();
+          _addLog('过滤后歌曲数: ${filteredSongs.length}');
+          
+          // 更新队列
+          _audioService.clearQueue();
+          for (final song in filteredSongs) {
+            _audioService.addToQueue(song);
+          }
+          
+          setState(() {
+            _queue = filteredSongs;
+            _isLoading = false;
+          });
+        } else {
+          setState(() {
+            _isLoading = false;
+            _error = 'API返回空列表';
+          });
+          _addLog('错误: API返回空列表');
+        }
+      } else {
+        setState(() {
+          _isLoading = false;
+          _error = 'API错误: ${response.data['message']}';
+        });
+        _addLog('API错误: ${response.data['message']}');
+      }
+    } catch (e) {
+      setState(() {
+        _isLoading = false;
+        _error = '异常: $e';
+      });
+      _addLog('异常: $e');
+    }
   }
 
   @override
@@ -85,12 +173,9 @@ class _QueuePanelState extends State<QueuePanel> {
                 ),
                 IconButton(
                   icon: const Icon(Icons.refresh),
-                  onPressed: () async {
-                    if (currentSong != null) {
-                      setState(() => _isLoading = true);
-                      await _audioService.loadSimilarToQueue(currentSong.id);
-                    }
-                  },
+                  onPressed: currentSong != null 
+                      ? () => _loadSimilarWithDebug(currentSong.id)
+                      : null,
                 ),
                 IconButton(
                   icon: const Icon(Icons.close),
@@ -100,42 +185,70 @@ class _QueuePanelState extends State<QueuePanel> {
             ),
           ),
           const Divider(height: 1),
-          // 调试信息
-          if (_queue.isEmpty && currentSong != null)
-            Padding(
-              padding: const EdgeInsets.all(16),
+          // 调试信息面板
+          if (currentSong != null)
+            Container(
+              margin: const EdgeInsets.all(16),
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.grey.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(8),
+              ),
               child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    '调试信息:',
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: Colors.grey.withValues(alpha: 0.7),
-                    ),
+                  Row(
+                    children: [
+                      const Text('调试日志', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+                      const Spacer(),
+                      if (_debugLogs.isNotEmpty)
+                        TextButton(
+                          onPressed: () {
+                            setState(() {
+                              _debugLogs.clear();
+                            });
+                          },
+                          child: const Text('清除', style: TextStyle(fontSize: 11)),
+                        ),
+                    ],
                   ),
-                  const SizedBox(height: 4),
+                  const SizedBox(height: 8),
                   Text(
-                    '当前歌曲: ${currentSong.title} (ID: ${currentSong.id})',
-                    style: TextStyle(
-                      fontSize: 11,
-                      color: Colors.grey.withValues(alpha: 0.5),
-                    ),
+                    '当前歌曲: ${currentSong.title}',
+                    style: const TextStyle(fontSize: 11),
+                  ),
+                  Text(
+                    '歌曲ID: ${currentSong.id}',
+                    style: TextStyle(fontSize: 10, color: Colors.grey.withValues(alpha: 0.7)),
                   ),
                   Text(
                     '队列长度: ${_queue.length}',
-                    style: TextStyle(
-                      fontSize: 11,
-                      color: Colors.grey.withValues(alpha: 0.5),
-                    ),
+                    style: const TextStyle(fontSize: 11),
                   ),
                   if (_error != null)
-                    Text(
-                      '错误: $_error',
-                      style: const TextStyle(
-                        fontSize: 11,
-                        color: Colors.red,
+                    Padding(
+                      padding: const EdgeInsets.only(top: 8),
+                      child: Text(
+                        '错误: $_error',
+                        style: const TextStyle(fontSize: 11, color: Colors.red),
                       ),
                     ),
+                  if (_debugLogs.isNotEmpty) ...[
+                    const SizedBox(height: 8),
+                    Container(
+                      constraints: const BoxConstraints(maxHeight: 150),
+                      child: SingleChildScrollView(
+                        child: SelectableText(
+                          _debugLogs.join('\n'),
+                          style: TextStyle(
+                            fontSize: 10,
+                            fontFamily: 'monospace',
+                            color: Colors.grey.withValues(alpha: 0.8),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
                 ],
               ),
             ),
