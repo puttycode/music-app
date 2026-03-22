@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:music_app/core/widgets/loading_widget.dart';
 import 'package:music_app/core/widgets/error_widget.dart' as app_widgets;
+import 'package:music_app/core/widgets/album_art_image.dart';
 import 'package:music_app/features/player/domain/entities/song.dart';
 import 'package:music_app/features/player/domain/entities/artist.dart';
 import 'package:music_app/features/player/domain/entities/album.dart';
@@ -111,19 +112,10 @@ class _HomeView extends StatelessWidget {
                           return ListTile(
                             leading: ClipRRect(
                               borderRadius: BorderRadius.circular(8),
-                              child: song.albumArt != null
-                                  ? Image.network(
-                                      song.albumArt!,
-                                      width: 56,
-                                      height: 56,
-                                      fit: BoxFit.cover,
-                                    )
-                                  : Container(
-                                      width: 56,
-                                      height: 56,
-                                      color: Theme.of(context).colorScheme.surface,
-                                      child: const Icon(Icons.music_note),
-                                    ),
+                              child: AlbumArtImage(
+                                albumArt: song.albumArt,
+                                size: 56,
+                              ),
                             ),
                             title: Text(
                               song.title,

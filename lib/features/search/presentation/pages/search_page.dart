@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:music_app/core/widgets/loading_widget.dart';
+import 'package:music_app/core/widgets/album_art_image.dart';
 import 'package:music_app/features/player/domain/entities/song.dart';
 import 'package:music_app/features/search/presentation/bloc/search_bloc.dart';
 import 'package:music_app/features/player/presentation/pages/player_page.dart';
@@ -86,25 +87,10 @@ class _SearchViewState extends State<_SearchView> {
                     return ListTile(
                       leading: ClipRRect(
                         borderRadius: BorderRadius.circular(8),
-                        child: song.albumArt != null
-                            ? Image.network(
-                                song.albumArt!,
-                                width: 56,
-                                height: 56,
-                                fit: BoxFit.cover,
-                                errorBuilder: (_, __, ___) => Container(
-                                  width: 56,
-                                  height: 56,
-                                  color: Theme.of(context).colorScheme.surface,
-                                  child: const Icon(Icons.music_note),
-                                ),
-                              )
-                            : Container(
-                                width: 56,
-                                height: 56,
-                                color: Theme.of(context).colorScheme.surface,
-                                child: const Icon(Icons.music_note),
-                              ),
+                        child: AlbumArtImage(
+                          albumArt: song.albumArt,
+                          size: 56,
+                        ),
                       ),
                       title: Text(
                         song.title,

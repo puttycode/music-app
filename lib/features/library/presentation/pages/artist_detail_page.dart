@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:music_app/core/constants/app_constants.dart';
 import 'package:music_app/core/utils/duration_formatter.dart';
+import 'package:music_app/core/widgets/album_art_image.dart';
 import 'package:music_app/features/player/domain/entities/artist.dart';
 import 'package:music_app/features/player/domain/entities/song.dart';
 import 'package:music_app/features/player/presentation/pages/player_page.dart';
@@ -191,25 +192,10 @@ class _ArtistDetailPageState extends State<ArtistDetailPage> {
                                     return ListTile(
                                       leading: ClipRRect(
                                         borderRadius: BorderRadius.circular(8),
-                                        child: song.albumArt != null
-                                            ? Image.network(
-                                                song.albumArt!,
-                                                width: 56,
-                                                height: 56,
-                                                fit: BoxFit.cover,
-                                                errorBuilder: (_, __, ___) => Container(
-                                                  width: 56,
-                                                  height: 56,
-                                                  color: Theme.of(context).colorScheme.surface,
-                                                  child: const Icon(Icons.music_note),
-                                                ),
-                                              )
-                                            : Container(
-                                                width: 56,
-                                                height: 56,
-                                                color: Theme.of(context).colorScheme.surface,
-                                                child: const Icon(Icons.music_note),
-                                              ),
+                                        child: AlbumArtImage(
+                                          albumArt: song.albumArt,
+                                          size: 56,
+                                        ),
                                       ),
                                       title: Text(
                                         song.title,

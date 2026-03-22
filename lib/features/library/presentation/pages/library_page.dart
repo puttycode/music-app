@@ -6,6 +6,7 @@ import 'dart:async';
 import 'dart:io';
 import 'package:music_app/core/widgets/loading_widget.dart';
 import 'package:music_app/core/widgets/error_widget.dart' as app_widgets;
+import 'package:music_app/core/widgets/album_art_image.dart';
 import 'package:music_app/services/audio_player_service.dart';
 import 'package:music_app/services/favorite_service.dart';
 import 'package:music_app/services/download_service.dart';
@@ -457,25 +458,10 @@ return ListView.builder(
                       ],
                     ),
                   )
-                : song.albumArt != null
-                    ? Image.network(
-                        song.albumArt!,
-                        width: 56,
-                        height: 56,
-                        fit: BoxFit.cover,
-                        errorBuilder: (_, __, ___) => Container(
-                          width: 56,
-                          height: 56,
-                          color: Theme.of(context).colorScheme.surface,
-                          child: const Icon(Icons.music_note),
-                        ),
-                      )
-                    : Container(
-                        width: 56,
-                        height: 56,
-                        color: Theme.of(context).colorScheme.surface,
-                        child: const Icon(Icons.music_note),
-                      ),
+                : AlbumArtImage(
+                    albumArt: song.albumArt,
+                    size: 56,
+                  ),
           ),
           title: Text(
             song.title,

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:music_app/core/theme/colors.dart';
+import 'package:music_app/core/widgets/album_art_image.dart';
 import 'package:music_app/features/player/domain/entities/song.dart';
 
 class SongCard extends StatelessWidget {
@@ -41,19 +42,10 @@ class SongCard extends StatelessWidget {
               ),
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(12),
-                child: song.albumArt != null
-                    ? Image.network(
-                        song.albumArt!,
-                        fit: BoxFit.cover,
-                        errorBuilder: (_, __, ___) => Container(
-                          color: AppColors.surfaceVariant,
-                          child: const Icon(Icons.music_note, size: 40),
-                        ),
-                      )
-                    : Container(
-                        color: AppColors.surfaceVariant,
-                        child: const Icon(Icons.music_note, size: 40),
-                      ),
+                child: AlbumArtImage(
+                  albumArt: song.albumArt,
+                  size: width,
+                ),
               ),
             ),
             const SizedBox(height: 8),

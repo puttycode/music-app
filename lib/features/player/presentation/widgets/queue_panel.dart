@@ -1,5 +1,5 @@
-import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:music_app/core/widgets/album_art_image.dart';
 import 'package:music_app/features/player/domain/entities/song.dart';
 import 'package:music_app/services/audio_player_service.dart';
 import 'package:music_app/core/utils/app_logger.dart';
@@ -313,7 +313,10 @@ class _QueuePanelState extends State<QueuePanel> {
                     // 封面
                     ClipRRect(
                       borderRadius: BorderRadius.circular(6),
-                      child: _buildAlbumArt(song.albumArt, 48),
+                      child: AlbumArtImage(
+                        albumArt: song.albumArt,
+                        size: 48,
+                      ),
                     ),
                     const SizedBox(width: 12),
                     // 歌曲信息
@@ -407,7 +410,7 @@ class _QueuePanelState extends State<QueuePanel> {
       } catch (e) {
         return _buildDefaultCover();
       }
-    }
+}
   }
 
   Widget _buildBottomBar() {
