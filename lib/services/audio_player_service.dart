@@ -457,9 +457,20 @@ void _onSongComplete() {
     if (queue.isNotEmpty) {
       final nextSong = await getNextFromQueue();
       if (nextSong != null) {
-        _currentSongSubject.add(nextSong);
-        await _playSong(nextSong);
-        await _saveCurrentSong(nextSong);
+        var song = nextSong;
+        song = await _matchSongIfNeeded(song);
+        
+        final currentQueue = queue;
+        if (_currentQueueIndex < currentQueue.length) {
+          currentQueue[_currentQueueIndex] = song;
+          _queueSubject.add(List.from(currentQueue));
+          _saveQueue();
+        }
+        
+        _currentSongSubject.add(song);
+        await _playSong(song);
+        await _saveToRecentPlays(song);
+        await _saveCurrentSong(song);
         return;
       }
     }
@@ -500,9 +511,20 @@ void _onSongComplete() {
     if (queue.isNotEmpty) {
       final prevSong = getPreviousFromQueue();
       if (prevSong != null) {
-        _currentSongSubject.add(prevSong);
-        await _playSong(prevSong);
-        await _saveCurrentSong(prevSong);
+        var song = prevSong;
+        song = await _matchSongIfNeeded(song);
+        
+        final currentQueue = queue;
+        if (_currentQueueIndex < currentQueue.length) {
+          currentQueue[_currentQueueIndex] = song;
+          _queueSubject.add(List.from(currentQueue));
+          _saveQueue();
+        }
+        
+        _currentSongSubject.add(song);
+        await _playSong(song);
+        await _saveToRecentPlays(song);
+        await _saveCurrentSong(song);
         return;
       }
     }
@@ -655,6 +677,22 @@ void _onSongComplete() {
     _saveQueue();
   }
 
+  /// 匹配歌曲获取完整信息（包含ID）
+  Future<Song?> _matchSongIfNeeded(Song song) async {
+    if (song.id.length > 10 && int.tryParse(song.id) != null) {
+      final matched = await MusicApiService.instance.matchSong(song.title, artist: song.artist);
+      if (matched != null) {
+        return matched.copyWith(
+          title: song.title,
+          artist: song.artist,
+          album: song.album,
+          albumArt: song.albumArt ?? matched.albumArt,
+        );
+      }
+    }
+    return song;
+  }
+
   /// 从队列播放下一首
   Future<void> playFromQueue(int index) async {
     final currentQueue = queue;
@@ -662,9 +700,14 @@ void _onSongComplete() {
     
     _currentQueueIndex = index;
     _queueIndexChangedSubject.add(null);
+    
+    var song = currentQueue[index];
+    song = await _matchSongIfNeeded(song);
+    
+    currentQueue[index] = song;
+    _queueSubject.add(List.from(currentQueue));
     _saveQueue();
     
-    final song = currentQueue[index];
     _currentSongSubject.add(song);
     await _playSong(song);
     await _saveToRecentPlays(song);

@@ -368,6 +368,23 @@ class CustomApi implements MusicApi {
     }
   }
 
+  Future<Song?> matchSong(String name, {String? artist}) async {
+    try {
+      final params = <String, dynamic>{'name': name};
+      if (artist != null && artist.isNotEmpty) {
+        params['artist'] = artist;
+      }
+      final response = await _dio.get('/api/v1/song/match', queryParameters: params);
+      if (response.statusCode == 200 && response.data['code'] == 200) {
+        return _parseSong(response.data['data']);
+      }
+      return null;
+    } catch (e) {
+      AppLogger.log('matchSong error: $e');
+      return null;
+    }
+  }
+
   @override bool isFullAudio(Song song) => song.duration.inSeconds > 60;
 
   Song _parseSong(Map<String, dynamic> track) {
@@ -582,6 +599,15 @@ class MusicApiService {
     } catch (e) {
       _emitError('getSimilarSongs', '获取相似歌曲失败', e);
       return [];
+    }
+  }
+
+  Future<Song?> matchSong(String name, {String? artist}) async {
+    try {
+      return await (_currentApi as CustomApi).matchSong(name, artist: artist);
+    } catch (e) {
+      _emitError('matchSong', '匹配歌曲失败', e);
+      return null;
     }
   }
 
