@@ -16,6 +16,7 @@ import 'package:music_app/features/player/domain/entities/song.dart';
 import 'package:music_app/features/playlist/domain/entities/playlist.dart';
 import 'package:music_app/features/player/presentation/bloc/player_bloc.dart';
 import 'package:music_app/features/player/presentation/bloc/player_event_state.dart';
+import 'package:music_app/features/player/presentation/widgets/queue_panel.dart';
 
 class PlayerPage extends StatefulWidget {
   final List<Song>? playlist;
@@ -184,6 +185,30 @@ class _PlayerViewState extends State<_PlayerView> {
         );
       }
     });
+  }
+
+  void _showQueuePanel() {
+    final audioService = AudioPlayerService.instance;
+    final currentSong = audioService.currentSong;
+    
+    // 如果队列为空且有当前歌曲，加载相似歌曲
+    if (audioService.queue.isEmpty && currentSong != null) {
+      audioService.loadSimilarToQueue(currentSong.id);
+    }
+    
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => DraggableScrollableSheet(
+        initialChildSize: 0.6,
+        minChildSize: 0.4,
+        maxChildSize: 0.9,
+        builder: (context, scrollController) => QueuePanel(
+          onClose: () => Navigator.pop(context),
+        ),
+      ),
+    );
   }
 
   void _handleMenuAction(BuildContext context, String action) {
@@ -577,7 +602,12 @@ class _PlayerViewState extends State<_PlayerView> {
                     const SizedBox(height: 24),
                     _ProgressBar(audioService: audioService, state: state),
                     const SizedBox(height: 24),
-                    _Controls(audioService: audioService, state: state, bloc: context.read<PlayerBloc>()),
+                    _Controls(
+                      audioService: audioService, 
+                      state: state, 
+                      bloc: context.read<PlayerBloc>(),
+                      onShowQueue: _showQueuePanel,
+                    ),
                     const Spacer(),
                     const SizedBox(height: 32),
                   ],
@@ -1105,8 +1135,9 @@ class _Controls extends StatelessWidget {
   final AudioPlayerService audioService;
   final PlayerState state;
   final PlayerBloc bloc;
+  final VoidCallback? onShowQueue;
 
-  const _Controls({required this.audioService, required this.state, required this.bloc});
+  const _Controls({required this.audioService, required this.state, required this.bloc, this.onShowQueue});
 
   @override
   Widget build(BuildContext context) {
@@ -1117,91 +1148,112 @@ class _Controls extends StatelessWidget {
         : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7);
     final activeIconColor = primaryColor;
 
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+    return Column(
+      mainAxisSize: MainAxisSize.min,
       children: [
-        StreamBuilder(
-          stream: audioService.isShuffleStream,
-          initialData: audioService.isShuffle,
-          builder: (context, snapshot) {
-            final isShuffle = snapshot.data ?? false;
-            return IconButton(
-              icon: Icon(
-                Icons.shuffle,
-                color: isShuffle ? activeIconColor : iconColor,
-                size: 24,
-              ),
-              onPressed: () {
-                audioService.toggleShuffle();
-              },
-            );
-          },
-        ),
-        IconButton(
-          icon: Icon(
-            Icons.skip_previous, 
-            size: 36,
-            color: iconColor,
-          ),
-          onPressed: () => bloc.add(PlayPrevious()),
-        ),
-        StreamBuilder(
-          stream: audioService.playerStateStream,
-          builder: (context, snapshot) {
-            final isPlaying = snapshot.data?.playing ?? false;
-            return Container(
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: primaryColor,
-                boxShadow: isDark ? null : [
-                  BoxShadow(
-                    color: primaryColor.withValues(alpha: 0.3),
-                    blurRadius: 8,
-                    offset: const Offset(0, 4),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+          children: [
+            StreamBuilder(
+              stream: audioService.isShuffleStream,
+              initialData: audioService.isShuffle,
+              builder: (context, snapshot) {
+                final isShuffle = snapshot.data ?? false;
+                return IconButton(
+                  icon: Icon(
+                    Icons.shuffle,
+                    color: isShuffle ? activeIconColor : iconColor,
+                    size: 24,
                   ),
-                ],
-              ),
-              child: IconButton(
-                icon: Icon(
-                  isPlaying ? Icons.pause : Icons.play_arrow,
-                  size: 36,
-                  color: Theme.of(context).colorScheme.onPrimary,
-                ),
-                onPressed: () {
-                  if (isPlaying) {
-                    audioService.pause();
-                  } else {
-                    audioService.play();
-                  }
-                },
-              ),
-            );
-          },
-        ),
-        IconButton(
-          icon: Icon(
-            Icons.skip_next, 
-            size: 36,
-            color: iconColor,
-          ),
-          onPressed: () => bloc.add(PlayNext()),
-        ),
-        StreamBuilder(
-          stream: audioService.repeatModeStream,
-          initialData: audioService.repeatMode,
-          builder: (context, snapshot) {
-            final repeatMode = snapshot.data ?? RepeatMode.off;
-            return IconButton(
-              icon: Icon(
-                _getRepeatIcon(repeatMode),
-                color: repeatMode != RepeatMode.off
-                    ? activeIconColor
-                    : iconColor,
-                size: 24,
-              ),
-              onPressed: () {
-                audioService.toggleRepeat();
+                  onPressed: () {
+                    audioService.toggleShuffle();
+                  },
+                );
               },
+            ),
+            IconButton(
+              icon: Icon(
+                Icons.skip_previous, 
+                size: 36,
+                color: iconColor,
+              ),
+              onPressed: () => bloc.add(PlayPrevious()),
+            ),
+            StreamBuilder(
+              stream: audioService.playerStateStream,
+              builder: (context, snapshot) {
+                final isPlaying = snapshot.data?.playing ?? false;
+                return Container(
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: primaryColor,
+                    boxShadow: isDark ? null : [
+                      BoxShadow(
+                        color: primaryColor.withValues(alpha: 0.3),
+                        blurRadius: 8,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
+                  ),
+                  child: IconButton(
+                    icon: Icon(
+                      isPlaying ? Icons.pause : Icons.play_arrow,
+                      size: 36,
+                      color: Theme.of(context).colorScheme.onPrimary,
+                    ),
+                    onPressed: () {
+                      if (isPlaying) {
+                        audioService.pause();
+                      } else {
+                        audioService.play();
+                      }
+                    },
+                  ),
+                );
+              },
+            ),
+            IconButton(
+              icon: Icon(
+                Icons.skip_next, 
+                size: 36,
+                color: iconColor,
+              ),
+              onPressed: () => bloc.add(PlayNext()),
+            ),
+            StreamBuilder(
+              stream: audioService.repeatModeStream,
+              initialData: audioService.repeatMode,
+              builder: (context, snapshot) {
+                final repeatMode = snapshot.data ?? RepeatMode.off;
+                return IconButton(
+                  icon: Icon(
+                    _getRepeatIcon(repeatMode),
+                    color: repeatMode != RepeatMode.off
+                        ? activeIconColor
+                        : iconColor,
+                    size: 24,
+                  ),
+                  onPressed: () {
+                    audioService.toggleRepeat();
+                  },
+                );
+              },
+            ),
+          ],
+        ),
+        // 队列按钮
+        StreamBuilder<List<Song>>(
+          stream: audioService.queueStream,
+          initialData: audioService.queue,
+          builder: (context, snapshot) {
+            final queue = snapshot.data ?? [];
+            return TextButton.icon(
+              onPressed: onShowQueue,
+              icon: const Icon(Icons.keyboard_arrow_up, size: 20),
+              label: Text(
+                queue.isEmpty ? '播放队列' : '播放队列 · ${queue.length}首',
+                style: const TextStyle(fontSize: 13),
+              ),
             );
           },
         ),

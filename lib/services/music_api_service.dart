@@ -37,6 +37,7 @@ abstract class MusicApi {
   Future<List<Album>> getNewAlbums();
   Future<String?> getSongUrl(String id, {String quality = 'exhigh'});
   Future<String?> getSongLyric(String id);
+  Future<List<Song>> getSimilarSongs(String id, {int limit = 10});
   bool isFullAudio(Song song);
 }
 
@@ -352,6 +353,21 @@ class CustomApi implements MusicApi {
     } catch (e) { return null; }
   }
 
+  @override
+  Future<List<Song>> getSimilarSongs(String id, {int limit = 10}) async {
+    try {
+      final response = await _dio.get('/api/v1/song/$id/similar', queryParameters: {'limit': limit});
+      if (response.statusCode == 200 && response.data['code'] == 200) {
+        final list = response.data['data']?['list'] as List? ?? [];
+        return list.map((item) => _parseSong(item)).toList();
+      }
+      return [];
+    } catch (e) { 
+      AppLogger.log('getSimilarSongs error: $e');
+      return []; 
+    }
+  }
+
   @override bool isFullAudio(Song song) => song.duration.inSeconds > 60;
 
   Song _parseSong(Map<String, dynamic> track) {
@@ -557,6 +573,15 @@ class MusicApiService {
     } catch (e) {
       _emitError('getSongLyric', '获取歌词失败', e);
       return null;
+    }
+  }
+
+  Future<List<Song>> getSimilarSongs(String id, {int limit = 10}) async {
+    try {
+      return await _currentApi.getSimilarSongs(id, limit: limit);
+    } catch (e) {
+      _emitError('getSimilarSongs', '获取相似歌曲失败', e);
+      return [];
     }
   }
 

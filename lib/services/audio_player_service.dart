@@ -24,9 +24,13 @@ class AudioPlayerService {
   final _isPreviewModeSubject = BehaviorSubject<bool>.seeded(false);
   final _recentPlaysChangedSubject = BehaviorSubject<void>.seeded(null);
   final _errorSubject = BehaviorSubject<String?>.seeded(null);
+  final _queueSubject = BehaviorSubject<List<Song>>.seeded([]);
+  final _isQueueLoopSubject = BehaviorSubject<bool>.seeded(false);
+  final _queueIndexChangedSubject = BehaviorSubject<void>.seeded(null);
   
   bool _isTransitioning = false;
   StreamSubscription<Duration?>? _durationSubscription;
+  int _currentQueueIndex = 0;
 
   Stream<Song?> get currentSongStream => _currentSongSubject.stream;
   Stream<List<Song>> get playlistStream => _playlistSubject.stream;
@@ -36,6 +40,9 @@ class AudioPlayerService {
   Stream<bool> get isPreviewModeStream => _isPreviewModeSubject.stream;
   Stream<void> get recentPlaysChangedStream => _recentPlaysChangedSubject.stream;
   Stream<String?> get errorStream => _errorSubject.stream;
+  Stream<List<Song>> get queueStream => _queueSubject.stream;
+  Stream<bool> get isQueueLoopStream => _isQueueLoopSubject.stream;
+  Stream<void> get queueIndexChangedStream => _queueIndexChangedSubject.stream;
 
   Song? get currentSong => _currentSongSubject.value;
   List<Song> get playlist => _playlistSubject.value;
@@ -43,6 +50,9 @@ class AudioPlayerService {
   RepeatMode get repeatMode => _repeatModeSubject.value;
   bool get isShuffle => _isShuffleSubject.value;
   bool get isPreviewMode => _isPreviewModeSubject.value;
+  List<Song> get queue => _queueSubject.value;
+  bool get isQueueLoop => _isQueueLoopSubject.value;
+  int get currentQueueIndex => _currentQueueIndex;
 
   VoidCallback? onRecentPlaysChanged;
 
@@ -396,6 +406,18 @@ Future<void> _updateDurationInRecentPlays(String songId, Duration duration) asyn
   }
 
   Future<void> playNext() async {
+    // 优先从队列播放
+    if (queue.isNotEmpty) {
+      final nextSong = await getNextFromQueue();
+      if (nextSong != null) {
+        _currentSongSubject.add(nextSong);
+        await _playSong(nextSong);
+        await _saveCurrentSong(nextSong);
+        return;
+      }
+    }
+    
+    // 队列为空，从播放列表播放
     if (playlist.isEmpty) return;
     
     int nextIndex;
@@ -421,12 +443,25 @@ Future<void> _updateDurationInRecentPlays(String songId, Duration duration) asyn
   }
 
   Future<void> playPrevious() async {
-    if (playlist.isEmpty) return;
-    
+    // 如果播放超过3秒，重新开始当前歌曲
     if (_audioPlayer.position.inSeconds > 3) {
       await _audioPlayer.seek(Duration.zero);
       return;
     }
+    
+    // 优先从队列播放上一首
+    if (queue.isNotEmpty) {
+      final prevSong = getPreviousFromQueue();
+      if (prevSong != null) {
+        _currentSongSubject.add(prevSong);
+        await _playSong(prevSong);
+        await _saveCurrentSong(prevSong);
+        return;
+      }
+    }
+    
+    // 队列为空，从播放列表播放
+    if (playlist.isEmpty) return;
     
     int prevIndex = currentIndex - 1;
     if (prevIndex < 0) prevIndex = playlist.length - 1;
@@ -468,6 +503,142 @@ Future<void> _updateDurationInRecentPlays(String songId, Duration duration) asyn
   Stream<Duration?> get durationStream => _audioPlayer.durationStream;
   Stream<PlayerState> get playerStateStream => _audioPlayer.playerStateStream;
 
+  // ========== 队列管理方法 ==========
+
+  /// 加载相似歌曲到队列
+  Future<void> loadSimilarToQueue(String songId, {int limit = 15}) async {
+    try {
+      AppLogger.log('Loading similar songs for: $songId');
+      final similarSongs = await MusicApiService.instance.getSimilarSongs(songId, limit: limit);
+      
+      // 过滤掉当前歌曲
+      final filteredSongs = similarSongs.where((s) => s.id != songId).toList();
+      
+      _queueSubject.add(filteredSongs);
+      _currentQueueIndex = 0;
+      _queueIndexChangedSubject.add(null);
+      AppLogger.log('Loaded ${filteredSongs.length} similar songs to queue');
+    } catch (e) {
+      AppLogger.log('Failed to load similar songs: $e');
+      _emitError('加载相似歌曲失败');
+    }
+  }
+
+  /// 清空队列
+  void clearQueue() {
+    _queueSubject.add([]);
+    _currentQueueIndex = 0;
+    _queueIndexChangedSubject.add(null);
+  }
+
+  /// 添加歌曲到队列末尾
+  void addToQueue(Song song) {
+    final currentQueue = List<Song>.from(queue);
+    currentQueue.add(song);
+    _queueSubject.add(currentQueue);
+  }
+
+  /// 从队列移除歌曲
+  void removeFromQueue(int index) {
+    final currentQueue = List<Song>.from(queue);
+    if (index >= 0 && index < currentQueue.length) {
+      currentQueue.removeAt(index);
+      _queueSubject.add(currentQueue);
+      
+      // 调整当前索引
+      if (_currentQueueIndex >= currentQueue.length) {
+        _currentQueueIndex = currentQueue.length - 1;
+      }
+      _queueIndexChangedSubject.add(null);
+    }
+  }
+
+  /// 拖动排序队列
+  void reorderQueue(int oldIndex, int newIndex) {
+    final currentQueue = List<Song>.from(queue);
+    if (oldIndex < 0 || oldIndex >= currentQueue.length) return;
+    
+    final song = currentQueue.removeAt(oldIndex);
+    final adjustedNewIndex = newIndex > oldIndex ? newIndex - 1 : newIndex;
+    currentQueue.insert(adjustedNewIndex, song);
+    _queueSubject.add(currentQueue);
+    
+    // 更新当前播放索引
+    if (_currentQueueIndex == oldIndex) {
+      _currentQueueIndex = adjustedNewIndex;
+    } else if (oldIndex < _currentQueueIndex && adjustedNewIndex >= _currentQueueIndex) {
+      _currentQueueIndex--;
+    } else if (oldIndex > _currentQueueIndex && adjustedNewIndex <= _currentQueueIndex) {
+      _currentQueueIndex++;
+    }
+    _queueIndexChangedSubject.add(null);
+  }
+
+  /// 切换队列循环
+  void toggleQueueLoop() {
+    _isQueueLoopSubject.add(!isQueueLoop);
+  }
+
+  /// 从队列播放下一首
+  Future<void> playFromQueue(int index) async {
+    final currentQueue = queue;
+    if (index < 0 || index >= currentQueue.length) return;
+    
+    _currentQueueIndex = index;
+    _queueIndexChangedSubject.add(null);
+    
+    final song = currentQueue[index];
+    await _playSong(song);
+    await _saveCurrentSong(song);
+  }
+
+  /// 获取队列中的下一首歌曲
+  Future<Song?> getNextFromQueue() async {
+    final currentQueue = queue;
+    if (currentQueue.isEmpty) return null;
+    
+    // 如果队列播放完，检查是否循环
+    if (_currentQueueIndex >= currentQueue.length - 1) {
+      if (isQueueLoop) {
+        _currentQueueIndex = 0;
+      } else {
+        // 尝试加载更多相似歌曲
+        final currentSongId = currentSong?.id;
+        if (currentSongId != null) {
+          await loadSimilarToQueue(currentSongId);
+          if (queue.isEmpty) return null;
+          _currentQueueIndex = 0;
+        } else {
+          return null;
+        }
+      }
+    } else {
+      _currentQueueIndex++;
+    }
+    
+    _queueIndexChangedSubject.add(null);
+    return queue[_currentQueueIndex];
+  }
+
+  /// 获取队列中的上一首歌曲
+  Song? getPreviousFromQueue() {
+    final currentQueue = queue;
+    if (currentQueue.isEmpty) return null;
+    
+    if (_currentQueueIndex <= 0) {
+      if (isQueueLoop) {
+        _currentQueueIndex = currentQueue.length - 1;
+      } else {
+        return null;
+      }
+    } else {
+      _currentQueueIndex--;
+    }
+    
+    _queueIndexChangedSubject.add(null);
+    return currentQueue[_currentQueueIndex];
+  }
+
   void dispose() {
     _audioPlayer.dispose();
     _currentSongSubject.close();
@@ -476,5 +647,8 @@ Future<void> _updateDurationInRecentPlays(String songId, Duration duration) asyn
     _repeatModeSubject.close();
     _isShuffleSubject.close();
     _isPreviewModeSubject.close();
+    _queueSubject.close();
+    _isQueueLoopSubject.close();
+    _queueIndexChangedSubject.close();
   }
 }
