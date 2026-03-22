@@ -619,18 +619,18 @@ class _PlayerViewState extends State<_PlayerView> {
                         bloc: context.read<PlayerBloc>(),
                         onShowQueue: _showQueuePanel,
                       ),
-                      const Spacer(),
+const Spacer(),
                       const SizedBox(height: 32),
-                  ],
-                ),
-              ),
-            ),
-          );
-        },
-      ),
-    );
-  }
-}
+                    ],
+                 ),
+               ),
+             ),
+           ),
+         );
+       },
+     );
+   }
+ }
 
 class _LyricsView extends StatefulWidget {
   final Song? song;
