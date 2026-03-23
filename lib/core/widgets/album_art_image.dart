@@ -1,4 +1,3 @@
-import 'dart:convert';
 import 'package:flutter/material.dart';
 
 class AlbumArtImage extends StatelessWidget {
@@ -26,30 +25,13 @@ class AlbumArtImage extends StatelessWidget {
       return _buildDefault(imageWidth, imageHeight);
     }
     
-    // 判断是 URL 还是 base64
-    if (albumArt!.startsWith('http')) {
-      return Image.network(
-        albumArt!,
-        width: imageWidth,
-        height: imageHeight,
-        fit: fit,
-        errorBuilder: (_, __, ___) => _buildDefault(imageWidth, imageHeight),
-      );
-    } else {
-      // base64 格式
-      try {
-        final bytes = base64Decode(albumArt!);
-        return Image.memory(
-          bytes,
-          width: imageWidth,
-          height: imageHeight,
-          fit: fit,
-          errorBuilder: (_, __, ___) => _buildDefault(imageWidth, imageHeight),
-        );
-      } catch (e) {
-        return _buildDefault(imageWidth, imageHeight);
-      }
-    }
+    return Image.network(
+      albumArt!,
+      width: imageWidth,
+      height: imageHeight,
+      fit: fit,
+      errorBuilder: (_, __, ___) => _buildDefault(imageWidth, imageHeight),
+    );
   }
 
   Widget _buildDefault(double width, double height) {
