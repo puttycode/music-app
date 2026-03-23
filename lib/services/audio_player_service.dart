@@ -579,7 +579,7 @@ void _onSongComplete() {
   bool get isQueueLoading => _isQueueLoadingSubject.value;
 
   /// 加载相似歌曲到队列（包含当前歌曲在第一位）
-  Future<void> loadSimilarToQueue(Song currentSong, {int limit = 24}) async {
+  Future<void> loadSimilarToQueue(Song currentSong, {int limit = 20}) async {
     try {
       _isQueueLoadingSubject.add(true);
       AppLogger.log('Loading similar songs for: ${currentSong.id}');

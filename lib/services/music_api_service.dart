@@ -37,7 +37,7 @@ abstract class MusicApi {
   Future<List<Album>> getNewAlbums();
   Future<String?> getSongUrl(String id, {String quality = 'exhigh'});
   Future<String?> getSongLyric(String id);
-  Future<List<Song>> getSimilarSongs(String id, {int limit = 10});
+  Future<List<Song>> getSimilarSongs(String id, {int limit = 20});
   bool isFullAudio(Song song);
 }
 
@@ -354,17 +354,20 @@ class CustomApi implements MusicApi {
   }
 
   @override
-  Future<List<Song>> getSimilarSongs(String id, {int limit = 10}) async {
+  Future<List<Song>> getSimilarSongs(String id, {int limit = 20}) async {
     try {
-      final response = await _dio.get('/api/v1/song/$id/similar', queryParameters: {'limit': limit});
+      final response = await _dio.get(
+        '/api/v1/song/similar',
+        queryParameters: {'type': 'id', 'id': id, 'limit': limit},
+      );
       if (response.statusCode == 200 && response.data['code'] == 200) {
         final list = response.data['data']?['list'] as List? ?? [];
         return list.map((item) => _parseSong(item)).toList();
       }
       return [];
-    } catch (e) { 
+    } catch (e) {
       AppLogger.log('getSimilarSongs error: $e');
-      return []; 
+      return [];
     }
   }
 
@@ -593,7 +596,7 @@ class MusicApiService {
     }
   }
 
-  Future<List<Song>> getSimilarSongs(String id, {int limit = 10}) async {
+  Future<List<Song>> getSimilarSongs(String id, {int limit = 20}) async {
     try {
       return await _currentApi.getSimilarSongs(id, limit: limit);
     } catch (e) {
