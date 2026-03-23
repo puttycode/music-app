@@ -583,21 +583,42 @@ void _onSongComplete() {
     try {
       _isQueueLoadingSubject.add(true);
       AppLogger.log('Loading similar songs for: ${currentSong.id}');
+
+      final matchedCurrentSong = await _matchSongIfNeeded(currentSong);
+      AppLogger.log('Matched current song for similar queue: ${matchedCurrentSong.id}');
+
+      if (matchedCurrentSong.id.isEmpty || !matchedCurrentSong.id.contains('-')) {
+        AppLogger.log('Skip loading similar songs: invalid song id ${matchedCurrentSong.id}');
+        _queueSubject.add([matchedCurrentSong]);
+        _currentQueueIndex = 0;
+        _queueIndexChangedSubject.add(null);
+        _currentSongSubject.add(matchedCurrentSong);
+        _isQueueLoadingSubject.add(false);
+        await _saveQueue();
+        return;
+      }
       
       final similarSongs = await MusicApiService.instance.getSimilarSongs(
-        currentSong.id,
+        matchedCurrentSong.id,
         limit: limit,
+      );
+      AppLogger.log(
+        'Similar songs fetched: total=${similarSongs.length}, currentId=${matchedCurrentSong.id}, limit=$limit',
       );
       
       // 过滤掉当前歌曲
-      final filteredSongs = similarSongs.where((s) => s.id != currentSong.id).toList();
+      final filteredSongs = similarSongs.where((s) => s.id != matchedCurrentSong.id).toList();
+      AppLogger.log(
+        'Similar songs filtered: remaining=${filteredSongs.length}, currentId=${matchedCurrentSong.id}',
+      );
       
       // 构建队列：当前歌曲 + 相似歌曲
-      final newQueue = [currentSong, ...filteredSongs];
+      final newQueue = [matchedCurrentSong, ...filteredSongs];
       
       _queueSubject.add(newQueue);
       _currentQueueIndex = 0;
       _queueIndexChangedSubject.add(null);
+      _currentSongSubject.add(matchedCurrentSong);
       _isQueueLoadingSubject.add(false);
       await _saveQueue();
       
