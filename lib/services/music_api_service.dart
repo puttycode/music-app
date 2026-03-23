@@ -32,12 +32,14 @@ abstract class MusicApi {
   Future<List<Album>> getArtistAlbums(String artistId);
   Future<List<Song>> getAlbumTracks(String albumId);
   Future<List<Song>> getChartSongs(String chartName);
-  Future<List<Song>> getHotSongs();
+  Future<List<Song>> getTopTracks({int limit = 20});
   Future<List<Artist>> getHotArtists();
-  Future<List<Album>> getNewAlbums();
+  Future<List<Artist>> getTopArtists({int limit = 20});
   Future<String?> getSongUrl(String id, {String quality = 'exhigh'});
   Future<String?> getSongLyric(String id);
   Future<List<Song>> getSimilarSongs(String id, {int limit = 20});
+  Future<List<Song>> getSimilarSongsByKeyword(String track, String artist, {int limit = 20});
+  Future<List<Artist>> getSimilarArtists(String id, {int limit = 10});
   bool isFullAudio(Song song);
 }
 
@@ -259,9 +261,9 @@ class CustomApi implements MusicApi {
   @override Future<List<Song>> getTopCharts() => getChartSongs('热歌榜');
 
   @override
-  Future<List<Song>> getHotSongs() async {
+  Future<List<Song>> getTopTracks({int limit = 20}) async {
     try {
-      final response = await _dio.get('/api/v1/hot/songs');
+      final response = await _dio.get('/api/v1/chart/top-tracks', queryParameters: {'limit': limit});
       if (response.statusCode == 200 && response.data['code'] == 200) {
         final data = response.data['data'];
         final results = (data is Map) ? (data['list'] as List? ?? []) : (data as List? ?? []);
@@ -302,33 +304,21 @@ class CustomApi implements MusicApi {
   }
 
   @override
-  Future<List<Album>> getNewAlbums() async {
+  Future<List<Artist>> getTopArtists({int limit = 20}) async {
     try {
-      AppLogger.log('Fetching new albums from /api/v1/new/albums');
-      final response = await _dio.get('/api/v1/new/albums');
-      AppLogger.log('New albums response status: ${response.statusCode}');
-      
+      final response = await _dio.get('/api/v1/chart/top-artists', queryParameters: {'limit': limit});
       if (response.statusCode == 200 && response.data['code'] == 200) {
         final data = response.data['data'];
         final results = (data is Map) ? (data['list'] as List? ?? []) : (data as List? ?? []);
-        AppLogger.log('New albums results count: ${results.length}');
-        
-        return results.map((item) => Album(
-          id: item['rid']?.toString() ?? item['id']?.toString() ?? '',
+        return results.map((item) => Artist(
+          id: item['id']?.toString() ?? '',
           name: item['name']?.toString() ?? 'Unknown',
-          artist: item['artist']?.toString(),
-          cover: item['albumArt']?.toString() ?? item['cover']?.toString() ?? item['pic']?.toString(),
+          avatar: item['avatar']?.toString(),
+          musicNum: item['musicNum'] is int ? item['musicNum'] : int.tryParse(item['musicNum']?.toString() ?? '0'),
         )).toList();
       }
-      AppLogger.log('New albums API returned non-200 code: ${response.data['code']}');
       return [];
-    } on DioException catch (e) {
-      AppLogger.log('New albums network error: ${e.type} - ${e.message}');
-      return [];
-    } catch (e) {
-      AppLogger.log('New albums fetch error: $e');
-      return [];
-    }
+    } catch (e) { return []; }
   }
 
   @override
@@ -371,13 +361,9 @@ class CustomApi implements MusicApi {
     }
   }
 
-  Future<Song?> matchSong(String name, {String? artist}) async {
+  Future<Song?> matchSong(String name, String artist) async {
     try {
-      final params = <String, dynamic>{'name': name};
-      if (artist != null && artist.isNotEmpty) {
-        params['artist'] = artist;
-      }
-      final response = await _dio.get('/api/v1/song/match', queryParameters: params);
+      final response = await _dio.get('/api/v1/song/match', queryParameters: {'name': name, 'artist': artist});
       if (response.statusCode == 200 && response.data['code'] == 200) {
         return _parseSong(response.data['data']);
       }
@@ -386,6 +372,67 @@ class CustomApi implements MusicApi {
       AppLogger.log('matchSong error: $e');
       return null;
     }
+  }
+
+  Future<List<Song>> getSimilarSongsByKeyword(String track, String artist, {int limit = 20}) async {
+    try {
+      final response = await _dio.get(
+        '/api/v1/song/similar',
+        queryParameters: {'type': 'keyword', 'track': track, 'artist': artist, 'limit': limit},
+      );
+      if (response.statusCode == 200 && response.data['code'] == 200) {
+        final list = response.data['data']?['list'] as List? ?? [];
+        return list.map((item) => _parseSimilarSong(item)).toList();
+      }
+      return [];
+    } catch (e) {
+      AppLogger.log('getSimilarSongsByKeyword error: $e');
+      return [];
+    }
+  }
+
+  Future<List<Artist>> getSimilarArtists(String id, {int limit = 10}) async {
+    try {
+      final response = await _dio.get('/api/v1/artist/$id/similar', queryParameters: {'limit': limit});
+      if (response.statusCode == 200 && response.data['code'] == 200) {
+        final data = response.data['data'];
+        final results = (data is Map) ? (data['list'] as List? ?? []) : (data as List? ?? []);
+        return results.map((item) => Artist(
+          id: item['id']?.toString() ?? '',
+          name: item['name']?.toString() ?? 'Unknown',
+          avatar: item['avatar']?.toString(),
+          musicNum: item['musicNum'] is int ? item['musicNum'] : int.tryParse(item['musicNum']?.toString() ?? '0'),
+        )).toList();
+      }
+      return [];
+    } catch (e) {
+      AppLogger.log('getSimilarArtists error: $e');
+      return [];
+    }
+  }
+
+  Future<List<Song>> getTagTracks(String tag, {int limit = 20}) async {
+    try {
+      final response = await _dio.get('/api/v1/tag/$tag/tracks', queryParameters: {'limit': limit});
+      if (response.statusCode == 200 && response.data['code'] == 200) {
+        final data = response.data['data'];
+        final results = (data is Map) ? (data['list'] as List? ?? []) : (data as List? ?? []);
+        return results.map((track) => _parseSong(track)).toList();
+      }
+      return [];
+    } catch (e) { return []; }
+  }
+
+  Future<List<Song>> getGeoTracks(String country, {int limit = 20}) async {
+    try {
+      final response = await _dio.get('/api/v1/geo/$country/tracks', queryParameters: {'limit': limit});
+      if (response.statusCode == 200 && response.data['code'] == 200) {
+        final data = response.data['data'];
+        final results = (data is Map) ? (data['list'] as List? ?? []) : (data as List? ?? []);
+        return results.map((track) => _parseSong(track)).toList();
+      }
+      return [];
+    } catch (e) { return []; }
   }
 
   @override bool isFullAudio(Song song) => song.duration.inSeconds > 60;
@@ -414,6 +461,31 @@ class CustomApi implements MusicApi {
       album: track['album']?.toString() ?? 'Unknown Album',
       albumArt: track['albumArt'] ?? track['pic'] ?? track['cover'],
       audioUrl: track['url'] ?? track['audioUrl'],
+      duration: duration,
+      isLocal: false,
+    );
+  }
+
+  Song _parseSimilarSong(Map<String, dynamic> item) {
+    final durationValue = item['duration'];
+    Duration duration;
+    
+    if (durationValue is int && durationValue > 0) {
+      if (durationValue > 10000) {
+        duration = Duration(milliseconds: durationValue);
+      } else {
+        duration = Duration(seconds: durationValue);
+      }
+    } else {
+      duration = Duration.zero;
+    }
+    
+    return Song(
+      id: DateTime.now().millisecondsSinceEpoch.toString(),
+      title: item['name']?.toString() ?? 'Unknown',
+      artist: item['artist']?.toString() ?? 'Unknown Artist',
+      album: item['album']?.toString() ?? 'Unknown Album',
+      albumArt: item['albumArt'],
       duration: duration,
       isLocal: false,
     );
@@ -551,11 +623,11 @@ class MusicApiService {
     }
   }
 
-  Future<List<Song>> getHotSongs() async {
+  Future<List<Song>> getTopTracks({int limit = 20}) async {
     try {
-      return await _currentApi.getHotSongs();
+      return await _currentApi.getTopTracks(limit: limit);
     } catch (e) {
-      _emitError('getHotSongs', '获取热门歌曲失败', e);
+      _emitError('getTopTracks', '获取热门歌曲失败', e);
       return [];
     }
   }
@@ -569,11 +641,11 @@ class MusicApiService {
     }
   }
 
-  Future<List<Album>> getNewAlbums() async {
+  Future<List<Artist>> getTopArtists({int limit = 20}) async {
     try {
-      return await _currentApi.getNewAlbums();
+      return await _currentApi.getTopArtists(limit: limit);
     } catch (e) {
-      _emitError('getNewAlbums', '获取新专辑失败', e);
+      _emitError('getTopArtists', '获取全球热门歌手失败', e);
       return [];
     }
   }
@@ -605,12 +677,48 @@ class MusicApiService {
     }
   }
 
-  Future<Song?> matchSong(String name, {String? artist}) async {
+  Future<Song?> matchSong(String name, String artist) async {
     try {
-      return await (_currentApi as CustomApi).matchSong(name, artist: artist);
+      return await (_currentApi as CustomApi).matchSong(name, artist);
     } catch (e) {
       _emitError('matchSong', '匹配歌曲失败', e);
       return null;
+    }
+  }
+
+  Future<List<Song>> getSimilarSongsByKeyword(String track, String artist, {int limit = 20}) async {
+    try {
+      return await (_currentApi as CustomApi).getSimilarSongsByKeyword(track, artist, limit: limit);
+    } catch (e) {
+      _emitError('getSimilarSongsByKeyword', '获取相似歌曲失败', e);
+      return [];
+    }
+  }
+
+  Future<List<Artist>> getSimilarArtists(String id, {int limit = 10}) async {
+    try {
+      return await (_currentApi as CustomApi).getSimilarArtists(id, limit: limit);
+    } catch (e) {
+      _emitError('getSimilarArtists', '获取相似歌手失败', e);
+      return [];
+    }
+  }
+
+  Future<List<Song>> getTagTracks(String tag, {int limit = 20}) async {
+    try {
+      return await (_currentApi as CustomApi).getTagTracks(tag, limit: limit);
+    } catch (e) {
+      _emitError('getTagTracks', '获取标签歌曲失败', e);
+      return [];
+    }
+  }
+
+  Future<List<Song>> getGeoTracks(String country, {int limit = 20}) async {
+    try {
+      return await (_currentApi as CustomApi).getGeoTracks(country, limit: limit);
+    } catch (e) {
+      _emitError('getGeoTracks', '获取地区歌曲失败', e);
+      return [];
     }
   }
 

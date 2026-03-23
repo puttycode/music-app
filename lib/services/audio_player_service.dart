@@ -705,7 +705,7 @@ void _onSongComplete() {
       return song;
     }
     
-    final matched = await MusicApiService.instance.matchSong(song.title, artist: song.artist);
+    final matched = await MusicApiService.instance.matchSong(song.title, song.artist);
     if (matched != null) {
       return matched.copyWith(
         title: song.title,
