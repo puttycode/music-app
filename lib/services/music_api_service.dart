@@ -502,6 +502,19 @@ class CustomApi implements MusicApi {
     } catch (e) { return []; }
   }
 
+  Future<Map<String, dynamic>?> getYtmHome() async {
+    try {
+      final response = await _dio.get('/api/v1/ytm/home');
+      if (response.statusCode == 200 && response.data['code'] == 200) {
+        return response.data['data'] as Map<String, dynamic>?;
+      }
+      return null;
+    } catch (e) {
+      AppLogger.log('getYtmHome error: $e');
+      return null;
+    }
+  }
+
   @override bool isFullAudio(Song song) => song.duration.inSeconds > 60;
 
   Song _parseSong(Map<String, dynamic> track) {
@@ -786,6 +799,15 @@ class MusicApiService {
     } catch (e) {
       _emitError('getGeoTracks', '获取地区歌曲失败', e);
       return [];
+    }
+  }
+
+  Future<Map<String, dynamic>?> getYtmHome() async {
+    try {
+      return await (_currentApi as CustomApi).getYtmHome();
+    } catch (e) {
+      _emitError('getYtmHome', '获取YTM首页失败', e);
+      return null;
     }
   }
 
