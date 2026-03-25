@@ -258,16 +258,47 @@ class CustomApi implements MusicApi {
     } catch (e) { return []; }
   }
 
-  @override Future<List<Song>> getTopCharts() => getChartSongs('热歌榜');
+  @override
+  Future<List<Song>> getTopCharts() async {
+    try {
+      final chartsResponse = await _dio.get('/api/v1/ytm/charts');
+      if (chartsResponse.statusCode == 200 && chartsResponse.data['code'] == 200) {
+        final chartsList = chartsResponse.data['data']?['list'] as List? ?? [];
+        if (chartsList.isNotEmpty) {
+          String playlistId = chartsList[0]['id']?.toString() ?? '';
+          if (playlistId.startsWith('Y-')) {
+            playlistId = playlistId.substring(2);
+          }
+          final response = await _dio.get('/api/v1/ytm/playlist/$playlistId', queryParameters: {'limit': 50});
+          if (response.statusCode == 200 && response.data['code'] == 200) {
+            final data = response.data['data'];
+            final results = (data is Map) ? (data['list'] as List? ?? []) : (data as List? ?? []);
+            return results.map((track) => _parseSong(track)).toList();
+          }
+        }
+      }
+      return [];
+    } catch (e) { return []; }
+  }
 
   @override
   Future<List<Song>> getTopTracks({int limit = 20}) async {
     try {
-      final response = await _dio.get('/api/v1/chart/top-tracks', queryParameters: {'limit': limit});
-      if (response.statusCode == 200 && response.data['code'] == 200) {
-        final data = response.data['data'];
-        final results = (data is Map) ? (data['list'] as List? ?? []) : (data as List? ?? []);
-        return results.map((track) => _parseSong(track)).toList();
+      final chartsResponse = await _dio.get('/api/v1/ytm/charts');
+      if (chartsResponse.statusCode == 200 && chartsResponse.data['code'] == 200) {
+        final chartsList = chartsResponse.data['data']?['list'] as List? ?? [];
+        if (chartsList.isNotEmpty) {
+          String playlistId = chartsList[0]['id']?.toString() ?? '';
+          if (playlistId.startsWith('Y-')) {
+            playlistId = playlistId.substring(2);
+          }
+          final response = await _dio.get('/api/v1/ytm/playlist/$playlistId', queryParameters: {'limit': limit});
+          if (response.statusCode == 200 && response.data['code'] == 200) {
+            final data = response.data['data'];
+            final results = (data is Map) ? (data['list'] as List? ?? []) : (data as List? ?? []);
+            return results.map((track) => _parseSong(track)).toList();
+          }
+        }
       }
       return [];
     } catch (e) { return []; }
@@ -276,46 +307,58 @@ class CustomApi implements MusicApi {
   @override
   Future<List<Artist>> getHotArtists() async {
     try {
-      AppLogger.log('Fetching hot artists from /api/v1/hot/artists');
-      final response = await _dio.get('/api/v1/hot/artists');
-      AppLogger.log('Hot artists response status: ${response.statusCode}');
-      
+      final response = await _dio.get('/api/v1/ytm/home');
       if (response.statusCode == 200 && response.data['code'] == 200) {
-        final data = response.data['data'];
-        final results = (data is Map) ? (data['list'] as List? ?? []) : (data as List? ?? []);
-        AppLogger.log('Hot artists results count: ${results.length}');
+        final sections = response.data['data']?['sections'] as List? ?? [];
+        final seenArtists = <String>{};
+        final artists = <Artist>[];
         
-        return results.map((item) => Artist(
-          id: item['rid']?.toString() ?? item['id']?.toString() ?? '',
-          name: item['artist']?.toString() ?? item['name']?.toString() ?? 'Unknown',
-          avatar: item['albumArt']?.toString() ?? item['avatar']?.toString() ?? item['pic']?.toString(),
-          musicNum: item['musicNum'] is int ? item['musicNum'] : int.tryParse(item['musicNum']?.toString() ?? '0'),
-        )).toList();
+        for (final section in sections) {
+          final content = section['content'] as List? ?? [];
+          for (final item in content) {
+            final artistName = item['artist']?.toString() ?? '';
+            if (artistName.isNotEmpty && !seenArtists.contains(artistName) && artists.length < 20) {
+              seenArtists.add(artistName);
+              artists.add(Artist(
+                id: item['rid']?.toString() ?? '',
+                name: artistName,
+                avatar: item['albumArt']?.toString(),
+              ));
+            }
+          }
+          if (artists.length >= 20) break;
+        }
+        return artists;
       }
-      AppLogger.log('Hot artists API returned non-200 code: ${response.data['code']}');
       return [];
-    } on DioException catch (e) {
-      AppLogger.log('Hot artists network error: ${e.type} - ${e.message}');
-      return [];
-    } catch (e) {
-      AppLogger.log('Hot artists fetch error: $e');
-      return [];
-    }
+    } catch (e) { return []; }
   }
 
   @override
   Future<List<Artist>> getTopArtists({int limit = 20}) async {
     try {
-      final response = await _dio.get('/api/v1/chart/top-artists', queryParameters: {'limit': limit});
+      final response = await _dio.get('/api/v1/ytm/home');
       if (response.statusCode == 200 && response.data['code'] == 200) {
-        final data = response.data['data'];
-        final results = (data is Map) ? (data['list'] as List? ?? []) : (data as List? ?? []);
-        return results.map((item) => Artist(
-          id: item['id']?.toString() ?? '',
-          name: item['name']?.toString() ?? 'Unknown',
-          avatar: item['avatar']?.toString(),
-          musicNum: item['musicNum'] is int ? item['musicNum'] : int.tryParse(item['musicNum']?.toString() ?? '0'),
-        )).toList();
+        final sections = response.data['data']?['sections'] as List? ?? [];
+        final seenArtists = <String>{};
+        final artists = <Artist>[];
+        
+        for (final section in sections) {
+          final content = section['content'] as List? ?? [];
+          for (final item in content) {
+            final artistName = item['artist']?.toString() ?? '';
+            if (artistName.isNotEmpty && !seenArtists.contains(artistName) && artists.length < limit) {
+              seenArtists.add(artistName);
+              artists.add(Artist(
+                id: item['rid']?.toString() ?? '',
+                name: artistName,
+                avatar: item['albumArt']?.toString(),
+              ));
+            }
+          }
+          if (artists.length >= limit) break;
+        }
+        return artists;
       }
       return [];
     } catch (e) { return []; }
@@ -346,13 +389,22 @@ class CustomApi implements MusicApi {
   @override
   Future<List<Song>> getSimilarSongs(String id, {int limit = 20}) async {
     try {
-      final response = await _dio.get(
-        '/api/v1/song/similar',
-        queryParameters: {'type': 'id', 'id': id, 'limit': limit},
-      );
+      String videoId = id;
+      if (videoId.startsWith('Y-')) {
+        videoId = videoId.substring(2);
+      }
+      final response = await _dio.get('/api/v1/ytm/related/$videoId', queryParameters: {'limit': limit});
       if (response.statusCode == 200 && response.data['code'] == 200) {
         final list = response.data['data']?['list'] as List? ?? [];
-        return list.map((item) => _parseSong(item)).toList();
+        return list.map((item) => Song(
+          id: DateTime.now().millisecondsSinceEpoch.toString(),
+          title: item['name']?.toString() ?? 'Unknown',
+          artist: item['artist']?.toString() ?? 'Unknown Artist',
+          album: '',
+          albumArt: item['albumArt']?.toString(),
+          duration: Duration(seconds: item['duration'] ?? 0),
+          isLocal: false,
+        )).toList();
       }
       return [];
     } catch (e) {
@@ -376,13 +428,28 @@ class CustomApi implements MusicApi {
 
   Future<List<Song>> getSimilarSongsByKeyword(String track, String artist, {int limit = 20}) async {
     try {
-      final response = await _dio.get(
-        '/api/v1/song/similar',
-        queryParameters: {'type': 'keyword', 'track': track, 'artist': artist, 'limit': limit},
-      );
-      if (response.statusCode == 200 && response.data['code'] == 200) {
-        final list = response.data['data']?['list'] as List? ?? [];
-        return list.map((item) => _parseSimilarSong(item)).toList();
+      final searchResponse = await _dio.get('/api/v1/ytm/search', queryParameters: {'q': '$track $artist', 'limit': 1});
+      if (searchResponse.statusCode == 200 && searchResponse.data['code'] == 200) {
+        final searchList = searchResponse.data['data']?['list'] as List? ?? [];
+        if (searchList.isNotEmpty) {
+          String videoId = searchList[0]['rid']?.toString() ?? '';
+          if (videoId.startsWith('Y-')) {
+            videoId = videoId.substring(2);
+          }
+          final response = await _dio.get('/api/v1/ytm/related/$videoId', queryParameters: {'limit': limit});
+          if (response.statusCode == 200 && response.data['code'] == 200) {
+            final list = response.data['data']?['list'] as List? ?? [];
+            return list.map((item) => Song(
+              id: DateTime.now().millisecondsSinceEpoch.toString(),
+              title: item['name']?.toString() ?? 'Unknown',
+              artist: item['artist']?.toString() ?? 'Unknown Artist',
+              album: '',
+              albumArt: item['albumArt']?.toString(),
+              duration: Duration(seconds: item['duration'] ?? 0),
+              isLocal: false,
+            )).toList();
+          }
+        }
       }
       return [];
     } catch (e) {
