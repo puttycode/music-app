@@ -184,7 +184,12 @@ void _onSongComplete() {
     _playlistSubject.add(songs);
     _currentIndexSubject.add(startIndex);
     var song = songs[startIndex];
-    AppLogger.log('Current song: ${song.title} - ${song.artist}, url: ${song.audioUrl}');
+    
+    // YTM ID 需要先匹配获取可播放的源
+    song = await _matchSongIfNeeded(song);
+    _playlistSubject.add(List.of(songs)..[startIndex] = song);
+    
+    AppLogger.log('Current song: ${song.title} - ${song.artist}, id: ${song.id}');
     _currentSongSubject.add(song);
     
     if (autoPlay) {
@@ -699,12 +704,18 @@ void _onSongComplete() {
   }
 
   /// 匹配歌曲获取完整信息（包含有效ID用于播放）
+  /// YTM ID (Y-xxx) 不支持播放，需要通过 matchSong 获取可播放的源
   Future<Song> _matchSongIfNeeded(Song song, {bool forceMatch = false}) async {
-    final hasValidId = song.id.isNotEmpty && song.id.contains('-');
+    // YTM ID 不支持播放，需要匹配
+    final isYtmId = song.id.startsWith('Y-');
+    // 其他带 - 的 ID 视为有效（如 A-xxx）
+    final hasValidId = !isYtmId && song.id.isNotEmpty && song.id.contains('-');
+    
     if (!forceMatch && hasValidId) {
       return song;
     }
     
+    // YTM ID 或无效 ID 需要通过 matchSong 获取可播放的歌曲
     final matched = await MusicApiService.instance.matchSong(song.title, song.artist);
     if (matched != null) {
       return matched.copyWith(
