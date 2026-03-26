@@ -522,26 +522,21 @@ class _PlayerViewState extends State<_PlayerView> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final iconColor = isDark ? null : Theme.of(context).colorScheme.onSurface;
 
-    return WillPopScope(
-      onWillPop: () async {
-        Navigator.pop(context);
-        return false;
-      },
-      child: Scaffold(
-        appBar: AppBar(
-          backgroundColor: Colors.transparent,
-          elevation: 0,
-          leading: IconButton(
-            icon: Icon(Icons.keyboard_arrow_down, size: 32, color: iconColor),
-            onPressed: () => Navigator.pop(context),
-          ),
+    return Scaffold(
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        leading: IconButton(
+          icon: Icon(Icons.keyboard_arrow_down, size: 32, color: iconColor),
+          onPressed: () => Navigator.pop(context),
+        ),
           title: Text(
             '正在播放', 
             style: TextStyle(
-            fontSize: 14, 
-            color: isDark ? null : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
+              fontSize: 14, 
+              color: isDark ? null : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
+            ),
           ),
-        ),
         centerTitle: true,
         actions: [
            PopupMenuButton<String>(
