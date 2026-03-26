@@ -593,35 +593,34 @@ void _onSongComplete() {
       _isQueueLoadingSubject.add(true);
       AppLogger.log('Loading similar songs for: ${currentSong.id}');
 
+      // 先匹配获取可播放的当前歌曲（用于播放）
       final matchedCurrentSong = await _matchSongIfNeeded(currentSong);
       AppLogger.log('Matched current song for similar queue: ${matchedCurrentSong.id}');
 
-      if (matchedCurrentSong.id.isEmpty || !matchedCurrentSong.id.contains('-')) {
-        AppLogger.log('Skip loading similar songs: invalid song id ${matchedCurrentSong.id}');
-        _queueSubject.add([matchedCurrentSong]);
-        _currentQueueIndex = 0;
-        _queueIndexChangedSubject.add(null);
-        _currentSongSubject.add(matchedCurrentSong);
-        _isQueueLoadingSubject.add(false);
-        await _saveQueue();
-        return;
+      // 根据当前歌曲的ID类型选择合适的相似歌曲查询方式
+      List<Song> similarSongs;
+      if (currentSong.id.startsWith('Y-')) {
+        // YTM ID，直接调用 related API（需要去掉 Y- 前缀）
+        final videoId = currentSong.id.substring(2);
+        similarSongs = await MusicApiService.instance.getSimilarSongs(videoId, limit: limit);
+      } else {
+        // 非 YTM ID（A-xxx 或其他），使用关键词查询
+        similarSongs = await MusicApiService.instance.getSimilarSongsByKeyword(
+          currentSong.title,
+          currentSong.artist,
+          limit: limit,
+        );
       }
       
-      final similarSongs = await MusicApiService.instance.getSimilarSongs(
-        matchedCurrentSong.id,
-        limit: limit,
-      );
-      AppLogger.log(
-        'Similar songs fetched: total=${similarSongs.length}, currentId=${matchedCurrentSong.id}, limit=$limit',
-      );
+      AppLogger.log('Similar songs fetched: total=${similarSongs.length}');
       
-      // 过滤掉当前歌曲
-      final filteredSongs = similarSongs.where((s) => s.id != matchedCurrentSong.id).toList();
-      AppLogger.log(
-        'Similar songs filtered: remaining=${filteredSongs.length}, currentId=${matchedCurrentSong.id}',
-      );
-      
-      // 构建队列：当前歌曲 + 相似歌曲
+      // 过滤掉当前歌曲（用标题+歌手匹配）
+      final filteredSongs = similarSongs.where((s) => 
+        !(s.title == currentSong.title && s.artist == currentSong.artist)
+      ).toList();
+      AppLogger.log('Similar songs filtered: remaining=${filteredSongs.length}');
+
+      // 构建队列：当前歌曲（匹配后的可播放版本）+ 相似歌曲
       final newQueue = [matchedCurrentSong, ...filteredSongs];
       
       _queueSubject.add(newQueue);
