@@ -526,20 +526,19 @@ class _PlayerViewState extends State<_PlayerView> {
       canPop: false,
       onPopInvokedWithResult: (didPop, result) {
         if (didPop) return;
-        // 返回首页而不是退出应用
         Navigator.pop(context);
       },
       child: Scaffold(
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        leading: IconButton(
-          icon: Icon(Icons.keyboard_arrow_down, size: 32, color: iconColor),
-          onPressed: () => Navigator.pop(context),
-        ),
-        title: Text(
-          '正在播放', 
-          style: TextStyle(
+        appBar: AppBar(
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          leading: IconButton(
+            icon: Icon(Icons.keyboard_arrow_down, size: 32, color: iconColor),
+            onPressed: () => Navigator.pop(context),
+          ),
+          title: Text(
+            '正在播放', 
+            style: TextStyle(
             fontSize: 14, 
             color: isDark ? null : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
           ),
