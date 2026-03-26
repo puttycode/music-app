@@ -494,6 +494,8 @@ void _onSongComplete() {
     
     _currentIndexSubject.add(nextIndex);
     var song = playlist[nextIndex];
+    // YTM ID 需要先匹配获取可播放的源
+    song = await _matchSongIfNeeded(song);
     _currentSongSubject.add(song);
     await _playSong(song);
     final actualDuration = _audioPlayer.duration;
@@ -542,6 +544,8 @@ void _onSongComplete() {
     
     _currentIndexSubject.add(prevIndex);
     var song = playlist[prevIndex];
+    // YTM ID 需要先匹配获取可播放的源
+    song = await _matchSongIfNeeded(song);
     _currentSongSubject.add(song);
     await _playSong(song);
     final actualDuration = _audioPlayer.duration;
