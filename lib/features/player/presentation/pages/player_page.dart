@@ -522,7 +522,14 @@ class _PlayerViewState extends State<_PlayerView> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final iconColor = isDark ? null : Theme.of(context).colorScheme.onSurface;
 
-    return Scaffold(
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) {
+        if (didPop) return;
+        // 返回首页而不是退出应用
+        Navigator.pop(context);
+      },
+      child: Scaffold(
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
