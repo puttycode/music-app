@@ -110,9 +110,15 @@ class _MainPageState extends State<MainPage> {
     return ScaffoldMessenger(
       key: _scaffoldMessengerKey,
       child: Scaffold(
-        body: IndexedStack(
-          index: _currentIndex,
-          children: _pages,
+        body: WillPopScope(
+          onWillPop: () async {
+            // 按返回键时最小化应用而不是关闭
+            return false;
+          },
+          child: IndexedStack(
+            index: _currentIndex,
+            children: _pages,
+          ),
         ),
         bottomNavigationBar: Column(
           mainAxisSize: MainAxisSize.min,
